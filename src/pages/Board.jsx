@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react'
-import {
-  DndContext,
-  closestCorners,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from '@dnd-kit/core'
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { supabase } from '../supabaseClient'
 import Column from '../components/Column'
 import TaskCard from '../components/TaskCard'
 import AddTaskModal from '../components/AddTaskModal'
 
 const COLUMNS = [
-  { id: 'todo',        label: '📋 To Do',      color: 'bg-gray-100' },
-  { id: 'inprogress',  label: '🔄 In Progress', color: 'bg-blue-50' },
-  { id: 'done',        label: '✅ Done',        color: 'bg-green-50' },
+  { id: 'todo',       label: 'To Do',      color: 'bg-card' },
+  { id: 'inprogress', label: 'In Progress', color: 'bg-card' },
+  { id: 'done',       label: 'Done',        color: 'bg-card' },
 ]
 
 export default function Board({ session }) {
@@ -26,10 +19,8 @@ export default function Board({ session }) {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  // Fetch tasks
   useEffect(() => {
     fetchTasks()
-    // Real-time subscription
     const channel = supabase
       .channel('tasks-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchTasks)
@@ -38,86 +29,74 @@ export default function Board({ session }) {
   }, [])
 
   const fetchTasks = async () => {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('position', { ascending: true })
+    const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: true })
     if (!error) setTasks(data || [])
     setLoading(false)
   }
 
   const handleDragStart = (event) => {
-    const task = tasks.find(t => t.id === event.active.id)
-    setActiveTask(task)
+    setActiveTask(tasks.find(t => t.id === event.active.id))
   }
 
   const handleDragEnd = async (event) => {
     const { active, over } = event
     setActiveTask(null)
     if (!over) return
-
-    const taskId = active.id
-    const newStatus = over.id // over a column id
-
-    const validColumns = COLUMNS.map(c => c.id)
-    if (!validColumns.includes(newStatus)) return
-
-    const task = tasks.find(t => t.id === taskId)
+    const newStatus = over.id
+    if (!COLUMNS.map(c => c.id).includes(newStatus)) return
+    const task = tasks.find(t => t.id === active.id)
     if (!task || task.status === newStatus) return
-
-    // Optimistic update
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t))
-
-    await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
+    setTasks(prev => prev.map(t => t.id === active.id ? { ...t, status: newStatus } : t))
+    await supabase.from('tasks').update({ status: newStatus }).eq('id', active.id)
   }
 
-  const handleSignOut = () => supabase.auth.signOut()
+  const counts = {
+    todo: tasks.filter(t => t.status === 'todo').length,
+    inprogress: tasks.filter(t => t.status === 'inprogress').length,
+    done: tasks.filter(t => t.status === 'done').length,
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
+      <div className="px-8 py-5 border-b border-border flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-brand-600">Team Todo</h1>
-          <p className="text-xs text-gray-400">{session.user.email}</p>
+          <h2 className="text-white font-semibold text-lg">Board</h2>
+          <p className="text-gray-500 text-xs mt-0.5">{tasks.length} total tasks</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
-          >
-            + Add Task
-          </button>
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg border border-gray-200 transition"
-          >
-            Sign Out
-          </button>
-        </div>
-      </header>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-accent hover:bg-accent-hover text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          + Add Task
+        </button>
+      </div>
 
-      {/* Board */}
-      <main className="flex-1 p-6 overflow-x-auto">
+      {/* Stats row */}
+      <div className="px-8 py-4 flex gap-4">
+        {[
+          { label: 'To Do', count: counts.todo, color: 'text-gray-400' },
+          { label: 'In Progress', count: counts.inprogress, color: 'text-blue-400' },
+          { label: 'Done', count: counts.done, color: 'text-green-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl px-5 py-3 flex items-center gap-3">
+            <span className={`text-2xl font-bold ${s.color}`}>{s.count}</span>
+            <span className="text-gray-500 text-sm">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Kanban */}
+      <div className="flex-1 px-8 pb-8 overflow-x-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-brand-500 border-t-transparent" />
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-accent border-t-transparent" />
           </div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="flex gap-6 min-w-max">
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="flex gap-5 min-w-max pt-2">
               {COLUMNS.map(col => (
-                <Column
-                  key={col.id}
-                  column={col}
-                  tasks={tasks.filter(t => t.status === col.id)}
-                  onRefresh={fetchTasks}
-                />
+                <Column key={col.id} column={col} tasks={tasks.filter(t => t.status === col.id)} onRefresh={fetchTasks} />
               ))}
             </div>
             <DragOverlay>
@@ -125,14 +104,10 @@ export default function Board({ session }) {
             </DragOverlay>
           </DndContext>
         )}
-      </main>
+      </div>
 
       {showModal && (
-        <AddTaskModal
-          session={session}
-          onClose={() => setShowModal(false)}
-          onCreated={fetchTasks}
-        />
+        <AddTaskModal session={session} onClose={() => setShowModal(false)} onCreated={fetchTasks} />
       )}
     </div>
   )
