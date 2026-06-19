@@ -13,6 +13,11 @@ Entry template:
 
 ---
 
+## 2026-06-20 - Codex - build V1 product foundation
+- What changed: Expanded Safari To-Dos from scaffold toward V1: premium dark Manrope UI, department-tab board, multi-assignee task creation, ASSIGNED -> NOTICED -> IN_EDIT -> DONE -> admin APPROVED/REJECTED flow, clarification requests, deadline labels/defaults, checklist fallback, quests/templates/audit pages, richer dashboard/leaderboard, password reset, and migration `004_v1_product_model.sql`.
+- Why: User clarified the scaffold is not final and requested the real lean internal task board V1 with admin approval, deadlines, XP, quests, templates, notifications, soft delete, and audit log foundations.
+- Anything the other agent should know / not undo: `npm.cmd run build` passes. Apply `supabase/migrations/004_v1_product_model.sql` after the first three migrations before relying on new V1 fields/tables. No push was performed; user explicitly said not to push automatically.
+
 ## 2026-06-19 — Claude — set up cross-agent collaboration files
 - What changed: Rewrote `AGENTS.md` into a full project briefing (product model, status flow,
   XP system, file structure, division of labor). Created this `COLLAB_LOG.md` for handoffs.

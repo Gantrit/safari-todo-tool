@@ -1,39 +1,53 @@
 'use client'
 
 import { useState } from 'react'
-import { Subtask, Profile } from '@/lib/types'
+import { ChecklistItem, Subtask, Profile } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Check } from 'lucide-react'
 
 interface SubtaskListProps {
   taskId: string
-  subtasks: Subtask[]
+  subtasks: Array<Subtask | ChecklistItem>
   members: Profile[]
   currentUser: Profile
 }
 
 export default function SubtaskList({ taskId, subtasks: initial, members, currentUser }: SubtaskListProps) {
-  const [subtasks, setSubtasks] = useState<Subtask[]>(initial)
+  const [subtasks, setSubtasks] = useState<Array<Subtask | ChecklistItem>>(initial)
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const supabase = createClient()
 
   async function addSubtask() {
     if (!newTitle.trim()) return
-    const { data } = await supabase
-      .from('subtasks')
-      .insert({ task_id: taskId, title: newTitle.trim(), assigned_to: currentUser.id, done: false })
+    const { data, error } = await supabase
+      .from('checklist_items')
+      .insert({ task_id: taskId, title: newTitle.trim(), position: subtasks.length, done: false })
       .select('*')
       .single()
+    if (error) {
+      const fallback = await supabase
+        .from('subtasks')
+        .insert({ task_id: taskId, title: newTitle.trim(), assigned_to: currentUser.id, done: false })
+        .select('*')
+        .single()
+      if (fallback.data) {
+        setSubtasks((prev) => [...prev, fallback.data as Subtask])
+        setNewTitle('')
+        setAdding(false)
+      }
+      return
+    }
     if (data) {
-      setSubtasks((prev) => [...prev, data as Subtask])
+      setSubtasks((prev) => [...prev, data as ChecklistItem])
       setNewTitle('')
       setAdding(false)
     }
   }
 
   async function toggleSubtask(id: string, done: boolean) {
-    await supabase.from('subtasks').update({ done: !done }).eq('id', id)
+    const { error } = await supabase.from('checklist_items').update({ done: !done }).eq('id', id)
+    if (error) await supabase.from('subtasks').update({ done: !done }).eq('id', id)
     setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, done: !done } : s)))
   }
 

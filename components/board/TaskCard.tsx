@@ -1,12 +1,13 @@
 'use client'
 
 import { Task } from '@/lib/types'
-import { formatDate, isOverdue, daysUntilDue, getInitials } from '@/lib/utils'
+import { deadlineLabel, getInitials, isOverdue, daysUntilDue, noticeSlaMissed } from '@/lib/utils'
 import PriorityBadge from '../ui/PriorityBadge'
 import StatusBadge from '../ui/StatusBadge'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Calendar, MessageSquare, Paperclip, CheckSquare } from 'lucide-react'
+import { AlertTriangle, Calendar, Link2, MessageSquare, Paperclip, Repeat, CheckSquare } from 'lucide-react'
+import { getTaskDeadline } from '@/lib/types'
 
 interface TaskCardProps {
   task: Task
@@ -22,12 +23,16 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
     opacity: isDragging ? 0.4 : 1,
   }
 
-  const overdue = isOverdue(task.due_date)
-  const days = daysUntilDue(task.due_date)
-  const subtaskCount = task.subtasks?.length || 0
-  const doneSubtasks = task.subtasks?.filter((s) => s.done).length || 0
+  const deadline = getTaskDeadline(task)
+  const overdue = isOverdue(deadline) && !['APPROVED'].includes(task.status)
+  const days = daysUntilDue(deadline)
+  const checklist = task.checklist_items || task.subtasks || []
+  const subtaskCount = checklist.length
+  const doneSubtasks = checklist.filter((s) => s.done).length
   const commentCount = task.comments?.length || 0
   const attachmentCount = task.attachments?.length || 0
+  const slaMissed = noticeSlaMissed(task.created_at, task.status, task.noticed_at)
+  const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
 
   return (
     <div
@@ -39,7 +44,8 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       style={{
         ...style,
         background: 'var(--surface2)',
-        border: '1px solid var(--border)',
+        border: `1px solid ${overdue || slaMissed ? 'rgba(255,98,98,0.45)' : task.section === 'IMMINENT' ? 'rgba(216,195,106,0.45)' : 'var(--border)'}`,
+        boxShadow: task.section === 'IMMINENT' ? '0 0 0 1px rgba(216,195,106,0.08), inset 3px 0 0 var(--accent)' : undefined,
       }}
     >
       {/* Labels */}
@@ -69,6 +75,14 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {task.title}
       </p>
 
+      {(overdue || slaMissed || task.needs_clarification) && (
+        <div className="mb-2 flex flex-wrap gap-1">
+          {overdue && <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold" style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.35)' }}><AlertTriangle size={10} />Overdue</span>}
+          {slaMissed && <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold" style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.35)' }}>Notice SLA</span>}
+          {task.needs_clarification && <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold" style={{ color: 'var(--amber)', border: '1px solid rgba(243,169,79,0.35)' }}>Clarification</span>}
+        </div>
+      )}
+
       {/* Status + Priority */}
       <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
         <StatusBadge status={task.status} />
@@ -78,17 +92,23 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       {/* Footer */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {task.due_date && (
+          {deadline && (
             <span
               className="flex items-center gap-1 text-xs"
               style={{ color: overdue ? 'var(--red)' : days !== null && days <= 3 ? 'var(--amber)' : 'var(--muted)' }}
             >
               <Calendar size={10} />
-              {formatDate(task.due_date)}
+              {deadlineLabel(deadline)}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
+          {(task.recurring_enabled || task.recurring_frequency) && (
+            <Repeat size={10} style={{ color: 'var(--accent)' }} />
+          )}
+          {(task.reference_url || task.google_drive_url) && (
+            <Link2 size={10} style={{ color: 'var(--blue)' }} />
+          )}
           {subtaskCount > 0 && (
             <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--muted)' }}>
               <CheckSquare size={10} />
@@ -107,15 +127,16 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
               {attachmentCount}
             </span>
           )}
-          {task.assigned_profile && (
+          {assignees.slice(0, 3).map((assignee) => (
             <div
+              key={assignee.id}
               className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
               style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-              title={task.assigned_profile.full_name}
+              title={assignee.full_name || assignee.email}
             >
-              {getInitials(task.assigned_profile.full_name || task.assigned_profile.email)}
+              {getInitials(assignee.full_name || assignee.email)}
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

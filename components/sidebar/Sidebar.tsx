@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
-import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, ChevronRight } from 'lucide-react'
+import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, ChevronRight, Trophy, ClipboardList, ShieldCheck } from 'lucide-react'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
 
@@ -75,6 +75,8 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           navItem(`/board/${board.id}`, board.name, <LayoutGrid size={14} />)
         )}
         {navItem('/calendar', 'Calendar', <Calendar size={14} />)}
+        {navItem('/quests', 'Quests', <Trophy size={14} />)}
+        {navItem('/templates', 'Templates', <ClipboardList size={14} />)}
 
         {/* Private Space */}
         <div className="pt-3">
@@ -115,6 +117,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
             <p className="text-xs px-3 py-1 mb-1 uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
               Admin
             </p>
+            {navItem('/audit', 'Audit Log', <ShieldCheck size={14} />)}
             {navItem('/settings', 'Settings', <Settings size={14} />)}
           </div>
         )}

@@ -15,7 +15,7 @@ interface TaskSectionProps {
 
 const SECTION_LABELS: Record<TSectionType, { label: string; color: string }> = {
   DAILY: { label: 'Daily To-Dos', color: 'var(--text)' },
-  IMMINENT: { label: 'Imminent', color: 'var(--red)' },
+  IMMINENT: { label: 'Imminent', color: 'var(--accent)' },
   WEEKLY: { label: 'Weekly To-Dos', color: 'var(--blue)' },
   MONTHLY: { label: 'Monthly To-Dos', color: 'var(--purple)' },
 }

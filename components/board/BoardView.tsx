@@ -22,12 +22,13 @@ import { createClient } from '@/lib/supabase/client'
 
 interface BoardViewProps {
   board: any
+  departments?: any[]
   members: Profile[]
   tasks: Task[]
   currentUser: Profile
 }
 
-export default function BoardView({ board, members, tasks: initialTasks, currentUser }: BoardViewProps) {
+export default function BoardView({ board, departments = [], members, tasks: initialTasks, currentUser }: BoardViewProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addingFor, setAddingFor] = useState<{ memberId: string; section: TaskSection } | null>(null)
@@ -107,7 +108,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
             <MemberColumn
               key={member.id}
               member={member}
-              tasks={tasks.filter((t) => t.assigned_to === member.id)}
+              tasks={tasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id) && !t.deleted_at)}
               onTaskClick={setSelectedTask}
               onAddTask={(memberId, section) => setAddingFor({ memberId, section })}
               currentUserId={currentUser.id}

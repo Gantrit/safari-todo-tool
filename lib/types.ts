@@ -1,9 +1,21 @@
-export type Role = 'admin' | 'user'
+export type Role = 'admin' | 'employee' | 'guest' | 'user'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
-export type TaskStatus = 'NOTICED' | 'IN_EDIT' | 'DONE' | 'APPROVED'
+export type TaskStatus = 'ASSIGNED' | 'NOTICED' | 'IN_EDIT' | 'DONE' | 'APPROVED' | 'REJECTED'
 export type TaskSection = 'DAILY' | 'IMMINENT' | 'WEEKLY' | 'MONTHLY'
 export type BoardType = 'kanban' | 'calendar'
-export type NotificationType = 'assignment' | 'mention' | 'reminder' | 'result_submitted' | 'approved'
+export type NotificationType =
+  | 'assignment'
+  | 'mention'
+  | 'reminder'
+  | 'result_submitted'
+  | 'approved'
+  | 'overdue'
+  | 'comment'
+  | 'rejected'
+  | 'need_clarification'
+  | 'notice_sla_missed'
+export type RecurringFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM'
+export type QuestStatus = 'OPEN' | 'ACCEPTED' | 'DONE' | 'APPROVED' | 'REJECTED'
 
 export interface Profile {
   id: string
@@ -13,7 +25,18 @@ export interface Profile {
   avatar_url: string | null
   xp: number
   level: number
+  rank?: string
+  streak_days?: number
+  deactivated_at?: string | null
   created_at: string
+}
+
+export interface Department {
+  id: string
+  name: string
+  slug: string
+  position: number
+  created_at?: string
 }
 
 export interface Workspace {
@@ -40,15 +63,21 @@ export interface Board {
 
 export interface Task {
   id: string
-  board_id: string
-  assigned_to: string
+  board_id: string | null
+  department_id?: string | null
+  project_id?: string | null
+  assigned_to?: string
+  assignee_ids?: string[]
   created_by: string
+  creator_id?: string
+  creator_profile_id?: string | null
   title: string
   description: string | null
   priority: Priority
   status: TaskStatus
   section: TaskSection
-  due_date: string | null
+  due_date?: string | null
+  deadline_at: string | null
   remind_3d: boolean
   remind_24h: boolean
   xp_awarded: boolean
@@ -57,13 +86,35 @@ export interface Task {
   result_url: string | null
   labels: string[]
   google_drive_url: string | null
+  reference_url?: string | null
+  recurring_enabled?: boolean
+  recurring_frequency?: RecurringFrequency | null
+  recurring_config?: Record<string, unknown> | null
+  needs_clarification?: boolean
+  clarification_note?: string | null
+  noticed_at?: string | null
+  completed_at?: string | null
+  approved_at?: string | null
+  rejected_at?: string | null
+  deleted_at?: string | null
   created_at: string
   updated_at: string
   assigned_profile?: Profile
+  assignee_profiles?: Profile[]
   creator_profile?: Profile
   subtasks?: Subtask[]
+  checklist_items?: ChecklistItem[]
   comments?: Comment[]
   attachments?: Attachment[]
+}
+
+export interface ChecklistItem {
+  id: string
+  task_id: string
+  title: string
+  done: boolean
+  position: number
+  created_at: string
 }
 
 export interface Subtask {
@@ -112,6 +163,46 @@ export interface Notification {
   created_at: string
 }
 
+export interface TaskTemplate {
+  id: string
+  title: string
+  description: string | null
+  checklist: string[]
+  section: TaskSection
+  priority: Priority
+  reference_url: string | null
+  default_deadline: TaskSection | 'CUSTOM'
+  created_by: string
+  deleted_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Quest {
+  id: string
+  title: string
+  description: string | null
+  department_id: string | null
+  bonus_xp: number
+  allow_multiple_accepts: boolean
+  status: QuestStatus
+  created_by: string
+  deadline_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AuditLog {
+  id: string
+  actor_id: string | null
+  action: string
+  entity_type: string
+  entity_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  actor_profile?: Profile
+}
+
 export interface XpLog {
   id: string
   user_id: string
@@ -136,31 +227,54 @@ export const XP_VALUES: Record<Priority, number> = {
 }
 
 export const XP_PENALTY: Record<Priority, number> = {
-  LOW: -10,
-  MEDIUM: -20,
-  HIGH: -40,
+  LOW: -5,
+  MEDIUM: -10,
+  HIGH: -20,
 }
 
-export const LEVEL_THRESHOLDS = [
-  { level: 1, title: 'Rookie', min: 0 },
-  { level: 2, title: 'Active', min: 100 },
-  { level: 3, title: 'Consistent', min: 250 },
-  { level: 4, title: 'Reliable', min: 500 },
-  { level: 5, title: 'Elite', min: 1000 },
-]
+export const IMMINENT_XP_BONUS = 10
+export const MAX_EARLY_COMPLETION_BONUS = 10
+export const MAX_STREAK_BONUS = 10
 
 export function getLevelInfo(xp: number) {
-  let current = LEVEL_THRESHOLDS[0]
-  let next = LEVEL_THRESHOLDS[1]
-  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (xp >= LEVEL_THRESHOLDS[i].min) {
-      current = LEVEL_THRESHOLDS[i]
-      next = LEVEL_THRESHOLDS[i + 1] || null
-      break
-    }
-  }
-  const progress = next
-    ? ((xp - current.min) / (next.min - current.min)) * 100
-    : 100
+  const normalizedXp = Math.max(0, xp || 0)
+  const level = Math.floor(normalizedXp / 100) + 1
+  const current = { level, title: getRankForLevel(level), min: (level - 1) * 100 }
+  const next = { level: level + 1, title: getRankForLevel(level + 1), min: level * 100 }
+  const progress = ((normalizedXp - current.min) / 100) * 100
   return { current, next, progress }
+}
+
+export function getRankForLevel(level: number) {
+  if (level >= 50) return 'Safari Legend'
+  if (level >= 35) return 'Elite'
+  if (level >= 20) return 'High Performer'
+  if (level >= 10) return 'Executor'
+  if (level >= 5) return 'Reliable'
+  return 'Rookie'
+}
+
+export function normalizeRole(role: Role | string | null | undefined): Role {
+  if (role === 'admin' || role === 'guest' || role === 'employee') return role
+  return 'employee'
+}
+
+export function isAdminRole(role: Role | string | null | undefined) {
+  return role === 'admin'
+}
+
+export function getTaskDeadline(task: Pick<Task, 'deadline_at' | 'due_date'>) {
+  return task.deadline_at || task.due_date || null
+}
+
+export function calculateApprovalXp(task: Pick<Task, 'priority' | 'section' | 'deadline_at' | 'due_date'>, completedAt = new Date()) {
+  const base = XP_VALUES[task.priority]
+  const imminent = task.section === 'IMMINENT' ? IMMINENT_XP_BONUS : 0
+  const deadline = getTaskDeadline(task)
+  let early = 0
+  if (deadline) {
+    const diffMs = new Date(deadline).getTime() - completedAt.getTime()
+    early = Math.max(0, Math.min(MAX_EARLY_COMPLETION_BONUS, Math.floor(diffMs / 86_400_000)))
+  }
+  return base + imminent + early
 }

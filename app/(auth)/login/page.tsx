@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'login' | 'magic'>('login')
   const [sent, setSent] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -44,11 +45,26 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  async function handlePasswordReset() {
+    if (!email.trim()) {
+      setError('Enter your email first.')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    })
+    if (error) setError(error.message)
+    else setResetSent(true)
+    setLoading(false)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-sm p-8 rounded-[10px]" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold mb-1" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--accent)' }}>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--accent)' }}>
             Safari To-Dos
           </h1>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Sign in to your workspace</p>
@@ -126,6 +142,9 @@ export default function LoginPage() {
               {error && (
                 <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>
               )}
+              {resetSent && (
+                <p className="text-sm" style={{ color: 'var(--green)' }}>Password reset email sent.</p>
+              )}
 
               <button
                 type="submit"
@@ -135,6 +154,17 @@ export default function LoginPage() {
               >
                 {loading ? 'Loading...' : mode === 'login' ? 'Sign In' : 'Send Magic Link'}
               </button>
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={loading}
+                  className="w-full py-2 text-sm transition-opacity disabled:opacity-50"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  Reset password
+                </button>
+              )}
             </form>
           </>
         )}

@@ -5,7 +5,7 @@ import { getInitials } from '@/lib/utils'
 import TaskSectionComp from './TaskSection'
 import { Plus } from 'lucide-react'
 
-const SECTIONS: TaskSection[] = ['DAILY', 'IMMINENT', 'WEEKLY', 'MONTHLY']
+const SECTIONS: TaskSection[] = ['IMMINENT', 'DAILY', 'WEEKLY', 'MONTHLY']
 
 interface MemberColumnProps {
   member: Profile
@@ -35,11 +35,11 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
           {getInitials(member.full_name || member.email)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
             {member.full_name?.split(' ')[0] || 'User'}
           </p>
           <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>
-            {tasks.length} tasks
+            {tasks.filter((task) => task.status !== 'APPROVED').length} open tasks
           </p>
         </div>
         <button

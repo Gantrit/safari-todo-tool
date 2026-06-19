@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Task, Priority, TaskSection, Profile } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { berlinDefaultDeadline } from '@/lib/utils'
 
 interface TaskFormProps {
   boardId: string
@@ -18,8 +19,12 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('MEDIUM')
-  const [assignedTo, setAssignedTo] = useState(memberId)
-  const [dueDate, setDueDate] = useState('')
+  const [assignedTo, setAssignedTo] = useState<string[]>([memberId])
+  const [deadline, setDeadline] = useState(() => berlinDefaultDeadline(section).toISOString().slice(0, 16))
+  const [referenceUrl, setReferenceUrl] = useState('')
+  const [checklist, setChecklist] = useState('')
+  const [recurringEnabled, setRecurringEnabled] = useState(false)
+  const [recurringFrequency, setRecurringFrequency] = useState('WEEKLY')
   const [remind3d, setRemind3d] = useState(false)
   const [remind24h, setRemind24h] = useState(false)
   const [labels, setLabels] = useState('')
@@ -34,22 +39,30 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
     setLoading(true)
     setError(null)
 
+    const primaryAssignee = assignedTo[0] || memberId
     const { data, error } = await supabase
       .from('tasks')
       .insert({
         board_id: boardId,
-        assigned_to: assignedTo,
+        assigned_to: primaryAssignee,
+        assignee_ids: assignedTo,
         created_by: currentUser.id,
+        creator_id: currentUser.id,
         title: title.trim(),
         description: description.trim() || null,
         priority,
-        status: 'NOTICED',
+        status: 'ASSIGNED',
         section,
-        due_date: dueDate || null,
+        due_date: deadline ? deadline.slice(0, 10) : null,
+        deadline_at: deadline ? new Date(deadline).toISOString() : null,
         remind_3d: remind3d,
         remind_24h: remind24h,
         xp_awarded: false,
         position: 0,
+        reference_url: referenceUrl.trim() || null,
+        google_drive_url: referenceUrl.trim() || null,
+        recurring_enabled: recurringEnabled,
+        recurring_frequency: recurringEnabled ? recurringFrequency : null,
         labels: labels ? labels.split(',').map((l) => l.trim()).filter(Boolean) : [],
       })
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
@@ -57,8 +70,19 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
 
     if (error) {
       setError(error.message)
-    } else {
-      onCreated(data as Task)
+    } else if (data) {
+      const checklistItems = checklist
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item, index) => ({ task_id: data.id, title: item, position: index, done: false }))
+      if (assignedTo.length > 1) {
+        await supabase.from('task_assignees').insert(assignedTo.map((userId) => ({ task_id: data.id, user_id: userId })))
+      }
+      if (checklistItems.length > 0) {
+        await supabase.from('checklist_items').insert(checklistItems)
+      }
+      onCreated({ ...(data as Task), assignee_ids: assignedTo })
     }
     setLoading(false)
   }
@@ -120,7 +144,12 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
 
         <div>
           <label style={labelStyle}>Assign To</label>
-          <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} style={inputStyle}>
+          <select
+            multiple
+            value={assignedTo}
+            onChange={(e) => setAssignedTo(Array.from(e.currentTarget.selectedOptions).map((option) => option.value))}
+            style={{ ...inputStyle, minHeight: '92px' }}
+          >
             {members.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.full_name || m.email}
@@ -131,12 +160,33 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       </div>
 
       <div>
-        <label style={labelStyle}>Due Date</label>
+        <label style={labelStyle}>Deadline (Europe/Berlin default)</label>
         <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          type="datetime-local"
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
           style={inputStyle}
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>Reference Link</label>
+        <input
+          value={referenceUrl}
+          onChange={(e) => setReferenceUrl(e.target.value)}
+          style={inputStyle}
+          placeholder="https://drive.google.com/... or SOP link"
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>Checklist (one item per line)</label>
+        <textarea
+          value={checklist}
+          onChange={(e) => setChecklist(e.target.value)}
+          rows={3}
+          style={{ ...inputStyle, resize: 'vertical' }}
+          placeholder="Collect source files&#10;Submit first draft&#10;Final QA"
         />
       </div>
 
@@ -159,6 +209,24 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
           <input type="checkbox" checked={remind24h} onChange={(e) => setRemind24h(e.target.checked)} />
           24h reminder
         </label>
+      </div>
+
+      <div className="grid grid-cols-[auto_1fr] items-center gap-3">
+        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--muted)' }}>
+          <input type="checkbox" checked={recurringEnabled} onChange={(e) => setRecurringEnabled(e.target.checked)} />
+          Recurring
+        </label>
+        <select
+          value={recurringFrequency}
+          onChange={(e) => setRecurringFrequency(e.target.value)}
+          disabled={!recurringEnabled}
+          style={inputStyle}
+        >
+          <option value="DAILY">Daily</option>
+          <option value="WEEKLY">Weekly</option>
+          <option value="MONTHLY">Monthly</option>
+          <option value="CUSTOM">Custom</option>
+        </select>
       </div>
 
       {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}

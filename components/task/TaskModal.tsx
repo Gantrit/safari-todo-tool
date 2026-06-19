@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Task, TaskStatus, Profile } from '@/lib/types'
+import { calculateApprovalXp, Task, TaskStatus, Profile } from '@/lib/types'
 import Modal from '../ui/Modal'
 import StatusBadge from '../ui/StatusBadge'
 import PriorityBadge from '../ui/PriorityBadge'
-import { formatDate, formatRelative, getInitials } from '@/lib/utils'
+import { deadlineLabel, formatDate, formatRelative, getInitials, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { ExternalLink, FolderOpen, Plus, Check, ChevronRight } from 'lucide-react'
+import { AlertTriangle, ExternalLink, FolderOpen, Plus, ChevronRight, RotateCcw, XCircle } from 'lucide-react'
 import CommentSection from './CommentSection'
 import SubtaskList from './SubtaskList'
 
@@ -20,48 +20,96 @@ interface TaskModalProps {
 }
 
 const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
+  ASSIGNED: 'NOTICED',
   NOTICED: 'IN_EDIT',
   IN_EDIT: 'DONE',
-  DONE: 'APPROVED',
+  DONE: null,
   APPROVED: null,
+  REJECTED: 'IN_EDIT',
 }
 
 export default function TaskModal({ task, currentUser, members, onClose, onUpdate }: TaskModalProps) {
   const [updating, setUpdating] = useState(false)
   const [resultUrl, setResultUrl] = useState(task.result_url || '')
   const [showResultInput, setShowResultInput] = useState(false)
+  const [clarificationNote, setClarificationNote] = useState('')
   const supabase = createClient()
 
   const isAdmin = currentUser.role === 'admin'
+  const assigneeIds = task.assignee_ids || [task.assigned_to].filter(Boolean) as string[]
+  const isAssignee = assigneeIds.includes(currentUser.id)
   const canAdvanceStatus = () => {
     if (task.status === 'APPROVED') return false
-    if (task.status === 'DONE' && !isAdmin) return false
-    return true
+    if (task.status === 'DONE') return false
+    return isAdmin || isAssignee || task.created_by === currentUser.id
   }
 
-  async function advanceStatus() {
-    const next = STATUS_FLOW[task.status]
+  async function updateStatus(next: TaskStatus) {
     if (!next) return
     setUpdating(true)
 
+    const patch: Record<string, unknown> = { status: next }
+    if (next === 'NOTICED') patch.noticed_at = new Date().toISOString()
+    if (next === 'DONE') patch.completed_at = new Date().toISOString()
+
     const { data, error } = await supabase
       .from('tasks')
-      .update({ status: next })
+      .update(patch)
       .eq('id', task.id)
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
       .single()
 
     if (!error && data) {
-      // Award XP on APPROVED
-      if (next === 'APPROVED' && !task.xp_awarded) {
-        const xpMap = { LOW: 5, MEDIUM: 10, HIGH: 20 }
-        const xp = xpMap[task.priority]
-        await supabase.rpc('award_xp', { p_user_id: task.assigned_to, p_amount: xp, p_reason: 'Task approved', p_task_id: task.id })
-        await supabase.from('tasks').update({ xp_awarded: true }).eq('id', task.id)
-        await supabase.from('archive').insert({ task_id: task.id, user_id: task.assigned_to })
-      }
       onUpdate(data as Task)
     }
+    setUpdating(false)
+  }
+
+  async function advanceStatus() {
+    const next = STATUS_FLOW[task.status]
+    if (next) await updateStatus(next)
+  }
+
+  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT', qualityPenalty = false) {
+    setUpdating(true)
+    const patch: Record<string, unknown> = { status: next, needs_clarification: false }
+    if (next === 'APPROVED') patch.approved_at = new Date().toISOString()
+    if (next === 'REJECTED') patch.rejected_at = new Date().toISOString()
+
+    const { data } = await supabase
+      .from('tasks')
+      .update(patch)
+      .eq('id', task.id)
+      .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
+      .single()
+
+    if (data && next === 'APPROVED' && !task.xp_awarded) {
+      const xp = calculateApprovalXp(task)
+      await Promise.all(assigneeIds.map((userId) => supabase.rpc('award_xp', { p_user_id: userId, p_amount: xp, p_reason: 'Task approved', p_task_id: task.id })))
+      await supabase.from('tasks').update({ xp_awarded: true }).eq('id', task.id)
+      await supabase.from('archive').insert(assigneeIds.map((userId) => ({ task_id: task.id, user_id: userId })))
+    }
+
+    if (data && next === 'REJECTED' && qualityPenalty) {
+      await Promise.all(assigneeIds.map((userId) => supabase.rpc('award_xp', { p_user_id: userId, p_amount: -5, p_reason: 'Quality issue on rejected task', p_task_id: task.id })))
+    }
+
+    if (data) onUpdate(data as Task)
+    setUpdating(false)
+  }
+
+  async function requestClarification() {
+    if (!clarificationNote.trim()) return
+    setUpdating(true)
+    await supabase.from('comments').insert({ task_id: task.id, user_id: currentUser.id, content: `Need clarification: ${clarificationNote.trim()}` })
+    const { data } = await supabase
+      .from('tasks')
+      .update({ needs_clarification: true, clarification_note: clarificationNote.trim(), status: task.status === 'ASSIGNED' ? 'NOTICED' : task.status, noticed_at: task.noticed_at || new Date().toISOString() })
+      .eq('id', task.id)
+      .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
+      .single()
+    if (data) onUpdate(data as Task)
+    setClarificationNote('')
     setUpdating(false)
   }
 
@@ -81,6 +129,9 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   }
 
   const nextStatus = STATUS_FLOW[task.status]
+  const deadline = task.deadline_at || task.due_date || null
+  const overdue = isOverdue(deadline) && task.status !== 'APPROVED'
+  const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
 
   return (
     <Modal open={true} onClose={onClose} size="xl">
@@ -117,6 +168,11 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
                   {label}
                 </span>
               ))}
+              {overdue && (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-semibold" style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.4)' }}>
+                  <AlertTriangle size={11} /> Overdue
+                </span>
+              )}
             </div>
           </div>
 
@@ -128,26 +184,26 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             </div>
           )}
 
-          {/* Subtasks */}
+          {/* Checklist */}
           <div className="mb-5">
-            <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Subtasks</p>
-            <SubtaskList taskId={task.id} subtasks={task.subtasks || []} members={members} currentUser={currentUser} />
+            <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Checklist</p>
+            <SubtaskList taskId={task.id} subtasks={task.checklist_items || task.subtasks || []} members={members} currentUser={currentUser} />
           </div>
 
           {/* Attachments */}
           <div className="mb-5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Attachments</p>
-              {task.google_drive_url && (
+              {(task.reference_url || task.google_drive_url) && (
                 <a
-                  href={task.google_drive_url}
+                  href={task.reference_url || task.google_drive_url || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs hover:opacity-70 transition-opacity"
                   style={{ color: 'var(--accent)' }}
                 >
                   <FolderOpen size={12} />
-                  Drive
+                  Reference
                 </a>
               )}
             </div>
@@ -234,22 +290,85 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             </button>
           )}
 
+          {isAdmin && task.status === 'DONE' && (
+            <div className="space-y-2 mb-4">
+              <button
+                onClick={() => adminDecision('APPROVED')}
+                disabled={updating}
+                className="w-full py-2 text-sm font-semibold rounded-[8px] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ background: 'var(--green)', color: '#071007' }}
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => adminDecision('REJECTED')}
+                disabled={updating}
+                className="w-full py-2 text-sm font-semibold rounded-[8px] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ background: 'rgba(255,98,98,0.14)', color: 'var(--red)', border: '1px solid rgba(255,98,98,0.35)' }}
+              >
+                <XCircle size={14} /> Reject
+              </button>
+              <button
+                onClick={() => adminDecision('REJECTED', true)}
+                disabled={updating}
+                className="w-full py-2 text-xs rounded-[8px] disabled:opacity-50"
+                style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.25)' }}
+              >
+                Reject with -5 XP quality issue
+              </button>
+            </div>
+          )}
+
+          {isAdmin && ['APPROVED', 'REJECTED'].includes(task.status) && (
+            <button
+              onClick={() => adminDecision('IN_EDIT')}
+              disabled={updating}
+              className="w-full py-2 text-sm font-semibold rounded-[8px] mb-4 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              style={{ background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
+            >
+              <RotateCcw size={14} /> Reopen
+            </button>
+          )}
+
+          {isAssignee && !['DONE', 'APPROVED'].includes(task.status) && (
+            <div className="mb-4 space-y-2">
+              <textarea
+                value={clarificationNote}
+                onChange={(event) => setClarificationNote(event.target.value)}
+                rows={3}
+                placeholder="Explain what is unclear..."
+                className="w-full rounded-[8px] px-3 py-2 text-xs outline-none"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+              <button
+                onClick={requestClarification}
+                disabled={updating || !clarificationNote.trim()}
+                className="w-full py-2 text-xs font-semibold rounded-[8px] disabled:opacity-50"
+                style={{ color: 'var(--amber)', border: '1px solid rgba(243,169,79,0.35)' }}
+              >
+                Request clarification
+              </button>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Assigned To</p>
-              {task.assigned_profile && (
-                <div className="flex items-center gap-2">
+              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Assignees</p>
+              <div className="space-y-2">
+              {assignees.map((assignee) => (
+                <div key={assignee.id} className="flex items-center gap-2">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
                     style={{ background: 'var(--accent)', color: '#0e0e0e' }}
                   >
-                    {getInitials(task.assigned_profile.full_name || task.assigned_profile.email)}
+                    {getInitials(assignee.full_name || assignee.email)}
                   </div>
                   <span className="text-sm" style={{ color: 'var(--text)' }}>
-                    {task.assigned_profile.full_name || task.assigned_profile.email}
+                    {assignee.full_name || assignee.email}
                   </span>
                 </div>
-              )}
+              ))}
+              </div>
             </div>
 
             <div>
@@ -264,10 +383,11 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
               </p>
             </div>
 
-            {task.due_date && (
+            {deadline && (
               <div>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Due Date</p>
-                <p className="text-sm" style={{ color: 'var(--text)' }}>{formatDate(task.due_date)}</p>
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Deadline</p>
+                <p className="text-sm" style={{ color: overdue ? 'var(--red)' : 'var(--text)' }}>{deadlineLabel(deadline)}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatDate(deadline)}</p>
               </div>
             )}
 
