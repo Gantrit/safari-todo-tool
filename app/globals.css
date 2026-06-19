@@ -1,26 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0e0e0e;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f0ede8;
+  --muted: rgba(240, 237, 232, 0.45);
+  --accent: #c8f060;
+  --red: #ff5c5c;
+  --amber: #f0a44a;
+  --blue: #5c9fff;
+  --purple: #b48eff;
+  --radius: 10px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  height: 100%;
+  overflow: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Syne', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes pulse-blue {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-blue {
+  animation: pulse-blue 1.5s ease-in-out infinite;
+}
+
+@keyframes xp-fill {
+  from { width: 0%; }
+}
+
+.xp-bar-fill {
+  animation: xp-fill 1s ease-out;
+}
+
+.drag-ghost {
+  opacity: 0.4;
+}
+
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
 }
