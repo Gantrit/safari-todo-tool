@@ -31,11 +31,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className="group flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold transition-colors"
-        style={{
-          background: active ? 'var(--surface2)' : 'transparent',
-          color: active ? 'var(--text)' : 'var(--muted)',
-        }}
+        className={`nav-item flex items-center gap-2.5 rounded-[8px] px-3 py-2.5 text-[13px] font-medium ${active ? 'active' : ''}`}
       >
         <span>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
