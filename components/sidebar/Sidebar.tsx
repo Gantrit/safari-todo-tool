@@ -31,11 +31,10 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={`nav-item flex items-center gap-2.5 rounded-[8px] px-3 py-2.5 text-[13px] font-medium ${active ? 'active' : ''}`}
+        className={`nav-item flex items-center gap-2.5 rounded-[6px] px-3 py-2.5 text-[13px] font-medium ${active ? 'active' : ''}`}
       >
-        <span>{icon}</span>
+        <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
-        {active && !badge && <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />}
         {!!badge && <span className="min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{badge}</span>}
       </Link>
     )

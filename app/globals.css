@@ -19,6 +19,7 @@
   --blue: #6aa9ff;
   --purple: #b996ff;
   --radius: 10px;
+  --radius-sm: 6px;
   --ease: 150ms ease;
 }
 
@@ -127,14 +128,15 @@ a {
 
 .btn {
   display: inline-flex;
-  min-height: 38px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border-radius: 8px;
-  padding: 0 15px;
+  border-radius: var(--radius-sm);
+  padding: 0 18px;
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   line-height: 1;
   transition: border-color var(--ease), background var(--ease), color var(--ease);
 }
@@ -164,7 +166,7 @@ a {
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
   background: var(--surface2);
   transition: border-color var(--ease), background var(--ease), color var(--ease);
@@ -183,6 +185,6 @@ a {
 }
 
 .nav-item.active {
-  background: var(--surface2);
+  background: rgba(216, 195, 106, 0.1);
   color: var(--text);
 }
