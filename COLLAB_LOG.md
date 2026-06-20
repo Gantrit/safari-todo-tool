@@ -3,6 +3,35 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-20 — Claude — match design tokens 1:1 against safari-finance-tool reference
+- What changed: `app/globals.css` — replaced all CSS variables (`--bg`, `--surface`, `--surface2`,
+  `--surface3`, `--border`, `--border-strong`, `--text`, `--muted`, `--accent`, `--green`, `--red`,
+  `--amber`, `--blue`, `--purple`) with the exact hex/rgba values used in
+  `safari-finance-tool` (`~/Desktop/safari-finance-tool-reference/index.html`, a single-file
+  Supabase/Vercel app with inline CSS). Added `--text-secondary`, `--accent-hover`, `--accent-dim`,
+  `--green-dim`, `--red-dim`, `--amber-dim` to match. Removed the decorative radial-gradient on
+  `html, body` (finance tool has a flat background outside the auth screen). `.nav-item.active` now
+  uses `var(--accent-dim)` instead of a hardcoded rgba value.
+  `components/sidebar/Sidebar.tsx` — sidebar width `272px` → `220px` (finance tool's fixed
+  `.sidebar` width); replaced the gradient "S" logo badge with a plain two-line text block
+  (brand + "Safari Studios" sub-label) inside a bottom-bordered header, matching
+  `.sidebar-logo`/`.brand`/`.sub`; nav-item padding/gap now `9px`/`10px` (was `10px`/`2.5`), group
+  labels now `10px`/`tracking-[0.1em]`/`var(--muted)` (was `0.18em` and a separate
+  `rgba(244,240,230,.38)`), matching `.nav-section`. `app/(app)/dashboard/page.tsx` — KPI label
+  tracking `0.12em` → `0.09em` (finance tool's `#page-dashboard .metric-label`); leaderboard
+  "is me" row highlight now `var(--accent-dim)` instead of a hardcoded `#1c2118`.
+- Why: User said the dashboard still looked unpolished and asked to copy the structure/framework
+  of `safari-finance-tool.vercel.app` 1:1 where applicable — but explicitly not to populate fields
+  that don't have an equivalent there. Read the finance tool's full inline `<style>` block plus its
+  actual sidebar DOM to get the real values rather than guessing from screenshots.
+- Anything the other agent should know / not undo: Don't reintroduce the gradient sidebar logo
+  badge, the `272px` sidebar width, or the old golden-tinted `rgba(226,215,168,...)` border colors —
+  the finance tool uses solid `#24302D`/`#2F3E3A` borders and a flatter, cooler-gray palette. Kept
+  to-do-tool-only features (XP bar, avatar circle, WorkspaceSwitcher) since the finance tool has no
+  equivalent — only their colors/spacing were aligned, not removed. Build not verified locally (no
+  Node/npm on this machine, per earlier entries) — relies on Vercel's build. Pushed directly to
+  `main` (commit `7e0de33`).
+
 Entry template:
 ```
 ## YYYY-MM-DD — <agent> — <one-line summary>
