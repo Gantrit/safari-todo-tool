@@ -34,11 +34,21 @@ export default function WorkspaceSwitcher({ workspaces, canManage = false }: Wor
   }, [])
 
   if (!selected) {
+    const message = canManage ? 'No workspace yet' : 'Ask an admin to invite you'
+    if (!canManage) {
+      return (
+        <div className="flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px]" style={{ color: 'var(--muted)' }}>
+          <Building2 size={16} style={{ opacity: 0.7 }} />
+          <span className="truncate">{message}</span>
+        </div>
+      )
+    }
     return (
-      <div className="rounded-[12px] border border-dashed p-3" style={{ borderColor: 'var(--border-strong)', background: 'rgba(255,255,255,.015)' }}>
-        <div className="mb-1.5 flex items-center gap-2 text-xs font-bold"><Building2 size={15} style={{ color: 'var(--accent)' }} /> No workspace</div>
-        <p className="text-[11px] leading-4" style={{ color: 'var(--muted)' }}>{canManage ? 'Set up your workspace to add a team board.' : 'Ask an admin to invite you.'}</p>
-      </div>
+      <Link href="/settings?newWorkspace=1" className="nav-item flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px] font-medium">
+        <Building2 size={16} style={{ opacity: 0.7 }} />
+        <span className="flex-1 truncate">{message}</span>
+        <Plus size={14} style={{ color: 'var(--accent)' }} />
+      </Link>
     )
   }
 

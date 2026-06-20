@@ -3,22 +3,30 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #080a08;
-  --surface: #111510;
-  --surface2: #181e17;
-  --surface3: #222a20;
-  --border: rgba(226, 215, 168, 0.13);
-  --border-strong: rgba(226, 215, 168, 0.22);
-  --text: #f4f0e6;
-  --muted: rgba(244, 240, 230, 0.56);
-  --accent: #d8c36a;
+  --bg: #0B0F0E;
+  --surface: #111716;
+  --surface2: #151D1B;
+  --surface3: #1A2421;
+  --border: #24302D;
+  --border-strong: #2F3E3A;
+  --text: #F4F7F5;
+  --text-secondary: #A8B3AE;
+  --muted: #6F7D77;
+  --accent: #C8A96A;
+  --accent-hover: #D7BC82;
+  --accent-dim: rgba(200, 169, 106, 0.10);
   --accent2: #9cad62;
-  --green: #4ecb71;
-  --red: #ff6262;
-  --amber: #f3a94f;
-  --blue: #6aa9ff;
-  --purple: #b996ff;
-  --radius: 12px;
+  --green: #22C55E;
+  --green-dim: rgba(34, 197, 94, 0.12);
+  --red: #EF4444;
+  --red-dim: rgba(239, 68, 68, 0.12);
+  --amber: #F59E0B;
+  --amber-dim: rgba(245, 158, 11, 0.12);
+  --blue: #38BDF8;
+  --purple: #38BDF8;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --ease: 150ms ease;
 }
 
 * {
@@ -34,7 +42,6 @@ body {
   font-family: 'Manrope', system-ui, sans-serif;
   height: 100%;
   overflow: hidden;
-  background-image: radial-gradient(circle at 85% -10%, rgba(216, 195, 106, 0.08), transparent 32%);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -120,57 +127,117 @@ a {
 .app-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: linear-gradient(145deg, rgba(24, 30, 23, 0.9), rgba(16, 20, 15, 0.96));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .btn {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  border-radius: 10px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 700;
+  gap: 7px;
+  border-radius: var(--radius-sm);
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   line-height: 1;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+  transition: border-color var(--ease), background var(--ease), color var(--ease);
 }
-
-.btn:hover:not(:disabled) { transform: translateY(-1px); }
-.btn:active:not(:disabled) { transform: translateY(0); }
 
 .btn-primary {
-  color: #10120d;
-  background: linear-gradient(135deg, #e3d27c, #c3ad52);
-  box-shadow: 0 8px 24px rgba(216, 195, 106, 0.16);
+  color: var(--bg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
 }
 
-.btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #ebdc8c, #ccb75d); }
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
 
 .btn-secondary {
   color: var(--text);
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid var(--border-strong);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface3);
+  background: var(--surface2);
   border-color: var(--border-strong);
 }
 
 .icon-button {
   display: inline-flex;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
   background: var(--surface2);
-  transition: all 160ms ease;
+  transition: border-color var(--ease), background var(--ease), color var(--ease);
 }
 
 .icon-button:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface3); }
+
+.nav-item {
+  color: var(--muted);
+  transition: background var(--ease), color var(--ease);
+}
+
+.nav-item:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--text);
+}
+
+.app-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.app-table thead {
+  background: var(--surface2);
+}
+
+.app-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.app-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  vertical-align: middle;
+  transition: background var(--ease);
+}
+
+.app-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.app-table tbody tr:hover td {
+  background: rgba(200, 169, 106, 0.04);
+}
