@@ -55,7 +55,7 @@ export default function WorkspaceSwitcher({ workspaces, canManage = false }: Wor
   return (
     <div className="relative" ref={rootRef}>
       <button onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-3 rounded-[12px] border px-3 text-left transition-colors" style={{ background: 'var(--surface2)', borderColor: open ? 'var(--border-strong)' : 'var(--border)' }}>
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-xs font-extrabold" style={{ background: 'rgba(216,195,106,.14)', color: 'var(--accent)' }}>{selected.name?.[0]?.toUpperCase()}</span>
+        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-xs font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>{selected.name?.[0]?.toUpperCase()}</span>
         <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Workspace</span><span className="block truncate text-sm font-bold">{selected.name}</span></span>
         <ChevronDown size={15} style={{ color: 'var(--muted)', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 160ms' }} />
       </button>

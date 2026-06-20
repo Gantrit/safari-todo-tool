@@ -82,11 +82,11 @@ export default async function BoardPage({ params }: Props) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex-shrink-0 border-b px-5 py-5 sm:px-8" style={{ borderColor: 'var(--border)', background: 'rgba(12,15,11,.88)', backdropFilter: 'blur(18px)' }}>
+      <div className="flex-shrink-0 border-b px-5 py-5 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="mb-1.5 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.16em]" style={{ color: 'var(--accent)' }}><LayoutGrid size={13} /> Team workspace</div>
-            <h1 className="text-2xl font-extrabold tracking-[-.03em]">{board.name}</h1>
+            <div className="mb-1.5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}><LayoutGrid size={13} /> Team workspace</div>
+            <h1 className="text-2xl font-extrabold tracking-[-.02em]">{board.name}</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Deadline-first execution across every team member.</p>
           </div>
           <Link href="/dashboard" className="btn btn-secondary self-start sm:self-auto"><ArrowLeft size={16} /> Dashboard</Link>
@@ -96,10 +96,10 @@ export default async function BoardPage({ params }: Props) {
             <Link
               key={dept.id}
               href={`/board/${dept.id}`}
-              className="inline-flex min-h-10 items-center whitespace-nowrap rounded-[9px] px-4 text-sm font-bold transition-colors"
+              className="inline-flex min-h-9 items-center whitespace-nowrap rounded-[var(--radius-sm)] border px-4 text-[13px] font-semibold transition-colors"
               style={{
-                background: dept.id === board.id ? 'rgba(216,195,106,0.14)' : 'var(--surface2)',
-                border: dept.id === board.id ? '1px solid rgba(216,195,106,0.45)' : '1px solid var(--border)',
+                background: dept.id === board.id ? 'var(--accent-dim)' : 'transparent',
+                borderColor: dept.id === board.id ? 'var(--border-strong)' : 'var(--border)',
                 color: dept.id === board.id ? 'var(--accent)' : 'var(--muted)',
               }}
             >

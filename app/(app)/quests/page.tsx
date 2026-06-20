@@ -35,7 +35,7 @@ export default async function QuestsPage() {
           {(quests || []).map((quest: any) => (
             <article key={quest.id} className="rounded-[8px] p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="mb-4 flex items-start gap-3">
-                <div className="rounded-[8px] p-2" style={{ background: 'rgba(216,195,106,0.12)', color: 'var(--accent)' }}>
+                <div className="rounded-[8px] p-2" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                   <Trophy size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -44,7 +44,7 @@ export default async function QuestsPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded px-2 py-1" style={{ color: 'var(--accent)', border: '1px solid rgba(216,195,106,0.35)' }}>{quest.bonus_xp || 0} bonus XP</span>
+                <span className="rounded px-2 py-1" style={{ color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{quest.bonus_xp || 0} bonus XP</span>
                 <span className="rounded px-2 py-1" style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}>{quest.departments?.name || 'Any department'}</span>
                 <span className="rounded px-2 py-1" style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}>{deadlineLabel(quest.deadline_at)}</span>
                 <span className="rounded px-2 py-1" style={{ color: quest.allow_multiple_accepts ? 'var(--green)' : 'var(--amber)', border: '1px solid var(--border)' }}>{quest.allow_multiple_accepts ? 'Multiple accepts' : 'Single accept'}</span>

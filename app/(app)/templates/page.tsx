@@ -34,7 +34,7 @@ export default async function TemplatesPage() {
           {(templates || []).map((template: any) => (
             <article key={template.id} className="rounded-[8px] p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="mb-4 flex items-start gap-3">
-                <div className="rounded-[8px] p-2" style={{ background: 'rgba(216,195,106,0.12)', color: 'var(--accent)' }}>
+                <div className="rounded-[8px] p-2" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                   <ClipboardList size={18} />
                 </div>
                 <div className="min-w-0">
@@ -43,7 +43,7 @@ export default async function TemplatesPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded px-2 py-1" style={{ color: 'var(--accent)', border: '1px solid rgba(216,195,106,0.35)' }}>{template.section}</span>
+                <span className="rounded px-2 py-1" style={{ color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{template.section}</span>
                 <span className="rounded px-2 py-1" style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}>{template.priority}</span>
                 <span className="rounded px-2 py-1" style={{ color: 'var(--muted)', border: '1px solid var(--border)' }}>{(template.checklist || []).length} checklist items</span>
               </div>

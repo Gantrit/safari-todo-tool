@@ -44,8 +44,8 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       style={{
         ...style,
         background: 'var(--surface2)',
-        border: `1px solid ${overdue || slaMissed ? 'rgba(255,98,98,0.45)' : task.section === 'IMMINENT' ? 'rgba(216,195,106,0.45)' : 'var(--border)'}`,
-        boxShadow: task.section === 'IMMINENT' ? '0 0 0 1px rgba(216,195,106,0.08), inset 3px 0 0 var(--accent)' : undefined,
+        border: `1px solid ${overdue || slaMissed ? 'rgba(255,98,98,0.45)' : task.section === 'IMMINENT' ? 'var(--border-strong)' : 'var(--border)'}`,
+        boxShadow: task.section === 'IMMINENT' ? '0 0 0 1px var(--accent-dim), inset 3px 0 0 var(--accent)' : undefined,
       }}
     >
       {/* Labels */}

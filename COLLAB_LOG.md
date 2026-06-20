@@ -3,6 +3,28 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-20 — Claude (Windows) — extend flat design tokens to board/quests/templates (priority 4/6/7)
+- What changed: `app/(app)/board/[boardId]/page.tsx` and `components/board/BoardView.tsx` — the
+  board header, department-tab pills, and board toolbar previously used hardcoded
+  `rgba(12,15,11,.88)`/`rgba(8,10,8,.74)` backgrounds and `rgba(216,195,106,...)` gold tints left
+  over from before the Mac side's flat-design pass (that pass explicitly only touched
+  dashboard+sidebar). Swapped to the same tokens (`var(--bg)`, `var(--surface)`,
+  `var(--accent-dim)`, `var(--border-strong)`) so the board page matches the dashboard/sidebar.
+  Also swapped the same leftover hardcoded gold rgba values in `app/(app)/quests/page.tsx`,
+  `app/(app)/templates/page.tsx`, `components/board/TaskCard.tsx`, and
+  `components/sidebar/WorkspaceSwitcher.tsx`'s selected-workspace chip to `var(--accent-dim)`/
+  `var(--border-strong)`. Confirmed the board entry flow itself was already safe (no board →
+  `notFound()`; no team members → existing empty-state card; dashboard only links to a board
+  when one exists) — no logic changes needed there, just visual consistency.
+- Why: User's priority 4/6/7 ask was "no raw/inconsistent colors, consistent button hierarchy,
+  board entry flow doesn't break." The board/task/quest/template pages were the only surfaces
+  still on the pre-flat-redesign hardcoded gold, which stood out next to the now-flat
+  dashboard/sidebar.
+- Anything the other agent should know / not undo: Don't reintroduce hardcoded
+  `rgba(216,195,106,...)` literals anywhere — use `var(--accent-dim)` / `var(--border-strong)` /
+  `var(--accent)` from `globals.css` instead, consistent with the Mac side's token system.
+  `npm.cmd run build` passes. Pushed to both `master` and `main`.
+
 **Branch warning:** this repo is being worked on from two different machines/clones at once —
 a Windows clone (local branch `master`, pushed via `git push origin master:main`) and a Mac
 clone that tracks `main` directly with no `master` branch. Both ultimately push to `origin/main`.

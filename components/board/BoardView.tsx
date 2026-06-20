@@ -105,7 +105,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
         onDragEnd={handleDragEnd}
       >
         <div className="flex h-full flex-col overflow-hidden">
-          <div className="flex flex-none items-center justify-between gap-4 border-b px-5 py-3 sm:px-8" style={{ borderColor: 'var(--border)', background: 'rgba(8,10,8,.74)' }}>
+          <div className="flex flex-none items-center justify-between gap-4 border-b px-5 py-3 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
             <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--muted)' }}><Users size={15} /> {members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</div>
             <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
           </div>
