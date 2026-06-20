@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
-import { getInitials } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home } from 'lucide-react'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
@@ -18,10 +18,20 @@ interface SidebarProps {
 
 export default function Sidebar({ profile, workspaces, boards, notifications }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const unreadCount = notifications.length
   const kanbanBoards = boards.filter((board) => board.type === 'kanban')
   const levelInfo = profile ? getLevelInfo(profile.xp) : null
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   const navItem = (href: string, label: string, icon: React.ReactNode, badge?: number) => {
     const active = pathname === href || pathname.startsWith(`${href}/`)
@@ -31,11 +41,12 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={`nav-item mb-0.5 flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px] font-medium ${active ? 'active' : ''}`}
+        className={`nav-item mb-0.5 flex items-center gap-3 rounded-[6px] px-3 py-[11px] text-[14px] font-medium ${active ? 'active' : ''}`}
       >
         <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
         {!!badge && <span className="min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{badge}</span>}
+        {active && !badge && <span className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: 'var(--accent)' }} />}
       </Link>
     )
   }
@@ -73,8 +84,9 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {groupLabel('Workspace')}
           {navItem('/dashboard', 'Overview', <Home size={17} />)}
+
+          {groupLabel('Workspace')}
           {kanbanBoards.map((board) => navItem(`/board/${board.id}`, board.name, <LayoutGrid size={17} />))}
           {kanbanBoards.length === 0 && (
             <Link href="/settings" className="mx-1 mt-1 block rounded-[10px] border border-dashed px-3 py-3 text-xs leading-5" style={{ borderColor: 'var(--border-strong)', color: 'var(--muted)' }}>
@@ -96,16 +108,21 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </nav>
 
         {profile && (
-          <div className="border-t px-[18px] py-[14px]" style={{ borderColor: 'var(--border)' }}>
-            <div className="mb-3 flex items-center gap-3">
-              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{getInitials(profile.full_name || profile.email)}</div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold">{profile.full_name || 'User'}</p>
-                <p className="truncate text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo?.current.title} · {profile.xp} XP</p>
+          <div className="border-t px-[22px] py-[14px]" style={{ borderColor: 'var(--border)' }}>
+            <p className="truncate text-[11px]" style={{ color: 'var(--text)' }}>{profile.email}</p>
+            <p className="mb-2.5 mt-1 text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: 'var(--muted)' }}>{profile.role}</p>
+            {levelInfo && (
+              <div className="mb-3">
+                <div className="mb-1.5 flex items-center justify-between text-[11px]" style={{ color: 'var(--muted)' }}>
+                  <span>L{levelInfo.current.level} {levelInfo.current.title}</span>
+                  <span>{profile.xp} XP</span>
+                </div>
+                <XPBar progress={levelInfo.progress} nextLevel={levelInfo.next?.title} />
               </div>
-              <span className="rounded-md px-2 py-1 text-[10px] font-extrabold" style={{ background: 'rgba(216,195,106,.1)', color: 'var(--accent)', border: '1px solid rgba(216,195,106,.22)' }}>L{levelInfo?.current.level}</span>
-            </div>
-            {levelInfo && <XPBar progress={levelInfo.progress} nextLevel={levelInfo.next?.title} />}
+            )}
+            <button onClick={handleLogout} disabled={loggingOut} className="btn btn-secondary w-full !min-h-9">
+              {loggingOut ? 'Logging out…' : 'Logout'}
+            </button>
           </div>
         )}
       </aside>
