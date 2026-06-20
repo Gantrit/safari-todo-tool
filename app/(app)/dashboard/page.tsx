@@ -51,30 +51,43 @@ export default async function DashboardPage() {
       )}
 
       <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card min-h-[178px] p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>Your progress</span><Gauge size={18} style={{ color: 'var(--accent)' }} /></div>
-          <div className="mb-4 flex items-end gap-2"><strong className="text-4xl tracking-[-.04em]" style={{ color: 'var(--accent)' }}>{profile?.xp || 0}</strong><span className="pb-1 text-xs font-bold" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
-          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'linear-gradient(90deg,var(--accent),#f1df8a)' }} /></div>
-          <p className="mt-2 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
+        <article className="app-card relative flex flex-col overflow-hidden p-5 sm:p-6">
+          <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: 'linear-gradient(90deg,var(--accent),#f1df8a)' }} />
+          <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>Your progress</span><span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'rgba(216,195,106,.12)' }}><Gauge size={16} style={{ color: 'var(--accent)' }} /></span></div>
+          <div className="my-5 flex flex-1 flex-col justify-center gap-3">
+            <div className="flex items-end gap-2"><strong className="text-4xl tracking-[-.04em]" style={{ color: 'var(--accent)' }}>{profile?.xp || 0}</strong><span className="pb-1 text-xs font-bold" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
+            <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'linear-gradient(90deg,var(--accent),#f1df8a)' }} /></div>
+          </div>
+          <p className="text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
         </article>
-        {metrics.map((metric) => <article key={metric.label} className="app-card min-h-[178px] p-5 sm:p-6"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>{metric.label}</span><span style={{ color: metric.tone }}>{metric.icon}</span></div><strong className="block text-4xl tracking-[-.04em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
+        {metrics.map((metric) => (
+          <article key={metric.label} className="app-card relative flex flex-col overflow-hidden p-5 sm:p-6">
+            <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: metric.tone }} />
+            <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>{metric.label}</span><span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: 'color-mix(in srgb, ' + metric.tone + ' 16%, transparent)' }}>{metric.icon}</span></div>
+            <div className="my-5 flex flex-1 items-center"><strong className="text-4xl tracking-[-.04em]" style={{ color: metric.tone }}>{metric.value}</strong></div>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>{metric.detail}</p>
+          </article>
+        ))}
       </section>
 
       <section className="mb-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
         <article className="app-card overflow-hidden">
-          <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}><div><h2 className="font-bold">My tasks</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Your next actions, sorted by deadline</p></div>{board && <Link href={`/board/${board.id}`} className="text-xs font-bold" style={{ color: 'var(--accent)' }}>View board →</Link>}</div>
+          <div className="flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center gap-3"><span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: 'rgba(106,169,255,.14)' }}><ClipboardCheck size={16} style={{ color: 'var(--blue)' }} /></span><div><h2 className="font-bold">My tasks</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Your next actions, sorted by deadline</p></div></div>
+            {board && <Link href={`/board/${board.id}`} className="flex-none text-xs font-bold" style={{ color: 'var(--accent)' }}>View board →</Link>}
+          </div>
           {myTasks?.length ? <div>{myTasks.map((task) => <div key={task.id} className="grid gap-2 border-b px-5 py-4 last:border-0 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6" style={{ borderColor: 'var(--border)' }}><div className="flex min-w-0 items-center gap-3"><span className="h-2 w-2 flex-none rounded-full" style={{ background: task.priority === 'HIGH' ? 'var(--red)' : task.priority === 'MEDIUM' ? 'var(--amber)' : 'var(--green)' }} /><span className="truncate text-sm font-semibold">{task.title}</span></div><span className="w-fit rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}>{task.status.replace('_', ' ')}</span><span className="text-xs sm:min-w-24 sm:text-right" style={{ color: isOverdue(task.deadline_at || task.due_date) ? 'var(--red)' : 'var(--muted)' }}>{deadlineLabel(task.deadline_at || task.due_date)}</span></div>)}</div> : <div className="px-6 py-12 text-center"><CheckCircle2 className="mx-auto mb-3" size={28} style={{ color: 'var(--green)' }} /><h3 className="font-bold">All clear</h3><p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>You have no active assigned tasks.</p></div>}
         </article>
 
         <article className="app-card overflow-hidden">
-          <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}><div><h2 className="font-bold">Unread notifications</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Updates needing your attention</p></div><Bell size={17} style={{ color: 'var(--accent)' }} /></div>
+          <div className="flex items-center gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}><span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: 'rgba(216,195,106,.14)' }}><Bell size={16} style={{ color: 'var(--accent)' }} /></span><div><h2 className="font-bold">Unread notifications</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Updates needing your attention</p></div></div>
           {notifications?.length ? <div className="divide-y" style={{ borderColor: 'var(--border)' }}>{notifications.map((notification: any) => <div key={notification.id} className="px-5 py-4"><p className="text-sm leading-5">{notification.message}</p><p className="mt-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>{notification.type.replaceAll('_', ' ')}</p></div>)}</div> : <div className="px-5 py-12 text-center"><p className="text-sm" style={{ color: 'var(--muted)' }}>You are all caught up.</p></div>}
           <div className="border-t p-3" style={{ borderColor: 'var(--border)' }}><Link href="/notifications" className="btn btn-secondary w-full !min-h-10">View notifications</Link></div>
         </article>
       </section>
 
       <section className="app-card overflow-hidden">
-        <div className="flex items-center gap-3 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}><Trophy size={18} style={{ color: 'var(--accent)' }} /><div><h2 className="font-bold">Team leaderboard</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Cumulative XP across Safari Studios</p></div></div>
+        <div className="flex items-center gap-3 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}><span className="flex h-9 w-9 flex-none items-center justify-center rounded-full" style={{ background: 'rgba(216,195,106,.14)' }}><Trophy size={16} style={{ color: 'var(--accent)' }} /></span><div><h2 className="font-bold">Team leaderboard</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Cumulative XP across Safari Studios</p></div></div>
         {leaderboard?.length ? (
           <div className="grid gap-px md:grid-cols-2" style={{ background: 'var(--border)' }}>{leaderboard.map((member, index) => { const info = getLevelInfo(member.xp); const isMe = member.id === user!.id; return <div key={member.id} className="flex items-center gap-3 px-5 py-4 sm:px-6" style={{ background: isMe ? '#1c2118' : 'var(--surface)' }}><span className="w-5 text-center text-xs font-extrabold" style={{ color: index < 3 ? 'var(--accent)' : 'var(--muted)' }}>#{index + 1}</span><span className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)' }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{member.full_name || member.email}{isMe && <em className="ml-1 not-italic" style={{ color: 'var(--accent)' }}>you</em>}</span><span className="text-[11px]" style={{ color: 'var(--muted)' }}>Level {info.current.level} · {info.current.title}</span></span><strong className="text-sm" style={{ color: 'var(--accent)' }}>{member.xp} XP</strong></div>})}</div>
         ) : (
