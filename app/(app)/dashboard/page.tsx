@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     supabase.from('notifications').select('*').eq('user_id', user!.id).eq('read', false).order('created_at', { ascending: false }).limit(5),
   ])
 
-  const levelInfo = profile ? getLevelInfo(profile.xp) : null
+  const levelInfo = getLevelInfo(profile?.xp || 0)
   const role = normalizeRole(profile?.role)
   const openTasks = allOpenTasks || []
   const overdueTasks = openTasks.filter((task: any) => isOverdue(task.deadline_at || task.due_date))
@@ -53,9 +53,9 @@ export default async function DashboardPage() {
       <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="app-card min-h-[178px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>Your progress</span><Gauge size={18} style={{ color: 'var(--accent)' }} /></div>
-          <div className="mb-4 flex items-end gap-2"><strong className="text-4xl tracking-[-.04em]" style={{ color: 'var(--accent)' }}>{profile?.xp || 0}</strong><span className="pb-1 text-xs font-bold" style={{ color: 'var(--muted)' }}>XP · L{levelInfo?.current.level} {levelInfo?.current.title}</span></div>
-          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo?.progress || 0}%`, background: 'linear-gradient(90deg,var(--accent),#f1df8a)' }} /></div>
-          <p className="mt-2 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo?.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
+          <div className="mb-4 flex items-end gap-2"><strong className="text-4xl tracking-[-.04em]" style={{ color: 'var(--accent)' }}>{profile?.xp || 0}</strong><span className="pb-1 text-xs font-bold" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
+          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'linear-gradient(90deg,var(--accent),#f1df8a)' }} /></div>
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
         </article>
         {metrics.map((metric) => <article key={metric.label} className="app-card min-h-[178px] p-5 sm:p-6"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>{metric.label}</span><span style={{ color: metric.tone }}>{metric.icon}</span></div><strong className="block text-4xl tracking-[-.04em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
       </section>
@@ -75,7 +75,11 @@ export default async function DashboardPage() {
 
       <section className="app-card overflow-hidden">
         <div className="flex items-center gap-3 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}><Trophy size={18} style={{ color: 'var(--accent)' }} /><div><h2 className="font-bold">Team leaderboard</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Cumulative XP across Safari Studios</p></div></div>
-        <div className="grid gap-px md:grid-cols-2" style={{ background: 'var(--border)' }}>{(leaderboard || []).map((member, index) => { const info = getLevelInfo(member.xp); const isMe = member.id === user!.id; return <div key={member.id} className="flex items-center gap-3 px-5 py-4 sm:px-6" style={{ background: isMe ? '#1c2118' : 'var(--surface)' }}><span className="w-5 text-center text-xs font-extrabold" style={{ color: index < 3 ? 'var(--accent)' : 'var(--muted)' }}>#{index + 1}</span><span className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)' }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{member.full_name || member.email}{isMe && <em className="ml-1 not-italic" style={{ color: 'var(--accent)' }}>you</em>}</span><span className="text-[11px]" style={{ color: 'var(--muted)' }}>Level {info.current.level} · {info.current.title}</span></span><strong className="text-sm" style={{ color: 'var(--accent)' }}>{member.xp} XP</strong></div>})}</div>
+        {leaderboard?.length ? (
+          <div className="grid gap-px md:grid-cols-2" style={{ background: 'var(--border)' }}>{leaderboard.map((member, index) => { const info = getLevelInfo(member.xp); const isMe = member.id === user!.id; return <div key={member.id} className="flex items-center gap-3 px-5 py-4 sm:px-6" style={{ background: isMe ? '#1c2118' : 'var(--surface)' }}><span className="w-5 text-center text-xs font-extrabold" style={{ color: index < 3 ? 'var(--accent)' : 'var(--muted)' }}>#{index + 1}</span><span className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)' }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{member.full_name || member.email}{isMe && <em className="ml-1 not-italic" style={{ color: 'var(--accent)' }}>you</em>}</span><span className="text-[11px]" style={{ color: 'var(--muted)' }}>Level {info.current.level} · {info.current.title}</span></span><strong className="text-sm" style={{ color: 'var(--accent)' }}>{member.xp} XP</strong></div>})}</div>
+        ) : (
+          <div className="px-6 py-12 text-center"><p className="text-sm" style={{ color: 'var(--muted)' }}>No XP earned yet. Approved tasks will show up here.</p></div>
+        )}
       </section>
     </div>
   )
