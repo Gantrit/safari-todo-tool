@@ -3,6 +3,34 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+**Branch warning:** this repo is being worked on from two different machines/clones at once —
+a Windows clone (local branch `master`, pushed via `git push origin master:main`) and a Mac
+clone that tracks `main` directly with no `master` branch. Both ultimately push to `origin/main`.
+**Always `git fetch origin` and merge/rebase `origin/main` before pushing** — on 2026-06-20 the
+Windows side pushed 2 commits while the Mac side had pushed 15 commits directly to `main` in
+the meantime, causing a rejected push and a manual merge (commit `f471adb`) with one real
+conflict in `app/(app)/dashboard/page.tsx` (resolved in favor of the Mac side's deliberate flat
+finance-tool-styled cards over a from-Windows gradient/accent-strip redesign that directly
+contradicted an explicit "don't reintroduce the gradient" note further down this log).
+
+## 2026-06-20 — Claude (Windows) — merge Mac's finance-tool styling pass, drop conflicting redesign
+- What changed: Merged `origin/main` (15 commits from the Mac clone: RLS recursion fix, flat
+  finance-tool design-token alignment, sidebar restructure with logout button, KPI card
+  tightening) into the Windows `master` branch. One conflict in
+  `app/(app)/dashboard/page.tsx` — resolved by taking the Mac side's version entirely, discarding
+  the gradient/accent-strip/icon-chip KPI card redesign done earlier in this Windows session.
+- Why: The Mac-side work explicitly and deliberately flattened `.app-card` (no gradient, no
+  shadow) and tightened the KPI cards to match `safari-finance-tool` — done *after* my earlier
+  Windows-session redesign that went the opposite direction (added a gradient top accent strip
+  and colored icon chips). Newer, more deliberate, and explicitly logged as "don't undo" — so it
+  wins over my own concurrent work.
+- Anything the other agent should know / not undo: Don't reintroduce gradients/shadows on
+  `.app-card` or accent-strip/icon-chip treatments on the dashboard KPI cards — see the entries
+  below for the full rationale. `npm.cmd run build` passes on Windows after the merge. Pushed to
+  both `master` and `main` (now in sync at `f471adb`). Migration `005_fix_workspace_members_recursion.sql`
+  was already applied to production per the entry below — no action needed unless you're setting
+  up a fresh Supabase project.
+
 ## 2026-06-20 — Claude — match design tokens 1:1 against safari-finance-tool reference
 - What changed: `app/globals.css` — replaced all CSS variables (`--bg`, `--surface`, `--surface2`,
   `--surface3`, `--border`, `--border-strong`, `--text`, `--muted`, `--accent`, `--green`, `--red`,
