@@ -41,7 +41,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={`nav-item mb-0.5 flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px] font-medium ${active ? 'active' : ''}`}
+        className={`nav-item mb-1 flex min-h-10 items-center gap-3 rounded-[8px] px-3 py-2.5 text-[13.5px] font-semibold ${active ? 'active' : ''}`}
       >
         <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
@@ -52,7 +52,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
   }
 
   const groupLabel = (label: string) => (
-    <p className="mb-[6px] mt-3 px-3 text-[10px] uppercase tracking-[0.1em] first:mt-0" style={{ color: 'var(--muted)' }}>{label}</p>
+    <p className="mb-2 mt-5 px-3 text-[10px] font-bold uppercase tracking-[0.12em] first:mt-0" style={{ color: 'var(--muted)' }}>{label}</p>
   )
 
   return (
@@ -68,22 +68,22 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
       {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/70 lg:hidden" onClick={() => setMobileOpen(false)} />}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[220px] flex-none flex-col border-r transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[256px] flex-none flex-col border-r transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
       >
-        <div className="flex items-center justify-between border-b px-[22px] pb-[18px] pt-6" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex min-h-[84px] items-center justify-between border-b px-6" style={{ borderColor: 'var(--border)' }}>
           <Link href="/dashboard" className="min-w-0">
-            <span className="block truncate text-[15px] font-bold tracking-[0.02em]">Safari To-Dos</span>
-            <span className="mt-[3px] block text-[11px]" style={{ color: 'var(--muted)' }}>Safari Studios</span>
+            <span className="block truncate text-[16px] font-extrabold tracking-[-0.01em]">Safari To-Dos</span>
+            <span className="mt-1 block text-[11px] font-medium" style={{ color: 'var(--muted)' }}>Safari Studios</span>
           </Link>
           <button className="icon-button lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
         </div>
 
-        <div className="px-3 pt-3">
+        <div className="px-4 pt-4">
           <WorkspaceSwitcher workspaces={workspaces} canManage={profile?.role === 'admin'} />
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-4 py-5">
           {navItem('/dashboard', 'Overview', <Home size={16} />)}
 
           {groupLabel('Workspace')}
@@ -103,8 +103,8 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </nav>
 
         {profile && (
-          <div className="border-t px-[22px] py-[14px]" style={{ borderColor: 'var(--border)' }}>
-            <p className="truncate text-[11px]" style={{ color: 'var(--text)' }}>{profile.email}</p>
+          <div className="border-t px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+            <p className="truncate text-xs font-semibold" style={{ color: 'var(--text)' }}>{profile.email}</p>
             <p className="mb-2.5 mt-1 text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: 'var(--muted)' }}>{profile.role}</p>
             {levelInfo && (
               <div className="mb-3">

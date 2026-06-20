@@ -30,11 +30,12 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-[1440px] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
-      <header className="mb-8 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+    <div className="page-shell">
+      <header className="page-header">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-[-.02em]">Dashboard</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>{role === 'admin' ? 'Command center' : 'Your work, at a glance'}</p>
+          <p className="page-eyebrow">Workspace overview</p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-description">{role === 'admin' ? 'Track delivery, approvals and team momentum from one place.' : 'Your tasks, deadlines and progress in one place.'}</p>
         </div>
         {board && (
           <Link href={`/board/${board.id}`} className="btn btn-primary self-start xl:self-auto"><LayoutGrid size={17} /> Open team board <ArrowRight size={16} /></Link>
@@ -42,24 +43,23 @@ export default async function DashboardPage() {
       </header>
 
       {!board && (
-        <section className="app-card mb-6 flex flex-col items-start gap-4 p-7 sm:p-9">
-          <h2 className="text-xl font-extrabold tracking-[-.02em]">Set up your workspace</h2>
-          <p className="max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>Create your first Safari workspace to unlock team boards, tasks, templates and approvals.</p>
-          <Link href="/settings" className="btn btn-primary"><LayoutGrid size={17} /> Create Workspace</Link>
+        <section className="app-card mb-7 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+          <div><p className="page-eyebrow">Getting started</p><h2 className="text-lg font-extrabold tracking-[-.02em]">Set up your workspace</h2><p className="mt-1 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>Create your first workspace to unlock team boards, tasks, templates and approvals.</p></div>
+          <Link href="/settings" className="btn btn-primary flex-none self-start sm:self-auto"><LayoutGrid size={17} /> Create workspace</Link>
         </section>
       )}
 
-      <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card p-[22px]">
+      <section className="mb-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <article className="app-card min-h-[156px] p-6">
           <div className="mb-3 flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}>Your progress</span><Gauge size={14} style={{ color: 'var(--muted)', opacity: 0.6 }} /></div>
           <div className="mb-3 flex items-end gap-2"><strong className="text-[28px] font-extrabold leading-none tracking-[-.01em]">{profile?.xp || 0}</strong><span className="pb-0.5 text-[11px]" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
           <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'var(--accent)' }} /></div>
           <p className="mt-2.5 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
         </article>
-        {metrics.map((metric) => <article key={metric.label} className="app-card p-[22px]"><div className="mb-3 flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}>{metric.label}</span><span style={{ color: 'var(--muted)', opacity: 0.6 }}>{metric.icon}</span></div><strong className="block text-[28px] font-extrabold leading-none tracking-[-.01em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-2.5 text-[11px]" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
+        {metrics.map((metric) => <article key={metric.label} className="app-card min-h-[156px] p-6"><div className="mb-5 flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}>{metric.label}</span><span style={{ color: 'var(--muted)' }}>{metric.icon}</span></div><strong className="block text-[34px] font-extrabold leading-none tracking-[-.03em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-3 text-xs leading-5" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
       </section>
 
-      <section className="mb-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+      <section className="mb-7 grid gap-6 xl:grid-cols-[1.4fr_.6fr]">
         <article className="app-card overflow-hidden">
           <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}><div><h2 className="font-bold">My tasks</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>Your next actions, sorted by deadline</p></div>{board && <Link href={`/board/${board.id}`} className="text-xs font-bold" style={{ color: 'var(--accent)' }}>View board →</Link>}</div>
           {myTasks?.length ? <div>{myTasks.map((task) => <div key={task.id} className="grid gap-2 border-b px-5 py-4 last:border-0 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-6" style={{ borderColor: 'var(--border)' }}><div className="flex min-w-0 items-center gap-3"><span className="h-2 w-2 flex-none rounded-full" style={{ background: task.priority === 'HIGH' ? 'var(--red)' : task.priority === 'MEDIUM' ? 'var(--amber)' : 'var(--green)' }} /><span className="truncate text-sm font-semibold">{task.title}</span></div><span className="w-fit rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wide" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}>{task.status.replace('_', ' ')}</span><span className="text-xs sm:min-w-24 sm:text-right" style={{ color: isOverdue(task.deadline_at || task.due_date) ? 'var(--red)' : 'var(--muted)' }}>{deadlineLabel(task.deadline_at || task.due_date)}</span></div>)}</div> : <div className="px-6 py-12 text-center"><CheckCircle2 className="mx-auto mb-3" size={28} style={{ color: 'var(--green)' }} /><h3 className="font-bold">All clear</h3><p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>You have no active assigned tasks.</p></div>}

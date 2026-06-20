@@ -16,24 +16,24 @@ export default async function QuestsPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="page-shell">
+      <header className="page-header">
         <div>
-          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>Optional bonus work</p>
-          <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>Quests</h1>
-          <p className="mt-1" style={{ color: 'var(--muted)' }}>Employees can accept available quests. Completion still goes through admin approval.</p>
+          <p className="page-eyebrow">Optional bonus work</p>
+          <h1 className="page-title">Quests</h1>
+          <p className="page-description">Accept extra work, earn bonus XP and submit it through the same approval workflow.</p>
         </div>
         {role === 'admin' && (
-          <div className="rounded-[8px] px-4 py-3 text-sm" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+          <div className="meta-pill max-w-sm !min-h-10 px-4">
             Admin creation is backed by the `quests` table in the V1 migration.
           </div>
         )}
-      </div>
+      </header>
 
       {(quests || []).length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {(quests || []).map((quest: any) => (
-            <article key={quest.id} className="rounded-[8px] p-5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <article key={quest.id} className="app-card p-6">
               <div className="mb-4 flex items-start gap-3">
                 <div className="rounded-[8px] p-2" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                   <Trophy size={18} />
@@ -53,7 +53,7 @@ export default async function QuestsPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-[8px] p-8 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div className="app-card p-12 text-center">
           <h2 className="font-bold mb-2" style={{ color: 'var(--text)' }}>No quests yet</h2>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Admins can create bonus quests after running the V1 Supabase migration.</p>
         </div>

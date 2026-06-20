@@ -26,6 +26,7 @@
   --purple: #38BDF8;
   --radius: 10px;
   --radius-sm: 6px;
+  --radius-lg: 14px;
   --ease: 150ms ease;
 }
 
@@ -42,6 +43,8 @@ body {
   font-family: 'Manrope', system-ui, sans-serif;
   height: 100%;
   overflow: hidden;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -126,20 +129,92 @@ a {
 
 .app-card {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: none;
 }
 
+.page-shell {
+  width: 100%;
+  max-width: 1540px;
+  margin: 0 auto;
+  padding: 32px 28px 48px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+
+.page-eyebrow {
+  margin-bottom: 7px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.page-title {
+  color: var(--text);
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.page-description {
+  max-width: 680px;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 72px;
+  padding: 17px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.meta-pill {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  color: var(--text-secondary);
+  background: var(--surface2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+@media (min-width: 1024px) {
+  .page-shell { padding: 44px 44px 56px; }
+}
+
+@media (max-width: 640px) {
+  .page-shell { padding: 24px 20px 40px; }
+  .page-header { align-items: flex-start; flex-direction: column; margin-bottom: 24px; }
+}
+
 .btn {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 7px;
   border-radius: var(--radius-sm);
-  padding: 0 18px;
-  font-size: 13px;
+  padding: 0 19px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;

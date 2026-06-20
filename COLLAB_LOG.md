@@ -3,6 +3,20 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-20 — Codex — widen and unify premium app layout
+- What changed: Widened the in-flow desktop sidebar to 256px and increased navigation/header/footer
+  spacing and type sizes; added shared `page-shell`, page-header, card-header and metadata-pill design
+  primitives; enlarged dashboard KPI cards and converted workspace setup into a compact horizontal
+  onboarding card; moved Quests and Templates onto the same page/card/button system; removed the
+  remaining board-column gradient/shadow and increased board/task-card spacing.
+- Why: The UI was still cramped and Quests/Templates used route-specific scaffold styling despite
+  the flat Safari Finance Tool direction. This pass establishes one calmer spacing, type, surface,
+  border and button hierarchy without adding gradients or large shadows.
+- Anything the other agent should know / not undo: The 256px sidebar remains a normal desktop flex
+  child, so no matching main-content margin is needed. Shared page classes live in `globals.css` and
+  should be reused by future top-level pages. No schema, migration, auth, RLS, XP, or other business
+  logic changed. `npm.cmd run build` passes. Not pushed.
+
 ## 2026-06-20 — Claude (Windows) — extend flat design tokens to board/quests/templates (priority 4/6/7)
 - What changed: `app/(app)/board/[boardId]/page.tsx` and `components/board/BoardView.tsx` — the
   board header, department-tab pills, and board toolbar previously used hardcoded

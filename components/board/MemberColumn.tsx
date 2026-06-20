@@ -20,8 +20,8 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
 
   return (
     <div
-      className="flex max-h-full w-[310px] flex-shrink-0 flex-col overflow-hidden rounded-[14px]"
-      style={{ background: 'linear-gradient(180deg,var(--surface2),var(--surface))', border: '1px solid var(--border)', boxShadow: '0 18px 44px rgba(0,0,0,.14)' }}
+      className="flex max-h-full w-[324px] flex-shrink-0 flex-col overflow-hidden rounded-[14px]"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
       {/* Column header */}
       <div
