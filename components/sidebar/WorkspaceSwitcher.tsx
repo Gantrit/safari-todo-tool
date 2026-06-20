@@ -36,9 +36,8 @@ export default function WorkspaceSwitcher({ workspaces, canManage = false }: Wor
   if (!selected) {
     return (
       <div className="rounded-[12px] border border-dashed p-3" style={{ borderColor: 'var(--border-strong)', background: 'rgba(255,255,255,.015)' }}>
-        <div className="mb-2 flex items-center gap-2 text-xs font-bold"><Building2 size={15} style={{ color: 'var(--accent)' }} /> No workspace</div>
-        <p className="mb-3 text-[11px] leading-4" style={{ color: 'var(--muted)' }}>Create a workspace to add your team board.</p>
-        {canManage ? <Link href="/settings" className="btn btn-primary w-full !min-h-9 !px-3 !text-xs"><Plus size={14} /> Create Workspace</Link> : <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Ask an admin to invite you.</p>}
+        <div className="mb-1.5 flex items-center gap-2 text-xs font-bold"><Building2 size={15} style={{ color: 'var(--accent)' }} /> No workspace</div>
+        <p className="text-[11px] leading-4" style={{ color: 'var(--muted)' }}>{canManage ? 'Set up your workspace to add a team board.' : 'Ask an admin to invite you.'}</p>
       </div>
     )
   }

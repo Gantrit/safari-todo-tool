@@ -62,8 +62,8 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
       {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/70 lg:hidden" onClick={() => setMobileOpen(false)} />}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r transition-transform duration-200 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        style={{ background: 'rgba(14,18,13,.98)', borderColor: 'var(--border)', boxShadow: '20px 0 60px rgba(0,0,0,.22)' }}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[272px] flex-none flex-col border-r shadow-[20px_0_60px_rgba(0,0,0,0.22)] transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 lg:shadow-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{ background: 'rgba(14,18,13,.98)', borderColor: 'var(--border)' }}
       >
         <div className="flex h-[86px] items-center justify-between px-5">
           <Link href="/dashboard" className="flex min-w-0 items-center gap-3">

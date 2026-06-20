@@ -13,6 +13,28 @@ Entry template:
 
 ---
 
+## 2026-06-20 — Claude — fix desktop app shell layout and consolidate empty state
+- What changed: `components/sidebar/Sidebar.tsx` — sidebar `<aside>` now uses `lg:static` instead
+  of staying `fixed` at desktop width, so it occupies real space in the flex layout instead of
+  floating over content (still `fixed`/off-canvas drawer below `lg`). `app/(app)/layout.tsx` —
+  removed the `lg:ml-[272px]` margin hack on `<main>` since it's no longer needed once the
+  sidebar is in-flow. `components/sidebar/WorkspaceSwitcher.tsx` — removed the "Create
+  Workspace" button from the sidebar's no-workspace state (now just calm status text) so there's
+  only one CTA. `app/(app)/dashboard/page.tsx` — removed the duplicate "Set up workspace" header
+  button + "Open setup" dashed-card combo; replaced with a single empty-state card ("Set up your
+  workspace" / one "Create Workspace" button) when no board exists, and the header CTA now only
+  renders ("Open team board") when a board does exist.
+- Why: User reported (with screenshots) that the desktop sidebar/workspace panel visually
+  overlapped main content, and the no-workspace state had two competing CTAs ("Set up
+  workspace" + "Open setup"). Scoped to layout/empty-state only per explicit instruction — no
+  product logic, no Supabase/schema/auth changes.
+- Anything the other agent should know / not undo: This is a layout-architecture change, not
+  just a class tweak — the sidebar is now a normal flex child at `lg`+ instead of `fixed` with a
+  matching margin on `<main>`. Don't reintroduce the fixed+margin pattern; if the sidebar width
+  needs to change, change it in one place (the `w-[272px]` on `<aside>`) and it'll still line up
+  since `<main>` no longer hardcodes an offset. `npm.cmd run build` passes (only the pre-existing
+  middleware-deprecation warning). Not pushed — only push if Tan asks explicitly.
+
 ## 2026-06-20 - Codex - polish V1 app shell, dashboard, and board UX
 - What changed: Rebuilt the responsive fixed sidebar/mobile navigation, workspace selector and creation flow, dashboard KPI/task/notification/leaderboard cards, board header/department tabs/member columns, global button/card styles, and visible board/section Create Task entry points.
 - Why: The deployed V1 foundation looked scaffold-like and key actions were undersized, unclear, or non-functional. This pass establishes a consistent premium dark SaaS hierarchy and explicit setup empty states.

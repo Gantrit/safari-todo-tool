@@ -37,17 +37,16 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-extrabold tracking-[-.04em] sm:text-4xl">{role === 'admin' ? 'Command center' : 'Your work, at a glance'}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 sm:text-base" style={{ color: 'var(--muted)' }}>Track active work, clear approvals, and keep the team moving without losing the details.</p>
         </div>
-        {board ? (
+        {board && (
           <Link href={`/board/${board.id}`} className="btn btn-primary self-start xl:self-auto"><LayoutGrid size={17} /> Open team board <ArrowRight size={16} /></Link>
-        ) : (
-          <Link href="/settings" className="btn btn-primary self-start xl:self-auto"><LayoutGrid size={17} /> Set up workspace <ArrowRight size={16} /></Link>
         )}
       </header>
 
       {!board && (
-        <section className="app-card mb-6 flex flex-col gap-5 border-dashed p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div><h2 className="font-bold">Your team board is not configured yet</h2><p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Create a workspace and first board, then invite your team from Settings.</p></div>
-          <Link href="/settings" className="btn btn-secondary flex-none">Open setup</Link>
+        <section className="app-card mb-6 flex flex-col items-start gap-4 p-7 sm:p-9">
+          <h2 className="text-xl font-extrabold tracking-[-.02em]">Set up your workspace</h2>
+          <p className="max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>Create your first Safari workspace to unlock team boards, tasks, templates and approvals.</p>
+          <Link href="/settings" className="btn btn-primary"><LayoutGrid size={17} /> Create Workspace</Link>
         </section>
       )}
 
