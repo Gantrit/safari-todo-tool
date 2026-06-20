@@ -24,18 +24,17 @@ export default async function DashboardPage() {
   const board = boards?.[0]
 
   const metrics = [
-    { label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={18} />, tone: 'var(--blue)' },
+    { label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={18} />, tone: 'var(--text)' },
     { label: 'Overdue', value: overdueTasks.length, detail: overdueTasks.length ? 'Needs attention today' : 'Everything is on track', icon: <AlertTriangle size={18} />, tone: overdueTasks.length ? 'var(--red)' : 'var(--green)' },
-    { label: 'Awaiting approval', value: pendingApproval.length, detail: 'Completed and ready to review', icon: <CheckCircle2 size={18} />, tone: 'var(--accent)' },
+    { label: 'Awaiting approval', value: pendingApproval.length, detail: 'Completed and ready to review', icon: <CheckCircle2 size={18} />, tone: 'var(--text)' },
   ]
 
   return (
     <div className="mx-auto max-w-[1440px] px-5 py-7 sm:px-8 lg:px-10 lg:py-10">
       <header className="mb-8 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.2em]" style={{ color: 'var(--accent)' }}>Safari Studios · Team operations</p>
-          <h1 className="text-3xl font-extrabold tracking-[-.04em] sm:text-4xl">{role === 'admin' ? 'Command center' : 'Your work, at a glance'}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 sm:text-base" style={{ color: 'var(--muted)' }}>Track active work, clear approvals, and keep the team moving without losing the details.</p>
+          <h1 className="text-2xl font-extrabold tracking-[-.02em]">Dashboard</h1>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>{role === 'admin' ? 'Command center' : 'Your work, at a glance'}</p>
         </div>
         {board && (
           <Link href={`/board/${board.id}`} className="btn btn-primary self-start xl:self-auto"><LayoutGrid size={17} /> Open team board <ArrowRight size={16} /></Link>
