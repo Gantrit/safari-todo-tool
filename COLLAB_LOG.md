@@ -13,6 +13,36 @@ Entry template:
 
 ---
 
+## 2026-06-20 — Claude — fix RLS recursion, missing profile row, private-form styling
+- What changed: `supabase/migrations/005_fix_workspace_members_recursion.sql` (new) — adds
+  `is_workspace_member(ws_id)` / `is_workspace_admin(ws_id)` SECURITY DEFINER functions and
+  rewrites `workspace_members_select`/`workspace_members_delete` policies to use them instead of
+  querying `workspace_members` from within their own USING clause. Also tightened `.app-card`
+  border contrast in `app/globals.css`, simplified the dashboard header copy and KPI accent
+  colors in `app/(app)/dashboard/page.tsx`, flattened the no-workspace sidebar hint in
+  `WorkspaceSwitcher.tsx`, and restyled the inline add-task form in
+  `app/(app)/private/PrivateTodos.tsx` to use `app-card`/`btn` classes instead of raw inline
+  styles + the unstyled native date picker.
+- Why: User (Tan) reported "Create Workspace" silently doing nothing. Root cause was two-fold:
+  (1) `profiles` table was completely empty in production — Tan's auth.users row predates the
+  `handle_new_user` trigger (migration 001), so it never got a profile row, so `role` read as
+  undefined and `settings/page.tsx`'s `if (profile?.role !== 'admin') redirect('/dashboard')`
+  silently bounced every click. Fixed by manually inserting Tan's profile row with role=admin
+  via Supabase Table Editor (no code change for this part — future signups go through the
+  trigger fine, but it defaults new users to role='user', so any future second admin still needs
+  a manual role bump). (2) Once profile/role was fixed, workspace creation still failed with
+  Postgres error "infinite recursion detected in policy for relation workspace_members" —
+  `workspace_members_select`/`_delete` policies queried `workspace_members` inside their own
+  `USING` clause. Fixed via migration 005. Styling pass continued the earlier "match
+  safari-finance-tool" dashboard work, addressing concrete follow-up complaints (cards merging
+  together with no visible border, marketing-y header copy, unstyled private-task form).
+- Anything the other agent should know / not undo: migration 005 **must be run manually in the
+  Supabase SQL editor** — it's not auto-applied by Vercel deploys. It was run against production
+  already (confirmed working — workspace creation succeeds now). If you add new RLS policies on
+  `workspace_members`, reuse `is_workspace_member`/`is_workspace_admin` instead of re-querying the
+  table directly, or you'll reintroduce the same recursion. Don't reintroduce the `.app-card`
+  gradient/shadow or the marketing-style dashboard header — both were deliberately removed.
+
 ## 2026-06-20 — Claude — align dashboard/sidebar styling with safari-finance-tool reference
 - What changed: `app/globals.css` — `.app-card` is now flat (`background: var(--surface)`, no gradient,
   no box-shadow) instead of the gradient+shadow card look. `app/(app)/dashboard/page.tsx` — KPI cards
