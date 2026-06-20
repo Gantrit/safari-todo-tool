@@ -3,21 +3,27 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #080a08;
-  --surface: #111510;
-  --surface2: #181e17;
-  --surface3: #222a20;
-  --border: rgba(226, 215, 168, 0.2);
-  --border-strong: rgba(226, 215, 168, 0.32);
-  --text: #f4f0e6;
-  --muted: rgba(244, 240, 230, 0.56);
-  --accent: #d8c36a;
+  --bg: #0B0F0E;
+  --surface: #111716;
+  --surface2: #151D1B;
+  --surface3: #1A2421;
+  --border: #24302D;
+  --border-strong: #2F3E3A;
+  --text: #F4F7F5;
+  --text-secondary: #A8B3AE;
+  --muted: #6F7D77;
+  --accent: #C8A96A;
+  --accent-hover: #D7BC82;
+  --accent-dim: rgba(200, 169, 106, 0.10);
   --accent2: #9cad62;
-  --green: #4ecb71;
-  --red: #ff6262;
-  --amber: #f3a94f;
-  --blue: #6aa9ff;
-  --purple: #b996ff;
+  --green: #22C55E;
+  --green-dim: rgba(34, 197, 94, 0.12);
+  --red: #EF4444;
+  --red-dim: rgba(239, 68, 68, 0.12);
+  --amber: #F59E0B;
+  --amber-dim: rgba(245, 158, 11, 0.12);
+  --blue: #38BDF8;
+  --purple: #38BDF8;
   --radius: 10px;
   --radius-sm: 6px;
   --ease: 150ms ease;
@@ -36,7 +42,6 @@ body {
   font-family: 'Manrope', system-ui, sans-serif;
   height: 100%;
   overflow: hidden;
-  background-image: radial-gradient(circle at 85% -10%, rgba(216, 195, 106, 0.08), transparent 32%);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -185,6 +190,6 @@ a {
 }
 
 .nav-item.active {
-  background: rgba(216, 195, 106, 0.1);
+  background: var(--accent-dim);
   color: var(--text);
 }
