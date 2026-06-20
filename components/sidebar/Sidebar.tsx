@@ -41,7 +41,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={`nav-item mb-0.5 flex items-center gap-3 rounded-[6px] px-3 py-[11px] text-[14px] font-medium ${active ? 'active' : ''}`}
+        className={`nav-item mb-0.5 flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px] font-medium ${active ? 'active' : ''}`}
       >
         <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
@@ -76,7 +76,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
             <span className="block truncate text-[15px] font-bold tracking-[0.02em]">Safari To-Dos</span>
             <span className="mt-[3px] block text-[11px]" style={{ color: 'var(--muted)' }}>Safari Studios</span>
           </Link>
-          <button className="icon-button lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={17} /></button>
+          <button className="icon-button lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
         </div>
 
         <div className="px-3 pt-3">
@@ -84,27 +84,22 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {navItem('/dashboard', 'Overview', <Home size={17} />)}
+          {navItem('/dashboard', 'Overview', <Home size={16} />)}
 
           {groupLabel('Workspace')}
-          {kanbanBoards.map((board) => navItem(`/board/${board.id}`, board.name, <LayoutGrid size={17} />))}
-          {kanbanBoards.length === 0 && (
-            <Link href="/settings" className="mx-1 mt-1 block rounded-[10px] border border-dashed px-3 py-3 text-xs leading-5" style={{ borderColor: 'var(--border-strong)', color: 'var(--muted)' }}>
-              No team board yet. Set up your workspace.
-            </Link>
-          )}
-          {navItem('/calendar', 'Calendar', <Calendar size={17} />)}
+          {kanbanBoards.map((board) => navItem(`/board/${board.id}`, board.name, <LayoutGrid size={16} />))}
+          {navItem('/calendar', 'Calendar', <Calendar size={16} />)}
 
           {groupLabel('Tools')}
-          {navItem('/quests', 'Quests', <Trophy size={17} />)}
-          {navItem('/templates', 'Templates', <ClipboardList size={17} />)}
-          {navItem('/private', 'My private tasks', <Lock size={17} />)}
+          {navItem('/quests', 'Quests', <Trophy size={16} />)}
+          {navItem('/templates', 'Templates', <ClipboardList size={16} />)}
+          {navItem('/private', 'My private tasks', <Lock size={16} />)}
 
           {groupLabel('Activity')}
-          {navItem('/notifications', 'Notifications', <Bell size={17} />, unreadCount)}
-          {navItem('/archive', 'Archive', <Archive size={17} />)}
+          {navItem('/notifications', 'Notifications', <Bell size={16} />, unreadCount)}
+          {navItem('/archive', 'Archive', <Archive size={16} />)}
 
-          {profile?.role === 'admin' && <>{groupLabel('Administration')}{navItem('/audit', 'Audit log', <ShieldCheck size={17} />)}{navItem('/settings', 'Settings', <Settings size={17} />)}</>}
+          {profile?.role === 'admin' && <>{groupLabel('Administration')}{navItem('/audit', 'Audit log', <ShieldCheck size={16} />)}{navItem('/settings', 'Settings', <Settings size={16} />)}</>}
         </nav>
 
         {profile && (
