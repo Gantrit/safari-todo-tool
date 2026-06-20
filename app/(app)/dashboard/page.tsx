@@ -51,13 +51,13 @@ export default async function DashboardPage() {
       )}
 
       <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card min-h-[178px] p-5 sm:p-6">
-          <div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>Your progress</span><Gauge size={18} style={{ color: 'var(--accent)' }} /></div>
-          <div className="mb-4 flex items-end gap-2"><strong className="text-4xl tracking-[-.04em]" style={{ color: 'var(--accent)' }}>{profile?.xp || 0}</strong><span className="pb-1 text-xs font-bold" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
-          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'linear-gradient(90deg,var(--accent),#f1df8a)' }} /></div>
+        <article className="app-card p-5">
+          <div className="mb-4 flex items-center justify-between"><span className="text-[11px] font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>Your progress</span><Gauge size={16} style={{ color: 'var(--muted)' }} /></div>
+          <div className="mb-3 flex items-end gap-2"><strong className="text-3xl tracking-[-.02em]">{profile?.xp || 0}</strong><span className="pb-0.5 text-xs" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
+          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'var(--accent)' }} /></div>
           <p className="mt-2 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
         </article>
-        {metrics.map((metric) => <article key={metric.label} className="app-card min-h-[178px] p-5 sm:p-6"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>{metric.label}</span><span style={{ color: metric.tone }}>{metric.icon}</span></div><strong className="block text-4xl tracking-[-.04em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
+        {metrics.map((metric) => <article key={metric.label} className="app-card p-5"><div className="mb-4 flex items-center justify-between"><span className="text-[11px] font-bold uppercase tracking-[.12em]" style={{ color: 'var(--muted)' }}>{metric.label}</span><span style={{ color: 'var(--muted)' }}>{metric.icon}</span></div><strong className="block text-3xl tracking-[-.02em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
       </section>
 
       <section className="mb-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">

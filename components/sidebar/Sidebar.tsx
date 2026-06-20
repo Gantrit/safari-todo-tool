@@ -33,13 +33,13 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         aria-current={active ? 'page' : undefined}
         className="group flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold transition-colors"
         style={{
-          background: active ? 'linear-gradient(90deg, rgba(216,195,106,.16), rgba(216,195,106,.05))' : 'transparent',
+          background: active ? 'var(--surface2)' : 'transparent',
           color: active ? 'var(--text)' : 'var(--muted)',
-          border: active ? '1px solid rgba(216,195,106,.18)' : '1px solid transparent',
         }}
       >
-        <span style={{ color: active ? 'var(--accent)' : 'inherit' }}>{icon}</span>
+        <span>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
+        {active && !badge && <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />}
         {!!badge && <span className="min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{badge}</span>}
       </Link>
     )

@@ -120,8 +120,8 @@ a {
 .app-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: linear-gradient(145deg, rgba(24, 30, 23, 0.9), rgba(16, 20, 15, 0.96));
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.16);
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .btn {
