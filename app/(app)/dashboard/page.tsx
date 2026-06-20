@@ -24,9 +24,9 @@ export default async function DashboardPage() {
   const board = boards?.[0]
 
   const metrics = [
-    { label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={18} />, tone: 'var(--text)' },
-    { label: 'Overdue', value: overdueTasks.length, detail: overdueTasks.length ? 'Needs attention today' : 'Everything is on track', icon: <AlertTriangle size={18} />, tone: overdueTasks.length ? 'var(--red)' : 'var(--green)' },
-    { label: 'Awaiting approval', value: pendingApproval.length, detail: 'Completed and ready to review', icon: <CheckCircle2 size={18} />, tone: 'var(--text)' },
+    { label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={14} />, tone: 'var(--text)' },
+    { label: 'Overdue', value: overdueTasks.length, detail: overdueTasks.length ? 'Needs attention today' : 'Everything is on track', icon: <AlertTriangle size={14} />, tone: overdueTasks.length ? 'var(--red)' : 'var(--green)' },
+    { label: 'Awaiting approval', value: pendingApproval.length, detail: 'Completed and ready to review', icon: <CheckCircle2 size={14} />, tone: 'var(--text)' },
   ]
 
   return (
@@ -50,13 +50,13 @@ export default async function DashboardPage() {
       )}
 
       <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card p-5">
-          <div className="mb-4 flex items-center justify-between"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--muted)' }}>Your progress</span><Gauge size={16} style={{ color: 'var(--muted)' }} /></div>
-          <div className="mb-3 flex items-end gap-2"><strong className="text-3xl tracking-[-.02em]">{profile?.xp || 0}</strong><span className="pb-0.5 text-xs" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
+        <article className="app-card p-[22px]">
+          <div className="mb-3 flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}>Your progress</span><Gauge size={14} style={{ color: 'var(--muted)', opacity: 0.6 }} /></div>
+          <div className="mb-3 flex items-end gap-2"><strong className="text-[28px] font-extrabold leading-none tracking-[-.01em]">{profile?.xp || 0}</strong><span className="pb-0.5 text-[11px]" style={{ color: 'var(--muted)' }}>XP · L{levelInfo.current.level} {levelInfo.current.title}</span></div>
           <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'var(--accent)' }} /></div>
-          <p className="mt-2 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
+          <p className="mt-2.5 text-[11px]" style={{ color: 'var(--muted)' }}>{levelInfo.next ? `${levelInfo.next.title} is your next rank` : 'Top rank achieved'}</p>
         </article>
-        {metrics.map((metric) => <article key={metric.label} className="app-card p-5"><div className="mb-4 flex items-center justify-between"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--muted)' }}>{metric.label}</span><span style={{ color: 'var(--muted)' }}>{metric.icon}</span></div><strong className="block text-3xl tracking-[-.02em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
+        {metrics.map((metric) => <article key={metric.label} className="app-card p-[22px]"><div className="mb-3 flex items-center justify-between gap-2"><span className="text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}>{metric.label}</span><span style={{ color: 'var(--muted)', opacity: 0.6 }}>{metric.icon}</span></div><strong className="block text-[28px] font-extrabold leading-none tracking-[-.01em]" style={{ color: metric.tone }}>{metric.value}</strong><p className="mt-2.5 text-[11px]" style={{ color: 'var(--muted)' }}>{metric.detail}</p></article>)}
       </section>
 
       <section className="mb-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
