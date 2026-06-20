@@ -13,6 +13,26 @@ Entry template:
 
 ---
 
+## 2026-06-20 — Claude — align dashboard/sidebar styling with safari-finance-tool reference
+- What changed: `app/globals.css` — `.app-card` is now flat (`background: var(--surface)`, no gradient,
+  no box-shadow) instead of the gradient+shadow card look. `app/(app)/dashboard/page.tsx` — KPI cards
+  (`Your progress` + metric cards) tightened: smaller padding, smaller number size, metric icons are
+  muted-gray instead of accent-colored, removed fixed `min-h-[178px]`. `components/sidebar/Sidebar.tsx`
+  — active nav item no longer has a gold gradient background + border; now a flat `var(--surface2)`
+  background with a small accent dot on the right (icon/text are no longer accent-tinted when active).
+- Why: User asked for the to-dos dashboard to look as clean/dense as `safari-finance-tool.vercel.app`
+  (another Safari Studios internal tool, also Next.js/Supabase/Vercel, same gold-on-near-black palette).
+  Visually compared the finance tool's dashboard via screenshots — its cards are flat (no gradient),
+  borders are barely visible, and the active sidebar item uses a flat highlight + a small dot indicator
+  instead of a glowing accent border. This pass only touched dashboard + sidebar; board/task-modal/other
+  pages were not touched.
+- Anything the other agent should know / not undo: Don't reintroduce the `.app-card` gradient/shadow —
+  flat is intentional now, matches the finance tool. If you touch other pages that use `.app-card`,
+  consider applying the same flat treatment for consistency. Pushed directly to `main` (this repo's
+  local clone tracks `main` directly, no `master` branch involved here). Build not verified locally
+  (no Node/npm on this machine) — relies on Vercel's build. KPI card visual changes are CSS/JSX only,
+  no logic/data changes.
+
 ## 2026-06-20 — Claude — fix desktop app shell layout and consolidate empty state
 - What changed: `components/sidebar/Sidebar.tsx` — sidebar `<aside>` now uses `lg:static` instead
   of staying `fixed` at desktop width, so it occupies real space in the flex layout instead of
