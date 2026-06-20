@@ -25,7 +25,7 @@ export default async function QuestsPage() {
         </div>
         {role === 'admin' && (
           <div className="meta-pill max-w-sm !min-h-10 px-4">
-            Admin creation is backed by the `quests` table in the V1 migration.
+            Admins manage quest availability and rewards.
           </div>
         )}
       </header>
@@ -55,7 +55,7 @@ export default async function QuestsPage() {
       ) : (
         <div className="app-card p-12 text-center">
           <h2 className="font-bold mb-2" style={{ color: 'var(--text)' }}>No quests yet</h2>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>Admins can create bonus quests after running the V1 Supabase migration.</p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>New bonus opportunities will appear here when they are available.</p>
         </div>
       )}
     </div>

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home } from 'lucide-react'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
+import { getInitials } from '@/lib/utils'
 
 interface SidebarProps {
   profile: Profile | null
@@ -46,13 +47,13 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
         {!!badge && <span className="min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{badge}</span>}
-        {active && !badge && <span className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: 'var(--accent)' }} />}
+        {active && !badge && <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />}
       </Link>
     )
   }
 
   const groupLabel = (label: string) => (
-    <p className="mb-2 mt-5 px-3 text-[10px] font-bold uppercase tracking-[0.12em] first:mt-0" style={{ color: 'var(--muted)' }}>{label}</p>
+    <p className="section-label mb-2.5 mt-6 px-3 first:mt-0">{label}</p>
   )
 
   return (
@@ -103,19 +104,25 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </nav>
 
         {profile && (
-          <div className="border-t px-5 py-4" style={{ borderColor: 'var(--border)' }}>
-            <p className="truncate text-xs font-semibold" style={{ color: 'var(--text)' }}>{profile.email}</p>
-            <p className="mb-2.5 mt-1 text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: 'var(--muted)' }}>{profile.role}</p>
+          <div className="flex-none border-t px-5 py-5" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            <div className="mb-4 flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{getInitials(profile.full_name || profile.email)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-bold">{profile.full_name || 'Safari teammate'}</span>
+                <span className="mt-0.5 block truncate text-[10.5px]" style={{ color: 'var(--muted)' }}>{profile.email}</span>
+              </span>
+            </div>
             {levelInfo && (
-              <div className="mb-3">
-                <div className="mb-1.5 flex items-center justify-between text-[11px]" style={{ color: 'var(--muted)' }}>
-                  <span>L{levelInfo.current.level} {levelInfo.current.title}</span>
-                  <span>{profile.xp} XP</span>
+              <div className="mb-4 rounded-[10px] border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+                  <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>L{levelInfo.current.level} {levelInfo.current.title}</span>
+                  <span className="font-bold" style={{ color: 'var(--accent)' }}>{profile.xp} XP</span>
                 </div>
                 <XPBar progress={levelInfo.progress} nextLevel={levelInfo.next?.title} />
               </div>
             )}
-            <button onClick={handleLogout} disabled={loggingOut} className="btn btn-secondary w-full !min-h-9">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: 'var(--muted)' }}><span>Account</span><span>{profile.role}</span></div>
+            <button onClick={handleLogout} disabled={loggingOut} className="btn btn-secondary w-full">
               {loggingOut ? 'Logging out…' : 'Logout'}
             </button>
           </div>

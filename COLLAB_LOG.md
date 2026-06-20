@@ -3,6 +3,19 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-20 — Codex — finish dashboard and sidebar density polish
+- What changed: Strengthened shared page/card/button/nav/metric/row classes in `globals.css`; rebuilt
+  the sidebar footer as a readable identity, rank/XP, role and logout block; increased workspace
+  selector height; made the active nav state a calm surface with a narrow gold indicator; enlarged
+  dashboard spacing and equal-height KPIs; upgraded task, notification and leaderboard cards with
+  consistent headers, rows and empty states; removed technical scaffold copy from Quests/Templates.
+- Why: The first flat-theme pass had the right palette but dashboard internals and the account footer
+  still used cramped, ad hoc layouts that looked thinner than the Safari Finance Tool reference.
+- Anything the other agent should know / not undo: The sidebar stays 256px and in normal desktop flex
+  flow. Dashboard presentation now relies on shared classes (`dashboard-kpi`, `dashboard-row`,
+  `card-empty`, metric classes) rather than route-specific border/padding combinations. No product,
+  database, auth, RLS, XP or task logic changed. `npm.cmd run build` passes. Not pushed.
+
 ## 2026-06-20 — Codex — widen and unify premium app layout
 - What changed: Widened the in-flow desktop sidebar to 256px and increased navigation/header/footer
   spacing and type sizes; added shared `page-shell`, page-header, card-header and metadata-pill design

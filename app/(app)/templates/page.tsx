@@ -24,7 +24,7 @@ export default async function TemplatesPage() {
         </div>
         {role === 'admin' && (
           <div className="meta-pill max-w-sm !min-h-10 px-4">
-            Use the `task_templates` table for admin-managed template CRUD.
+            Admins manage the team template library.
           </div>
         )}
       </header>
@@ -56,7 +56,7 @@ export default async function TemplatesPage() {
       ) : (
         <div className="app-card p-12 text-center">
           <h2 className="font-bold mb-2" style={{ color: 'var(--text)' }}>No templates yet</h2>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>Create SOP-style templates for repeated tasks after applying the V1 migration.</p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>Reusable task structures will appear here when they are added.</p>
         </div>
       )}
     </div>
