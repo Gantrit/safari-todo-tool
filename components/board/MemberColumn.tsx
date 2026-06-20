@@ -20,16 +20,16 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
 
   return (
     <div
-      className="flex-shrink-0 flex flex-col rounded-[10px] overflow-hidden"
-      style={{ width: '280px', background: 'var(--surface)', border: '1px solid var(--border)' }}
+      className="flex max-h-full w-[310px] flex-shrink-0 flex-col overflow-hidden rounded-[14px]"
+      style={{ background: 'linear-gradient(180deg,var(--surface2),var(--surface))', border: '1px solid var(--border)', boxShadow: '0 18px 44px rgba(0,0,0,.14)' }}
     >
       {/* Column header */}
       <div
-        className="flex items-center gap-2.5 px-4 py-3 border-b flex-shrink-0"
+        className="flex min-h-[72px] flex-shrink-0 items-center gap-3 border-b px-4"
         style={{ borderColor: 'var(--border)' }}
       >
         <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold"
           style={{ background: isOwn ? 'var(--accent)' : 'var(--surface2)', color: isOwn ? '#0e0e0e' : 'var(--text)' }}
         >
           {getInitials(member.full_name || member.email)}
@@ -44,22 +44,22 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
         </div>
         <button
           onClick={() => onAddTask(member.id, 'DAILY')}
-          className="p-1 rounded transition-opacity hover:opacity-70"
-          style={{ color: 'var(--muted)' }}
+          className="icon-button !h-9 !w-9"
           title="Add task"
         >
-          <Plus size={14} />
+          <Plus size={16} />
         </button>
       </div>
 
       {/* Task sections */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-3.5">
         {SECTIONS.map((section) => (
           <TaskSectionComp
             key={section}
             section={section}
             tasks={tasks.filter((t) => t.section === section)}
             onTaskClick={onTaskClick}
+            onAddTask={() => onAddTask(member.id, section)}
           />
         ))}
       </div>

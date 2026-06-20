@@ -29,10 +29,32 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
     border: '1px solid var(--border)',
     color: 'var(--text)',
     borderRadius: '8px',
-    padding: '8px 12px',
+    minHeight: '44px',
+    padding: '10px 13px',
     fontSize: '14px',
     width: '100%',
     outline: 'none',
+  }
+
+  async function createWorkspace() {
+    if (!wsName.trim()) return
+    setSaving(true)
+    setMessage(null)
+    const { data: created, error } = await supabase.from('workspaces').insert({ name: wsName.trim(), created_by: currentUser.id }).select().single()
+    if (error || !created) {
+      setMessage({ text: error?.message || 'Failed to create workspace', type: 'error' })
+      setSaving(false)
+      return
+    }
+    const { error: memberError } = await supabase.from('workspace_members').insert({ workspace_id: created.id, user_id: currentUser.id, role: 'admin' })
+    const { error: boardError } = await supabase.from('boards').insert({ workspace_id: created.id, name: 'Team Board', type: 'kanban' })
+    if (memberError || boardError) {
+      setMessage({ text: memberError?.message || boardError?.message || 'Workspace created, but setup was incomplete', type: 'error' })
+      setSaving(false)
+      return
+    }
+    router.push('/dashboard')
+    router.refresh()
   }
 
   async function saveWorkspaceName() {
@@ -86,7 +108,7 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {message && (
         <div
           className="p-3 rounded-[8px] text-sm"
@@ -97,25 +119,25 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
       )}
 
       {/* Workspace name */}
-      <section>
-        <h2 className="text-base font-semibold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
-          Workspace
-        </h2>
+      <section className="app-card p-5 sm:p-6">
+        <h2 className="mb-1 text-base font-bold">{workspace ? 'Workspace name' : 'Start a new workspace'}</h2>
+        <p className="mb-4 text-xs leading-5" style={{ color: 'var(--muted)' }}>{workspace ? 'This name appears in the sidebar for every member.' : 'A Team Board will be created automatically so you can start assigning work.'}</p>
         <div className="flex gap-2">
-          <input value={wsName} onChange={(e) => setWsName(e.target.value)} style={inputStyle} />
+          <input value={wsName} onChange={(e) => setWsName(e.target.value)} placeholder="Safari Studios" style={inputStyle} />
           <button
-            onClick={saveWorkspaceName}
-            disabled={saving}
-            className="px-4 py-2 text-sm font-semibold rounded-[8px] flex-shrink-0 disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#0e0e0e' }}
+            onClick={workspace ? saveWorkspaceName : createWorkspace}
+            disabled={saving || !wsName.trim()}
+            className="btn btn-primary flex-shrink-0"
           >
-            Save
+            {saving ? 'Saving…' : workspace ? 'Save changes' : 'Create Workspace'}
           </button>
         </div>
       </section>
 
+      {!workspace ? null : <>
+
       {/* Google Drive URL */}
-      <section>
+      <section className="app-card p-5 sm:p-6">
         <h2 className="text-base font-semibold mb-1" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
           Google Drive Default URL
         </h2>
@@ -129,7 +151,7 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
       </section>
 
       {/* Invite user */}
-      <section>
+      <section className="app-card p-5 sm:p-6">
         <h2 className="text-base font-semibold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
           Invite User
         </h2>
@@ -154,7 +176,7 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
       </section>
 
       {/* Members */}
-      <section>
+      <section className="app-card p-5 sm:p-6">
         <h2 className="text-base font-semibold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
           Members
         </h2>
@@ -184,7 +206,7 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
       </section>
 
       {/* Boards */}
-      <section>
+      <section className="app-card p-5 sm:p-6">
         <h2 className="text-base font-semibold mb-3" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
           Boards
         </h2>
@@ -224,6 +246,7 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
           </button>
         </div>
       </section>
+      </>}
     </div>
   )
 }

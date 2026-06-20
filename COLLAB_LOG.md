@@ -13,6 +13,11 @@ Entry template:
 
 ---
 
+## 2026-06-20 - Codex - polish V1 app shell, dashboard, and board UX
+- What changed: Rebuilt the responsive fixed sidebar/mobile navigation, workspace selector and creation flow, dashboard KPI/task/notification/leaderboard cards, board header/department tabs/member columns, global button/card styles, and visible board/section Create Task entry points.
+- Why: The deployed V1 foundation looked scaffold-like and key actions were undersized, unclear, or non-functional. This pass establishes a consistent premium dark SaaS hierarchy and explicit setup empty states.
+- Anything the other agent should know / not undo: No migrations or schema changes. Workspace creation uses existing `workspaces`, `workspace_members`, and `boards` tables and creates a default Team Board. `npm.cmd run build` passes; lint still reports pre-existing `no-explicit-any` issues across older V1 files. No push or commit was performed.
+
 ## 2026-06-20 - Codex - build V1 product foundation
 - What changed: Expanded Safari To-Dos from scaffold toward V1: premium dark Manrope UI, department-tab board, multi-assignee task creation, ASSIGNED -> NOTICED -> IN_EDIT -> DONE -> admin APPROVED/REJECTED flow, clarification requests, deadline labels/defaults, checklist fallback, quests/templates/audit pages, richer dashboard/leaderboard, password reset, and migration `004_v1_product_model.sql`.
 - Why: User clarified the scaffold is not final and requested the real lean internal task board V1 with admin approval, deadlines, XP, quests, templates, notifications, soft delete, and audit log foundations.

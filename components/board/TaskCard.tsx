@@ -40,7 +40,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       {...attributes}
       {...listeners}
       onClick={() => onClick(task)}
-      className="rounded-[8px] p-3 cursor-pointer transition-all hover:opacity-90 active:scale-[0.99]"
+      className="cursor-pointer rounded-[10px] p-3.5 transition-all hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0"
       style={{
         ...style,
         background: 'var(--surface2)',

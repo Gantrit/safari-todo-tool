@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import BoardView from '@/components/board/BoardView'
 import Link from 'next/link'
+import { ArrowLeft, LayoutGrid } from 'lucide-react'
 
 interface Props {
   params: Promise<{ boardId: string }>
@@ -80,25 +81,22 @@ export default async function BoardPage({ params }: Props) {
   }))
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
-      <div className="px-6 py-4 border-b flex-shrink-0" style={{ borderColor: 'var(--border)', background: 'rgba(16,20,15,0.78)' }}>
-        <div className="flex items-center justify-between gap-4 mb-4">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex-shrink-0 border-b px-5 py-5 sm:px-8" style={{ borderColor: 'var(--border)', background: 'rgba(12,15,11,.88)', backdropFilter: 'blur(18px)' }}>
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
-              Team Board
-            </h1>
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>Department tabs, employee columns, deadline-first execution.</p>
+            <div className="mb-1.5 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.16em]" style={{ color: 'var(--accent)' }}><LayoutGrid size={13} /> Team workspace</div>
+            <h1 className="text-2xl font-extrabold tracking-[-.03em]">{board.name}</h1>
+            <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Deadline-first execution across every team member.</p>
           </div>
-          <Link href="/dashboard" className="rounded-[8px] px-3 py-2 text-sm font-semibold" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-            Dashboard
-          </Link>
+          <Link href="/dashboard" className="btn btn-secondary self-start sm:self-auto"><ArrowLeft size={16} /> Dashboard</Link>
         </div>
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Department boards">
           {(boards && boards.length > 0 ? boards : [board]).map((dept: any) => (
             <Link
               key={dept.id}
               href={`/board/${dept.id}`}
-              className="whitespace-nowrap rounded-[8px] px-3 py-2 text-sm font-semibold"
+              className="inline-flex min-h-10 items-center whitespace-nowrap rounded-[9px] px-4 text-sm font-bold transition-colors"
               style={{
                 background: dept.id === board.id ? 'rgba(216,195,106,0.14)' : 'var(--surface2)',
                 border: dept.id === board.id ? '1px solid rgba(216,195,106,0.45)' : '1px solid var(--border)',

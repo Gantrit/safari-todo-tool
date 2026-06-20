@@ -1,67 +1,64 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, Plus } from 'lucide-react'
+import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
+import { Building2, Check, ChevronDown, Plus } from 'lucide-react'
+type WorkspaceSummary = { id: string; name: string }
+type WorkspaceOption = { workspace_id?: string; role?: string; workspaces: WorkspaceSummary | WorkspaceSummary[] | null } | WorkspaceSummary
 
 interface WorkspaceSwitcherProps {
-  workspaces: any[]
+  workspaces: WorkspaceOption[]
+  canManage?: boolean
 }
 
-export default function WorkspaceSwitcher({ workspaces }: WorkspaceSwitcherProps) {
+export default function WorkspaceSwitcher({ workspaces, canManage = false }: WorkspaceSwitcherProps) {
   const [open, setOpen] = useState(false)
   const [current, setCurrent] = useState(workspaces[0] || null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const workspaceData = (option: WorkspaceOption | null): WorkspaceSummary | null => {
+    if (!option) return null
+    if ('workspaces' in option) {
+      const value = option.workspaces
+      return Array.isArray(value) ? value[0] || null : value || null
+    }
+    return option
+  }
+  const selected = workspaceData(current)
 
-  const ws = current?.workspaces || current
-  const name = ws?.name || 'Select Workspace'
+  useEffect(() => {
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+
+  if (!selected) {
+    return (
+      <div className="rounded-[12px] border border-dashed p-3" style={{ borderColor: 'var(--border-strong)', background: 'rgba(255,255,255,.015)' }}>
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold"><Building2 size={15} style={{ color: 'var(--accent)' }} /> No workspace</div>
+        <p className="mb-3 text-[11px] leading-4" style={{ color: 'var(--muted)' }}>Create a workspace to add your team board.</p>
+        {canManage ? <Link href="/settings" className="btn btn-primary w-full !min-h-9 !px-3 !text-xs"><Plus size={14} /> Create Workspace</Link> : <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Ask an admin to invite you.</p>}
+      </div>
+    )
+  }
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-[8px] text-sm transition-all"
-        style={{ background: 'var(--surface2)', color: 'var(--text)' }}
-      >
-        <span
-          className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold flex-shrink-0"
-          style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-        >
-          {name[0]?.toUpperCase()}
-        </span>
-        <span className="flex-1 text-left truncate text-xs font-medium">{name}</span>
-        <ChevronDown size={12} style={{ color: 'var(--muted)' }} />
+    <div className="relative" ref={rootRef}>
+      <button onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-14 w-full items-center gap-3 rounded-[12px] border px-3 text-left transition-colors" style={{ background: 'var(--surface2)', borderColor: open ? 'var(--border-strong)' : 'var(--border)' }}>
+        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-xs font-extrabold" style={{ background: 'rgba(216,195,106,.14)', color: 'var(--accent)' }}>{selected.name?.[0]?.toUpperCase()}</span>
+        <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Workspace</span><span className="block truncate text-sm font-bold">{selected.name}</span></span>
+        <ChevronDown size={15} style={{ color: 'var(--muted)', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 160ms' }} />
       </button>
 
       {open && (
-        <div
-          className="absolute top-full left-0 right-0 mt-1 rounded-[8px] overflow-hidden z-50"
-          style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}
-        >
-          {workspaces.map((ws, i) => {
-            const wsData = ws.workspaces || ws
-            return (
-              <button
-                key={i}
-                onClick={() => { setCurrent(ws); setOpen(false) }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--text)' }}
-              >
-                <span
-                  className="w-4 h-4 rounded flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-                >
-                  {wsData?.name?.[0]?.toUpperCase()}
-                </span>
-                {wsData?.name}
-              </button>
-            )
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[60] overflow-hidden rounded-[12px] border p-1.5 shadow-2xl" style={{ background: '#1a2018', borderColor: 'var(--border-strong)' }}>
+          {workspaces.map((workspace, index) => {
+            const data = workspaceData(workspace)
+            const active = data?.id === selected.id
+            return <button key={data?.id || index} onClick={() => { setCurrent(workspace); setOpen(false) }} className="flex min-h-10 w-full items-center gap-2 rounded-[8px] px-2.5 text-left text-xs font-semibold hover:bg-white/5"><span className="flex-1 truncate">{data?.name}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button>
           })}
-          <button
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs border-t"
-            style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}
-          >
-            <Plus size={12} />
-            New Workspace
-          </button>
+          {canManage && <Link href="/settings?newWorkspace=1" onClick={() => setOpen(false)} className="mt-1 flex min-h-10 items-center gap-2 border-t px-2.5 pt-1 text-xs font-bold" style={{ borderColor: 'var(--border)', color: 'var(--accent)' }}><Plus size={14} /> New Workspace</Link>}
         </div>
       )}
     </div>

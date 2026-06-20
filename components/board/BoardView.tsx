@@ -9,7 +9,6 @@ import Modal from '../ui/Modal'
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
   DragStartEvent,
   PointerSensor,
   useSensor,
@@ -19,6 +18,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { createClient } from '@/lib/supabase/client'
+import { LayoutGrid, Plus, Users } from 'lucide-react'
 
 interface BoardViewProps {
   board: any
@@ -28,7 +28,7 @@ interface BoardViewProps {
   currentUser: Profile
 }
 
-export default function BoardView({ board, departments = [], members, tasks: initialTasks, currentUser }: BoardViewProps) {
+export default function BoardView({ board, members, tasks: initialTasks, currentUser }: BoardViewProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addingFor, setAddingFor] = useState<{ memberId: string; section: TaskSection } | null>(null)
@@ -94,6 +94,7 @@ export default function BoardView({ board, departments = [], members, tasks: ini
   }, [])
 
   const activeTask = tasks.find((t) => t.id === activeId)
+  const defaultMember = members.find((member) => member.id === currentUser.id) || members[0]
 
   return (
     <>
@@ -103,8 +104,14 @@ export default function BoardView({ board, departments = [], members, tasks: ini
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 p-6 h-full overflow-x-auto">
-          {members.map((member) => (
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="flex flex-none items-center justify-between gap-4 border-b px-5 py-3 sm:px-8" style={{ borderColor: 'var(--border)', background: 'rgba(8,10,8,.74)' }}>
+            <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--muted)' }}><Users size={15} /> {members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</div>
+            <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
+          </div>
+          {members.length > 0 ? (
+          <div className="flex flex-1 gap-5 overflow-x-auto p-5 sm:p-8">
+            {members.map((member) => (
             <MemberColumn
               key={member.id}
               member={member}
@@ -113,7 +120,13 @@ export default function BoardView({ board, departments = [], members, tasks: ini
               onAddTask={(memberId, section) => setAddingFor({ memberId, section })}
               currentUserId={currentUser.id}
             />
-          ))}
+            ))}
+          </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-8">
+              <div className="app-card max-w-md p-8 text-center"><LayoutGrid className="mx-auto mb-4" size={30} style={{ color: 'var(--accent)' }} /><h2 className="text-lg font-bold">No team members on this board</h2><p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>Invite members from Settings before creating and assigning work.</p></div>
+            </div>
+          )}
         </div>
 
         <DragOverlay>

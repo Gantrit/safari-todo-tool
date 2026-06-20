@@ -40,10 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         boards={boards || []}
         notifications={notifications || []}
       />
-      <main
-        className="flex-1 overflow-auto"
-        style={{ marginLeft: '220px' }}
-      >
+      <main className="ml-0 flex-1 overflow-auto pt-16 lg:ml-[272px] lg:pt-0">
         {children}
       </main>
     </div>
