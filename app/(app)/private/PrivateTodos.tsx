@@ -107,24 +107,21 @@ export default function PrivateTodos({ tasks: initial, profile }: PrivateTodosPr
       </div>
 
       {adding ? (
-        <div
-          className="p-4 rounded-[10px] space-y-3"
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-        >
+        <div className="app-card space-y-3 p-4">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') addTask(); if (e.key === 'Escape') setAdding(false) }}
             placeholder="Task title..."
             autoFocus
-            className="w-full px-3 py-2 text-sm rounded-[8px] outline-none"
+            className="w-full rounded-[8px] px-3 py-2 text-sm outline-none"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
           />
           <div className="flex gap-2">
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as Priority)}
-              className="px-2 py-1.5 text-sm rounded-[8px] outline-none"
+              className="rounded-[8px] px-2 py-1.5 text-sm outline-none"
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
             >
               <option value="LOW">Low</option>
@@ -135,25 +132,13 @@ export default function PrivateTodos({ tasks: initial, profile }: PrivateTodosPr
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="flex-1 px-2 py-1.5 text-sm rounded-[8px] outline-none"
+              className="flex-1 rounded-[8px] px-2 py-1.5 text-sm outline-none [color-scheme:dark]"
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
             />
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={addTask}
-              className="px-3 py-1.5 text-sm font-semibold rounded-[8px]"
-              style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-            >
-              Add
-            </button>
-            <button
-              onClick={() => setAdding(false)}
-              className="px-3 py-1.5 text-sm rounded-[8px]"
-              style={{ background: 'var(--surface2)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-            >
-              Cancel
-            </button>
+            <button onClick={addTask} className="btn btn-primary !min-h-9 px-3 text-sm">Add</button>
+            <button onClick={() => setAdding(false)} className="btn btn-secondary !min-h-9 px-3 text-sm">Cancel</button>
           </div>
         </div>
       ) : (
