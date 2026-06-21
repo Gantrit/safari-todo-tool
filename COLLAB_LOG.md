@@ -3,6 +3,20 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-21 - Codex - make workspace creation atomic and admin-only
+- What changed: Added `006_secure_workspace_creation.sql` with the authenticated-admin-only
+  `create_workspace_with_defaults(name)` SECURITY DEFINER function. It atomically creates the
+  workspace, creator admin membership, and default Team Board. Settings now calls this RPC instead
+  of issuing three client-side inserts. The migration also restricts direct workspace inserts to
+  admin profiles and replaces the unrestricted workspace-members INSERT policy with an admin check.
+- Why: The old workspace INSERT used `.select()` before the creator had a membership, so the new row
+  could not satisfy the workspace SELECT policy used by `RETURNING`; setup was also non-atomic and
+  the membership policy allowed every authenticated user to insert arbitrary memberships.
+- Anything the other agent should know / not undo: Apply migration 006 manually in Supabase before
+  testing production. It depends on migration 005's `is_workspace_admin` helper. Do not restore the
+  three separate browser inserts or `workspace_members_insert WITH CHECK (true)`. `npm.cmd run build`
+  passes. Not committed or pushed.
+
 ## 2026-06-21 — Codex — premium dashboard composition and sidebar footer polish
 - What changed: Refined the dashboard header rhythm; rebuilt the no-workspace setup state as a
   structured onboarding card; increased KPI hierarchy and equal-height spacing; balanced the task

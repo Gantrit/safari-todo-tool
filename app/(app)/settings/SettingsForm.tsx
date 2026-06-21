@@ -40,16 +40,11 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
     if (!wsName.trim()) return
     setSaving(true)
     setMessage(null)
-    const { data: created, error } = await supabase.from('workspaces').insert({ name: wsName.trim(), created_by: currentUser.id }).select().single()
-    if (error || !created) {
+    const { data: workspaceId, error } = await supabase.rpc('create_workspace_with_defaults', {
+      p_name: wsName.trim(),
+    })
+    if (error || !workspaceId) {
       setMessage({ text: error?.message || 'Failed to create workspace', type: 'error' })
-      setSaving(false)
-      return
-    }
-    const { error: memberError } = await supabase.from('workspace_members').insert({ workspace_id: created.id, user_id: currentUser.id, role: 'admin' })
-    const { error: boardError } = await supabase.from('boards').insert({ workspace_id: created.id, name: 'Team Board', type: 'kanban' })
-    if (memberError || boardError) {
-      setMessage({ text: memberError?.message || boardError?.message || 'Workspace created, but setup was incomplete', type: 'error' })
       setSaving(false)
       return
     }
