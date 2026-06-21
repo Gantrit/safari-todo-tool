@@ -39,8 +39,8 @@ export default function StatusBadge({ status }: { status: TaskStatus }) {
   const { icon, color, label, pulse } = STATUS_CONFIG[status]
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold ${pulse ? 'pulse-blue' : ''}`}
-      style={{ color, border: `1px solid ${color}`, background: 'rgba(255,255,255,0.02)' }}
+      className={`inline-flex min-h-6 items-center gap-1.5 rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[.055em] ${pulse ? 'pulse-blue' : ''}`}
+      style={{ color, border: '1px solid var(--border)', background: 'var(--surface)' }}
     >
       {icon}
       {label}

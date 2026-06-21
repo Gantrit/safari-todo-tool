@@ -4,15 +4,17 @@ import { deadlineLabel, getInitials, isOverdue } from '@/lib/utils'
 import { AlertTriangle, ArrowRight, Bell, CheckCircle2, ClipboardCheck, Gauge, LayoutGrid, Sparkles, Trophy } from 'lucide-react'
 import Link from 'next/link'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ workspace?: string }> }) {
+  const { workspace: requestedWorkspaceId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const [{ data: profile }, { data: leaderboard }, { data: myTasks }, { data: allOpenTasks }, { data: boards }, { data: notifications }] = await Promise.all([
+  const [{ data: profile }, { data: leaderboard }, { data: myTasks }, { data: allOpenTasks }, { data: boards }, { data: workspaces }, { data: notifications }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
     supabase.from('profiles').select('id, full_name, email, xp, level').order('xp', { ascending: false }).limit(10),
     supabase.from('tasks').select('*').eq('assigned_to', user!.id).neq('status', 'APPROVED').order('deadline_at', { ascending: true, nullsFirst: false }).limit(8),
     supabase.from('tasks').select('id, title, status, priority, section, deadline_at, due_date, assigned_to').is('deleted_at', null).neq('status', 'APPROVED').limit(100),
     supabase.from('boards').select('*').eq('type', 'kanban').order('created_at', { ascending: true }),
+    supabase.from('workspaces').select('id, name').order('created_at', { ascending: true }),
     supabase.from('notifications').select('*').eq('user_id', user!.id).eq('read', false).order('created_at', { ascending: false }).limit(5),
   ])
 
@@ -21,7 +23,8 @@ export default async function DashboardPage() {
   const openTasks = allOpenTasks || []
   const overdueTasks = openTasks.filter((task: any) => isOverdue(task.deadline_at || task.due_date))
   const pendingApproval = openTasks.filter((task: any) => task.status === 'DONE')
-  const board = boards?.[0]
+  const selectedWorkspace = workspaces?.find((workspace) => workspace.id === requestedWorkspaceId) || workspaces?.[0]
+  const board = boards?.find((candidate) => candidate.workspace_id === selectedWorkspace?.id) || boards?.[0]
 
   const metrics = [
     { label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={14} />, tone: 'var(--text)' },
@@ -33,12 +36,12 @@ export default async function DashboardPage() {
     <div className="page-shell">
       <header className="page-header dashboard-header">
         <div>
-          <p className="page-eyebrow">Workspace overview</p>
+          <p className="page-eyebrow">{selectedWorkspace?.name || 'Workspace'} overview</p>
           <h1 className="page-title">Dashboard</h1>
           <p className="page-description">{role === 'admin' ? 'Track delivery, approvals and team momentum from one place.' : 'Your tasks, deadlines and progress in one place.'}</p>
         </div>
         {board && (
-          <Link href={`/board/${board.id}`} className="btn btn-primary self-start xl:self-auto"><LayoutGrid size={17} /> Open team board <ArrowRight size={16} /></Link>
+          <Link href={`/board/${board.id}`} className="btn btn-primary self-start xl:self-auto"><LayoutGrid size={17} /> Open {board.name} <ArrowRight size={16} /></Link>
         )}
       </header>
 

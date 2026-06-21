@@ -55,13 +55,14 @@ export default function BoardView({ board, members, tasks: initialTasks, current
     const overId = String(over.id)
 
     // Drop on section droppable
-    if (overId.startsWith('section-')) {
-      const newSection = overId.replace('section-', '') as TaskSection
+    if (overId.startsWith('section:')) {
+      const [, newMemberId, sectionValue] = overId.split(':')
+      const newSection = sectionValue as TaskSection
       const updatedTasks = tasks.map((t) =>
-        t.id === active.id ? { ...t, section: newSection } : t
+        t.id === active.id ? { ...t, assigned_to: newMemberId, assignee_ids: [newMemberId], section: newSection } : t
       )
       setTasks(updatedTasks)
-      await supabase.from('tasks').update({ section: newSection }).eq('id', active.id)
+      await supabase.from('tasks').update({ assigned_to: newMemberId, assignee_ids: [newMemberId], section: newSection }).eq('id', active.id)
       return
     }
 
@@ -105,12 +106,12 @@ export default function BoardView({ board, members, tasks: initialTasks, current
         onDragEnd={handleDragEnd}
       >
         <div className="flex h-full flex-col overflow-hidden">
-          <div className="flex flex-none items-center justify-between gap-4 border-b px-5 py-3 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+          <div className="flex flex-none flex-wrap items-center justify-between gap-4 border-b px-5 py-4 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
             <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--muted)' }}><Users size={15} /> {members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</div>
             <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
           </div>
           {members.length > 0 ? (
-          <div className="flex flex-1 gap-5 overflow-x-auto p-5 sm:p-8">
+          <div className="grid flex-1 grid-flow-col auto-cols-[minmax(360px,1fr)] gap-5 overflow-auto p-5 sm:p-8">
             {members.map((member) => (
             <MemberColumn
               key={member.id}
@@ -152,8 +153,8 @@ export default function BoardView({ board, members, tasks: initialTasks, current
       )}
 
       {addingFor && (
-        <Modal open={true} onClose={() => setAddingFor(null)} title="New Task" size="md">
-          <div className="p-5">
+        <Modal open={true} onClose={() => setAddingFor(null)} title="Create task" size="lg">
+          <div>
             <TaskForm
               boardId={board.id}
               memberId={addingFor.memberId}

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
@@ -12,18 +12,23 @@ import { getInitials } from '@/lib/utils'
 
 interface SidebarProps {
   profile: Profile | null
-  workspaces: Array<{ workspace_id?: string; role?: string; workspaces: { id: string; name: string } | Array<{ id: string; name: string }> | null } | { id: string; name: string }>
+  workspaces: Array<{ id: string; name: string }>
   boards: Board[]
   notifications: Notification[]
 }
 
 export default function Sidebar({ profile, workspaces, boards, notifications }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const unreadCount = notifications.length
   const kanbanBoards = boards.filter((board) => board.type === 'kanban')
+  const activeBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1]
+  const activeBoard = kanbanBoards.find((board) => board.id === activeBoardId)
+  const selectedWorkspaceId = activeBoard?.workspace_id || searchParams.get('workspace') || workspaces[0]?.id
+  const workspaceBoards = kanbanBoards.filter((board) => board.workspace_id === selectedWorkspaceId)
   const levelInfo = profile ? getLevelInfo(profile.xp) : null
 
   const handleLogout = async () => {
@@ -81,14 +86,14 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </div>
 
         <div className="px-4 pt-4">
-          <WorkspaceSwitcher workspaces={workspaces} canManage={profile?.role === 'admin'} />
+          <WorkspaceSwitcher workspaces={workspaces} boards={kanbanBoards} selectedWorkspaceId={selectedWorkspaceId} canManage={profile?.role === 'admin'} />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-4 py-5">
           {navItem('/dashboard', 'Overview', <Home size={16} />)}
 
-          {groupLabel('Workspace')}
-          {kanbanBoards.map((board) => navItem(`/board/${board.id}`, board.name, <LayoutGrid size={16} />))}
+          {groupLabel('Boards')}
+          {workspaceBoards.map((board) => navItem(`/board/${board.id}`, board.name, <LayoutGrid size={16} />))}
           {navItem('/calendar', 'Calendar', <Calendar size={16} />)}
 
           {groupLabel('Tools')}

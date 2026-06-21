@@ -8,29 +8,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  const { data: workspaces } = await supabase
-    .from('workspace_members')
-    .select('workspace_id, role, workspaces(id, name)')
-    .eq('user_id', user.id)
-
-  const { data: boards } = await supabase
-    .from('boards')
-    .select('*')
-    .order('created_at', { ascending: true })
-
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('read', false)
-    .order('created_at', { ascending: false })
-    .limit(20)
+  const [{ data: profile }, { data: workspaces }, { data: boards }, { data: notifications }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('workspaces').select('id, name, created_at').order('created_at', { ascending: true }),
+    supabase.from('boards').select('*').order('created_at', { ascending: true }),
+    supabase.from('notifications').select('*').eq('user_id', user.id).eq('read', false).order('created_at', { ascending: false }).limit(20),
+  ])
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg)' }}>

@@ -20,12 +20,12 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
 
   return (
     <div
-      className="flex max-h-full w-[324px] flex-shrink-0 flex-col overflow-hidden rounded-[14px]"
+      className="flex min-w-0 max-h-full flex-col overflow-hidden rounded-[14px]"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
       {/* Column header */}
       <div
-        className="flex min-h-[72px] flex-shrink-0 items-center gap-3 border-b px-4"
+        className="flex min-h-[78px] flex-shrink-0 items-center gap-3 border-b px-5"
         style={{ borderColor: 'var(--border)' }}
       >
         <div
@@ -52,7 +52,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
       </div>
 
       {/* Task sections */}
-      <div className="flex-1 overflow-y-auto p-3.5">
+      <div className="flex-1 overflow-y-auto p-4">
         {SECTIONS.map((section) => (
           <TaskSectionComp
             key={section}
@@ -60,6 +60,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
             tasks={tasks.filter((t) => t.section === section)}
             onTaskClick={onTaskClick}
             onAddTask={() => onAddTask(member.id, section)}
+            memberId={member.id}
           />
         ))}
       </div>

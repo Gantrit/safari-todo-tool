@@ -48,8 +48,7 @@ export default function SettingsForm({ workspace, members, boards, currentUser }
       setSaving(false)
       return
     }
-    router.push('/dashboard')
-    router.refresh()
+    router.push(`/dashboard?workspace=${workspaceId}`)
   }
 
   async function saveWorkspaceName() {

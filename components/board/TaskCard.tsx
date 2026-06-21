@@ -40,7 +40,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       {...attributes}
       {...listeners}
       onClick={() => onClick(task)}
-      className="cursor-pointer rounded-[10px] p-4 transition-colors hover:border-[var(--border-strong)]"
+      className="group cursor-pointer rounded-[11px] p-4 transition-[border-color,transform] hover:-translate-y-px hover:border-[var(--border-strong)]"
       style={{
         ...style,
         background: 'var(--surface2)',
@@ -48,13 +48,18 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         boxShadow: task.section === 'IMMINENT' ? '0 0 0 1px var(--accent-dim), inset 3px 0 0 var(--accent)' : undefined,
       }}
     >
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <StatusBadge status={task.status} />
+        <PriorityBadge priority={task.priority} />
+      </div>
+
       {/* Labels */}
       {task.labels && task.labels.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
+        <div className="mb-2 flex flex-wrap gap-1">
           {task.labels.slice(0, 3).map((label, i) => (
             <span
               key={i}
-              className="text-xs px-1.5 py-0.5 rounded"
+              className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
               style={{ background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)' }}
             >
               {label}
@@ -65,7 +70,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
 
       {/* Title */}
       <p
-        className="text-sm font-medium mb-2 leading-snug"
+        className="mb-3 text-[14px] font-bold leading-[1.45] tracking-[-.01em]"
         style={{
           color: 'var(--text)',
           textDecoration: task.status === 'APPROVED' ? 'line-through' : 'none',
@@ -83,18 +88,12 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         </div>
       )}
 
-      {/* Status + Priority */}
-      <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
-        <StatusBadge status={task.status} />
-        <PriorityBadge priority={task.priority} />
-      </div>
-
       {/* Footer */}
-      <div className="flex items-center justify-between">
+      <div className="flex min-h-7 items-center justify-between gap-3 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2">
           {deadline && (
             <span
-              className="flex items-center gap-1 text-xs"
+              className="flex items-center gap-1.5 text-[11px] font-semibold"
               style={{ color: overdue ? 'var(--red)' : days !== null && days <= 3 ? 'var(--amber)' : 'var(--muted)' }}
             >
               <Calendar size={10} />
@@ -102,7 +101,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {(task.recurring_enabled || task.recurring_frequency) && (
             <Repeat size={10} style={{ color: 'var(--accent)' }} />
           )}
@@ -130,8 +129,8 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
           {assignees.slice(0, 3).map((assignee) => (
             <div
               key={assignee.id}
-              className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: 'var(--accent)', color: '#0e0e0e' }}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-extrabold"
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}
               title={assignee.full_name || assignee.email}
             >
               {getInitials(assignee.full_name || assignee.email)}
