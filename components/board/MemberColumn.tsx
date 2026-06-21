@@ -20,25 +20,25 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
 
   return (
     <div
-      className="member-column flex min-w-0 max-h-full flex-col overflow-hidden rounded-[14px]"
+      className="member-column flex min-w-0 max-h-full flex-col overflow-hidden rounded-[15px]"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
       {/* Column header */}
       <div
-        className="flex min-h-[88px] flex-shrink-0 items-center gap-3.5 border-b px-5 sm:px-6"
-        style={{ borderColor: 'var(--border)' }}
+        className="flex min-h-[96px] flex-shrink-0 items-center gap-4 border-b px-5 sm:px-6"
+        style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}
       >
         <div
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold"
           style={{ background: isOwn ? 'var(--accent)' : 'var(--surface2)', color: isOwn ? '#0e0e0e' : 'var(--text)' }}
         >
           {getInitials(member.full_name || member.email)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>
+          <p className="truncate text-[14px] font-bold" style={{ color: 'var(--text)' }}>
             {member.full_name?.split(' ')[0] || 'User'}
           </p>
-          <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>
+          <p className="mt-1 truncate text-[11px] font-medium" style={{ color: 'var(--muted)' }}>
             {tasks.filter((task) => task.status !== 'APPROVED').length} open tasks
           </p>
         </div>

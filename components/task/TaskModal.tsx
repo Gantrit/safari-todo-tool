@@ -7,7 +7,7 @@ import StatusBadge from '../ui/StatusBadge'
 import PriorityBadge from '../ui/PriorityBadge'
 import { deadlineLabel, formatDate, formatRelative, getInitials, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle, ExternalLink, FolderOpen, Plus, ChevronRight, RotateCcw, XCircle } from 'lucide-react'
+import { AlertTriangle, Bell, CalendarDays, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, MessageSquare, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
 import CommentSection from './CommentSection'
 import SubtaskList from './SubtaskList'
 
@@ -132,284 +132,122 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   const deadline = task.deadline_at || task.due_date || null
   const overdue = isOverdue(deadline) && task.status !== 'APPROVED'
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
+  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || (isAdmin && task.status === 'DONE') || (isAdmin && ['APPROVED', 'REJECTED'].includes(task.status))
 
   return (
-    <Modal open={true} onClose={onClose} size="xl">
-      <div className="flex h-full" style={{ minHeight: '500px' }}>
-        {/* Main content */}
-        <div className="flex-1 p-6 overflow-y-auto border-r" style={{ borderColor: 'var(--border)' }}>
-          {/* Header */}
-          <div className="mb-4">
-            <div className="flex items-start gap-2 mb-3">
-              <div className="flex-1">
-                <h2
-                  className="text-lg font-bold leading-snug"
-                  style={{
-                    fontFamily: 'Syne, sans-serif',
-                    color: 'var(--text)',
-                    textDecoration: task.status === 'APPROVED' ? 'line-through' : 'none',
-                    opacity: task.status === 'APPROVED' ? 0.6 : 1,
-                  }}
-                >
-                  {task.title}
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
+    <Modal open={true} onClose={onClose} size="2xl">
+      <article className="min-h-[620px]">
+        <header className="flex items-start justify-between gap-6 border-b px-6 py-6 sm:px-9" style={{ borderColor: 'var(--border)' }}>
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <StatusBadge status={task.status} />
               <PriorityBadge priority={task.priority} />
-              {task.labels?.map((label, i) => (
-                <span
-                  key={i}
-                  className="text-xs px-2 py-0.5 rounded"
-                  style={{ background: 'var(--surface2)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                >
-                  {label}
-                </span>
-              ))}
-              {overdue && (
-                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-semibold" style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.4)' }}>
-                  <AlertTriangle size={11} /> Overdue
-                </span>
-              )}
+              {overdue && <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[.055em]" style={{ color: 'var(--red)', background: 'var(--red-dim)', border: '1px solid rgba(255,98,98,.32)' }}><AlertTriangle size={10} /> Overdue</span>}
             </div>
+            <h2 className="max-w-3xl text-[22px] font-extrabold leading-[1.35] tracking-[-.025em] sm:text-[25px]" style={{ color: 'var(--text)', textDecoration: task.status === 'APPROVED' ? 'line-through' : 'none', opacity: task.status === 'APPROVED' ? 0.6 : 1 }}>{task.title}</h2>
+            {!!task.labels?.length && <div className="mt-3 flex flex-wrap gap-1.5">{task.labels.map((label, index) => <span key={index} className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>{label}</span>)}</div>}
           </div>
+          <button onClick={onClose} className="icon-button flex-none" aria-label="Close task details"><X size={17} /></button>
+        </header>
 
-          {/* Description */}
-          {task.description && (
-            <div className="mb-5">
-              <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Description</p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>{task.description}</p>
-            </div>
-          )}
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_310px]">
+          <main className="space-y-6 px-5 py-7 sm:px-9 sm:py-8 lg:border-r" style={{ borderColor: 'var(--border)' }}>
+            <section className="rounded-[12px] border p-5 sm:p-6" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+              <SectionHeading icon={<MessageSquare size={14} />} title="Description" />
+              {task.description ? <p className="whitespace-pre-wrap text-sm leading-7" style={{ color: 'var(--text-secondary)' }}>{task.description}</p> : <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>No description has been added.</p>}
+            </section>
 
-          {/* Checklist */}
-          <div className="mb-5">
-            <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Checklist</p>
-            <SubtaskList taskId={task.id} subtasks={task.checklist_items || task.subtasks || []} members={members} currentUser={currentUser} />
-          </div>
+            <section className="rounded-[12px] border p-5 sm:p-6" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+              <SectionHeading icon={<ListChecks size={14} />} title="Checklist" meta={`${(task.checklist_items || task.subtasks || []).filter((item) => item.done).length}/${(task.checklist_items || task.subtasks || []).length}`} />
+              <SubtaskList taskId={task.id} subtasks={task.checklist_items || task.subtasks || []} members={members} currentUser={currentUser} />
+            </section>
 
-          {/* Attachments */}
-          <div className="mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Attachments</p>
-              {(task.reference_url || task.google_drive_url) && (
-                <a
-                  href={task.reference_url || task.google_drive_url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs hover:opacity-70 transition-opacity"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  <FolderOpen size={12} />
-                  Reference
-                </a>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              {(task.attachments || []).map((att) => (
-                <a
-                  key={att.id}
-                  href={att.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm hover:opacity-70 transition-opacity"
-                  style={{ color: 'var(--blue)' }}
-                >
-                  <ExternalLink size={12} />
-                  {att.label || att.url}
-                </a>
-              ))}
-            </div>
-          </div>
-
-          {/* Result URL */}
-          <div className="mb-5">
-            <p className="text-xs uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>Result</p>
-            {task.result_url && !showResultInput ? (
-              <div className="flex items-center gap-2">
-                <a
-                  href={task.result_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm hover:opacity-70 transition-opacity"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {task.result_url}
-                </a>
-                <button onClick={() => setShowResultInput(true)} className="text-xs" style={{ color: 'var(--muted)' }}>
-                  Edit
-                </button>
+            <section className="rounded-[12px] border p-5 sm:p-6" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+              <SectionHeading icon={<Link2 size={14} />} title="Files & delivery" />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>References</p>
+                  <div className="space-y-2.5">
+                    {(task.reference_url || task.google_drive_url) && <a href={task.reference_url || task.google_drive_url || '#'} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--accent)' }}><FolderOpen size={14} /> Open reference <ExternalLink className="ml-auto" size={12} /></a>}
+                    {(task.attachments || []).map((attachment) => <a key={attachment.id} href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--blue)' }}><ExternalLink size={13} /><span className="truncate">{attachment.label || attachment.url}</span></a>)}
+                    {!task.reference_url && !task.google_drive_url && !(task.attachments || []).length && <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>No references or attachments.</p>}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>Result link</p>
+                  {task.result_url && !showResultInput ? <div className="space-y-2"><a href={task.result_url} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--accent)' }}><ExternalLink size={13} /><span className="truncate">Open submitted result</span></a><button onClick={() => setShowResultInput(true)} className="text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>Edit result link</button></div> : showResultInput ? <div className="space-y-2.5"><input value={resultUrl} onChange={(event) => setResultUrl(event.target.value)} placeholder="https://..." className="form-control" /><button onClick={submitResult} disabled={updating || !resultUrl.trim()} className="btn btn-primary min-h-10 w-full">Save result</button></div> : <button onClick={() => setShowResultInput(true)} className="flex min-h-10 w-full items-center gap-2.5 rounded-[9px] border px-3 text-left text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}><Plus size={13} /> Add result link</button>}
+                </div>
               </div>
-            ) : showResultInput ? (
-              <div className="flex gap-2">
-                <input
-                  value={resultUrl}
-                  onChange={(e) => setResultUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="flex-1 px-3 py-1.5 text-sm rounded-[8px] outline-none"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                />
-                <button
-                  onClick={submitResult}
-                  className="px-3 py-1.5 text-sm rounded-[8px]"
-                  style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-                >
-                  Save
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowResultInput(true)}
-                className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity"
-                style={{ color: 'var(--muted)' }}
-              >
-                <Plus size={12} />
-                Add result link
-              </button>
-            )}
-          </div>
+            </section>
 
-          {/* Comments */}
-          <CommentSection taskId={task.id} comments={task.comments || []} currentUser={currentUser} />
-        </div>
+            <section className="rounded-[12px] border p-5 sm:p-6" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+              <CommentSection taskId={task.id} comments={task.comments || []} currentUser={currentUser} />
+            </section>
+          </main>
 
-        {/* Sidebar */}
-        <div className="w-56 p-5 flex-shrink-0">
-          {/* Status advance */}
+          <aside className="px-5 py-7 sm:px-7 sm:py-8" style={{ background: 'var(--surface2)' }}>
+            <div className="space-y-6 lg:sticky lg:top-0">
+              <section>
+                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task actions</p>
           {canAdvanceStatus() && nextStatus && (
             <button
               onClick={advanceStatus}
               disabled={updating}
-              className="w-full py-2 text-sm font-semibold rounded-[8px] mb-4 flex items-center justify-center gap-1.5 disabled:opacity-50 transition-opacity"
-              style={{ background: 'var(--accent)', color: '#0e0e0e' }}
+              className="btn btn-primary min-h-12 w-full"
             >
-              <ChevronRight size={14} />
-              {nextStatus === 'APPROVED' ? 'Approve' : `Mark ${nextStatus.replace('_', ' ')}`}
+              <ChevronRight size={15} /> Mark as {nextStatus.replace('_', ' ')}
             </button>
           )}
 
           {isAdmin && task.status === 'DONE' && (
-            <div className="space-y-2 mb-4">
-              <button
-                onClick={() => adminDecision('APPROVED')}
-                disabled={updating}
-                className="w-full py-2 text-sm font-semibold rounded-[8px] flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'var(--green)', color: '#071007' }}
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => adminDecision('REJECTED')}
-                disabled={updating}
-                className="w-full py-2 text-sm font-semibold rounded-[8px] flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'rgba(255,98,98,0.14)', color: 'var(--red)', border: '1px solid rgba(255,98,98,0.35)' }}
-              >
-                <XCircle size={14} /> Reject
-              </button>
-              <button
-                onClick={() => adminDecision('REJECTED', true)}
-                disabled={updating}
-                className="w-full py-2 text-xs rounded-[8px] disabled:opacity-50"
-                style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.25)' }}
-              >
-                Reject with -5 XP quality issue
-              </button>
+            <div className="space-y-2.5">
+              <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>Approve task</button>
+              <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}><XCircle size={14} /> Reject task</button>
+              <button onClick={() => adminDecision('REJECTED', true)} disabled={updating} className="w-full px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ color: 'var(--red)' }}>Reject with -5 XP quality issue</button>
             </div>
           )}
 
           {isAdmin && ['APPROVED', 'REJECTED'].includes(task.status) && (
-            <button
-              onClick={() => adminDecision('IN_EDIT')}
-              disabled={updating}
-              className="w-full py-2 text-sm font-semibold rounded-[8px] mb-4 flex items-center justify-center gap-1.5 disabled:opacity-50"
-              style={{ background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
-            >
-              <RotateCcw size={14} /> Reopen
-            </button>
+            <button onClick={() => adminDecision('IN_EDIT')} disabled={updating} className="btn btn-secondary min-h-11 w-full"><RotateCcw size={14} /> Reopen task</button>
           )}
+          {!hasStatusAction && <div className="rounded-[9px] border px-3.5 py-3 text-xs leading-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>No status action is available for this task.</div>}
+              </section>
 
           {isAssignee && !['DONE', 'APPROVED'].includes(task.status) && (
-            <div className="mb-4 space-y-2">
-              <textarea
-                value={clarificationNote}
-                onChange={(event) => setClarificationNote(event.target.value)}
-                rows={3}
-                placeholder="Explain what is unclear..."
-                className="w-full rounded-[8px] px-3 py-2 text-xs outline-none"
-                style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-              />
-              <button
-                onClick={requestClarification}
-                disabled={updating || !clarificationNote.trim()}
-                className="w-full py-2 text-xs font-semibold rounded-[8px] disabled:opacity-50"
-                style={{ color: 'var(--amber)', border: '1px solid rgba(243,169,79,0.35)' }}
-              >
-                Request clarification
-              </button>
-            </div>
+            <section className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+              <p className="mb-2 text-xs font-bold">Need clarification?</p>
+              <p className="mb-3 text-[11px] leading-5" style={{ color: 'var(--muted)' }}>Ask the creator for missing context before continuing.</p>
+              <textarea value={clarificationNote} onChange={(event) => setClarificationNote(event.target.value)} rows={3} placeholder="Explain what is unclear..." className="form-control !min-h-24 text-xs" />
+              <button onClick={requestClarification} disabled={updating || !clarificationNote.trim()} className="mt-2.5 min-h-10 w-full rounded-[9px] border px-3 text-xs font-bold disabled:opacity-50" style={{ color: 'var(--amber)', borderColor: 'rgba(243,169,79,.35)' }}>Request clarification</button>
+            </section>
           )}
 
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Assignees</p>
-              <div className="space-y-2">
-              {assignees.map((assignee) => (
-                <div key={assignee.id} className="flex items-center gap-2">
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-                  >
-                    {getInitials(assignee.full_name || assignee.email)}
-                  </div>
-                  <span className="text-sm" style={{ color: 'var(--text)' }}>
-                    {assignee.full_name || assignee.email}
-                  </span>
+              <section className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task details</p>
+                <div className="overflow-hidden rounded-[11px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  <DetailRow icon={<UserRound size={14} />} label="Assignees"><div className="space-y-2">{assignees.map((assignee) => <div key={assignee.id} className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{getInitials(assignee.full_name || assignee.email)}</span><span className="truncate text-xs font-semibold">{assignee.full_name || assignee.email}</span></div>)}</div></DetailRow>
+                  <DetailRow icon={<UserRound size={14} />} label="Creator"><p className="truncate text-xs font-semibold">{task.creator_profile?.full_name || task.creator_profile?.email || 'Unknown'}</p><p className="mt-1 text-[10.5px]" style={{ color: 'var(--muted)' }}>{formatRelative(task.created_at)}</p></DetailRow>
+                  <DetailRow icon={<CalendarDays size={14} />} label="Deadline"><p className="text-xs font-semibold" style={{ color: overdue ? 'var(--red)' : 'var(--text)' }}>{deadline ? deadlineLabel(deadline) : 'No deadline'}</p>{deadline && <p className="mt-1 text-[10.5px]" style={{ color: 'var(--muted)' }}>{formatDate(deadline)}</p>}</DetailRow>
+                  <DetailRow icon={<Layers3 size={14} />} label="Section"><p className="text-xs font-semibold capitalize">{task.section.toLowerCase()}</p></DetailRow>
+                  <DetailRow icon={<Bell size={14} />} label="Reminders" last><div className="flex flex-wrap gap-1.5"><ReminderPill active={!!task.remind_3d}>3 days</ReminderPill><ReminderPill active={!!task.remind_24h}>24 hours</ReminderPill></div></DetailRow>
                 </div>
-              ))}
-              </div>
+              </section>
             </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Created By</p>
-              {task.creator_profile && (
-                <span className="text-sm" style={{ color: 'var(--text)' }}>
-                  {task.creator_profile.full_name || task.creator_profile.email}
-                </span>
-              )}
-              <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                {formatRelative(task.created_at)}
-              </p>
-            </div>
-
-            {deadline && (
-              <div>
-                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Deadline</p>
-                <p className="text-sm" style={{ color: overdue ? 'var(--red)' : 'var(--text)' }}>{deadlineLabel(deadline)}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{formatDate(deadline)}</p>
-              </div>
-            )}
-
-            <div>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Section</p>
-              <p className="text-sm" style={{ color: 'var(--text)' }}>{task.section}</p>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>Reminders</p>
-              <div className="space-y-1">
-                <p className="text-xs" style={{ color: task.remind_3d ? 'var(--accent)' : 'var(--muted)' }}>
-                  {task.remind_3d ? '✓' : '○'} 3 days before
-                </p>
-                <p className="text-xs" style={{ color: task.remind_24h ? 'var(--accent)' : 'var(--muted)' }}>
-                  {task.remind_24h ? '✓' : '○'} 24h before
-                </p>
-              </div>
-            </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </article>
     </Modal>
   )
+}
+
+function SectionHeading({ icon, title, meta }: { icon: React.ReactNode; title: string; meta?: string }) {
+  return <div className="mb-5 flex items-center gap-2.5"><span style={{ color: 'var(--accent)' }}>{icon}</span><h3 className="text-[13px] font-bold">{title}</h3>{meta && <span className="ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'var(--surface3)', color: 'var(--muted)' }}>{meta}</span>}</div>
+}
+
+function DetailRow({ icon, label, children, last = false }: { icon: React.ReactNode; label: string; children: React.ReactNode; last?: boolean }) {
+  return <div className={`grid grid-cols-[18px_minmax(0,1fr)] gap-x-3 px-4 py-4 ${last ? '' : 'border-b'}`} style={{ borderColor: 'var(--border)' }}><span className="mt-0.5" style={{ color: 'var(--muted)' }}>{icon}</span><div className="min-w-0"><p className="mb-2 text-[9.5px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>{label}</p>{children}</div></div>
+}
+
+function ReminderPill({ active, children }: { active: boolean; children: React.ReactNode }) {
+  return <span className="rounded-full border px-2 py-1 text-[10px] font-bold" style={{ color: active ? 'var(--accent)' : 'var(--muted)', background: active ? 'var(--accent-dim)' : 'transparent', borderColor: active ? 'var(--border-strong)' : 'var(--border)' }}>{children}</span>
 }

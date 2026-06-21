@@ -105,10 +105,10 @@ export default function BoardView({ board, members, tasks: initialTasks, current
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full flex-col overflow-hidden p-4 sm:p-6 lg:p-8">
+        <div className="flex h-full flex-col overflow-hidden p-4 sm:p-7 lg:p-9">
           <div className="board-surface">
           <div className="board-toolbar">
-            <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--muted)' }}><Users size={15} /> {members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</div>
+            <div><div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}><Users size={15} style={{ color: 'var(--accent)' }} /> Team workload</div><p className="mt-1.5 text-[11px]" style={{ color: 'var(--muted)' }}>{members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</p></div>
             <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
           </div>
           {members.length > 0 ? (

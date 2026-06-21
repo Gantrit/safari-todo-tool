@@ -3,6 +3,19 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-22 - Codex - improve task detail and board polish
+- What changed: Rebuilt Task Detail as a `max-w-5xl` premium workspace with a dedicated title/badge
+  header, designed description/checklist/files/comments cards, a 310px action rail, and structured
+  assignee/creator/deadline/section/reminder rows. Polished comments and checklist presentation,
+  increased board/member/task-card spacing, added persistent designed add-task rows and empty states,
+  and moved the sidebar active accent fully inside its navigation pill.
+- Why: Task Detail still looked like raw debug UI, while board cards, columns, empty actions, and the
+  active navigation state remained visually compressed.
+- Anything the other agent should know / not undo: Presentation only. Existing task status,
+  approvals/rejections, XP, clarification, result, checklist, comment, drag/drop, query, and mutation
+  behavior is unchanged. `npm.cmd run build` and `git diff --check` pass. Browser screenshot QA was
+  unavailable because the in-app browser runtime could not initialize in the Windows sandbox.
+
 ## 2026-06-22 - Codex - redesign create-task modal layout
 - What changed: Expanded Create Task to a dedicated `max-w-5xl` modal size with a compact subtitle
   header, stronger header/content/footer dividers, 40px desktop content padding, a true wide-left

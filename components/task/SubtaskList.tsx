@@ -52,12 +52,13 @@ export default function SubtaskList({ taskId, subtasks: initial, members, curren
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2.5">
+      {subtasks.length === 0 && !adding && <div className="rounded-[10px] border border-dashed px-4 py-5 text-center text-xs leading-5" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>No checklist items yet.</div>}
       {subtasks.map((s) => (
-        <div key={s.id} className="flex items-center gap-2">
+        <div key={s.id} className="flex min-h-11 items-center gap-3 rounded-[9px] border px-3.5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <button
             onClick={() => toggleSubtask(s.id, s.done)}
-            className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-all"
+            className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-[5px] transition-all"
             style={{
               background: s.done ? 'var(--accent)' : 'transparent',
               border: `1px solid ${s.done ? 'var(--accent)' : 'var(--border)'}`,
@@ -66,7 +67,7 @@ export default function SubtaskList({ taskId, subtasks: initial, members, curren
             {s.done && <Check size={10} color="#0e0e0e" />}
           </button>
           <span
-            className="text-sm flex-1"
+            className="flex-1 text-[13px] leading-5"
             style={{
               color: 'var(--text)',
               textDecoration: s.done ? 'line-through' : 'none',
@@ -79,20 +80,19 @@ export default function SubtaskList({ taskId, subtasks: initial, members, curren
       ))}
 
       {adding ? (
-        <div className="flex gap-2 mt-2">
+        <div className="mt-3 flex gap-2">
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); if (e.key === 'Escape') setAdding(false) }}
             placeholder="Subtask title..."
             autoFocus
-            className="flex-1 px-2 py-1 text-sm rounded-[6px] outline-none"
+            className="form-control min-w-0 flex-1"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
           />
           <button
             onClick={addSubtask}
-            className="px-2 py-1 text-xs rounded-[6px]"
-            style={{ background: 'var(--accent)', color: '#0e0e0e' }}
+            className="btn btn-primary min-h-10 px-4 text-xs"
           >
             Add
           </button>
@@ -100,7 +100,7 @@ export default function SubtaskList({ taskId, subtasks: initial, members, curren
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1.5 text-xs mt-1 hover:opacity-70 transition-opacity"
+          className="mt-3 flex min-h-9 items-center gap-2 rounded-[8px] px-2 text-xs font-semibold transition-colors hover:bg-[var(--surface3)] hover:text-[var(--text)]"
           style={{ color: 'var(--muted)' }}
         >
           <Plus size={11} />

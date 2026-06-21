@@ -68,11 +68,13 @@ export default function CommentSection({ taskId, comments: initial, currentUser 
 
   return (
     <div>
-      <p className="text-xs uppercase tracking-wider mb-3" style={{ color: 'var(--muted)' }}>
-        Comments ({comments.length})
-      </p>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5"><span style={{ color: 'var(--accent)' }}><Send size={14} /></span><h3 className="text-[13px] font-bold">Comments &amp; activity</h3></div>
+        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: 'var(--surface3)', color: 'var(--muted)' }}>{comments.length}</span>
+      </div>
 
-      <div className="space-y-4 mb-4">
+      <div className="mb-5 space-y-3">
+        {comments.length === 0 && <div className="rounded-[10px] border border-dashed px-4 py-5 text-center text-xs leading-5" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>No activity yet. Add context or a progress note below.</div>}
         {comments.map((comment) => {
           const reactionCounts = EMOJIS.reduce((acc, emoji) => {
             acc[emoji] = (comment.reactions || []).filter((r) => r.emoji === emoji).length
@@ -80,16 +82,16 @@ export default function CommentSection({ taskId, comments: initial, currentUser 
           }, {} as Record<string, number>)
 
           return (
-            <div key={comment.id}>
-              <div className="flex items-start gap-2.5">
+            <div key={comment.id} className="rounded-[10px] border p-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-start gap-3">
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
-                  style={{ background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-extrabold"
+                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}
                 >
                   {getInitials(comment.profile?.full_name || comment.profile?.email || '?')}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-baseline gap-2 mb-1">
+                  <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
                       {comment.profile?.full_name || 'User'}
                     </span>
@@ -100,12 +102,12 @@ export default function CommentSection({ taskId, comments: initial, currentUser 
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>
                     {comment.content}
                   </p>
-                  <div className="flex items-center gap-1 mt-2">
+                  <div className="mt-3 flex items-center gap-1">
                     {EMOJIS.map((emoji) => (
                       <button
                         key={emoji}
                         onClick={() => addReaction(comment.id, emoji)}
-                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs transition-all hover:opacity-70"
+                        className="flex min-h-6 items-center gap-0.5 rounded-full px-2 text-xs transition-colors hover:border-[var(--border-strong)]"
                         style={{
                           background: reactionCounts[emoji] > 0 ? 'var(--surface2)' : 'transparent',
                           border: '1px solid var(--border)',
@@ -125,21 +127,17 @@ export default function CommentSection({ taskId, comments: initial, currentUser 
         })}
       </div>
 
-      <form onSubmit={addComment} className="flex gap-2">
-        <input
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write a comment..."
-          className="flex-1 px-3 py-2 text-sm rounded-[8px] outline-none"
-          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-        />
+      <form onSubmit={addComment} className="flex items-center gap-2.5 rounded-[11px] border p-2" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <span className="ml-1 flex h-8 w-8 flex-none items-center justify-center rounded-full text-[10px] font-extrabold" style={{ background: 'var(--surface3)', color: 'var(--text-secondary)' }}>{getInitials(currentUser.full_name || currentUser.email)}</span>
+        <input value={content} onChange={(e) => setContent(e.target.value)} placeholder="Add a comment or progress note..." className="min-h-10 min-w-0 flex-1 bg-transparent px-2 text-sm outline-none" style={{ color: 'var(--text)' }} />
         <button
           type="submit"
           disabled={loading || !content.trim()}
-          className="p-2 rounded-[8px] disabled:opacity-50 transition-opacity"
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px] disabled:opacity-40"
           style={{ background: 'var(--accent)', color: '#0e0e0e' }}
+          aria-label="Post comment"
         >
-          <Send size={14} />
+          <Send size={15} />
         </button>
       </form>
     </div>
