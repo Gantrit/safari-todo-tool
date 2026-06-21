@@ -69,9 +69,9 @@ export default async function BoardPage({ params }: Props) {
       <div className="flex-shrink-0 border-b px-5 py-5 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}><LayoutGrid size={13} /> {workspace?.name || 'Workspace'} <span style={{ color: 'var(--muted)' }}>→</span> Boards</div>
-            <h1 className="text-2xl font-extrabold tracking-[-.02em]">{board.name}</h1>
-            <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>{workspace?.name ? `${workspace.name} workspace` : 'Team workspace'} · Deadline-first execution across every member.</p>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.09em]" style={{ color: 'var(--text-secondary)' }}><LayoutGrid size={13} /> {workspace?.name || 'Workspace'} board</div>
+            <h1 className="text-2xl font-extrabold tracking-[-.02em]">{board.name === 'Team Board' && workspace?.name ? `${workspace.name} Board` : board.name}</h1>
+            <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Deadline-first execution across every team member.</p>
           </div>
           <Link href="/dashboard" className="btn btn-secondary self-start sm:self-auto"><ArrowLeft size={16} /> Dashboard</Link>
         </div>
@@ -87,7 +87,7 @@ export default async function BoardPage({ params }: Props) {
                 color: dept.id === board.id ? 'var(--accent)' : 'var(--muted)',
               }}
             >
-              {dept.name}
+              {dept.name === 'Team Board' && workspace?.name ? 'Workspace Board' : dept.name}
             </Link>
           ))}
         </div>

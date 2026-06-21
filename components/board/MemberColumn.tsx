@@ -20,7 +20,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
 
   return (
     <div
-      className="flex min-w-0 max-h-full flex-col overflow-hidden rounded-[14px]"
+      className="member-column flex min-w-0 max-h-full flex-col overflow-hidden rounded-[14px]"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
       {/* Column header */}
@@ -52,7 +52,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
       </div>
 
       {/* Task sections */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5">
         {SECTIONS.map((section) => (
           <TaskSectionComp
             key={section}

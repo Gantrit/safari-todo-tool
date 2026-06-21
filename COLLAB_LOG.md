@@ -3,6 +3,20 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-22 - Codex - premium product pages and missing admin creation flows
+- What changed: Reworked Board column sizing/empty actions, Calendar month and agenda layouts,
+  Settings information architecture, Audit Log filtering/table details, and sidebar version/refresh
+  and workspace-board labels. Added existing-schema template create/edit/soft-delete/use flows and
+  quest create/accept flows with polished modals and cards.
+- Why: Production pages remained visually dense or scaffold-like, while admins could not create
+  templates or quests and the template use control was not functional.
+- Anything the other agent should know / not undo: No migration, schema, auth, RLS, XP, or task
+  status changes were made. Template/quest writes rely on migration 004's existing tables and
+  policies. Settings intentionally describes task-level reference links because workspaces have no
+  persisted default-link column. `npm.cmd run build` and `git diff --check` pass. Browser screenshot
+  QA was unavailable because the in-app browser runtime could not start in the Windows sandbox.
+  Not committed or pushed.
+
 ## 2026-06-21 - Codex - make workspace creation atomic and admin-only
 - What changed: Added `006_secure_workspace_creation.sql` with the authenticated-admin-only
   `create_workspace_with_defaults(name)` SECURITY DEFINER function. It atomically creates the

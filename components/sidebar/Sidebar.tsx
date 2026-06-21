@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home } from 'lucide-react'
+import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw } from 'lucide-react'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
 import { getInitials } from '@/lib/utils'
@@ -23,6 +23,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [refreshing, startRefresh] = useTransition()
   const unreadCount = notifications.length
   const kanbanBoards = boards.filter((board) => board.type === 'kanban')
   const activeBoardId = pathname.match(/^\/board\/([^/]+)/)?.[1]
@@ -77,11 +78,12 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         className={`fixed inset-y-0 left-0 z-50 flex w-[256px] flex-none flex-col border-r transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
       >
-        <div className="flex min-h-[84px] items-center justify-between border-b px-6" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex min-h-[84px] items-center justify-between gap-3 border-b px-5" style={{ borderColor: 'var(--border)' }}>
           <Link href="/dashboard" className="min-w-0">
             <span className="block truncate text-[16px] font-extrabold tracking-[-0.01em]">Safari To-Dos</span>
-            <span className="mt-1 block text-[11px] font-medium" style={{ color: 'var(--muted)' }}>Safari Studios</span>
+            <span className="mt-1 block text-[10.5px] font-medium" style={{ color: 'var(--muted)' }}>Task Tracker · v0.2-workspace</span>
           </Link>
+          <button className="icon-button !h-8 !w-8 hidden lg:inline-flex" onClick={() => startRefresh(() => router.refresh())} aria-label="Refresh workspace data" title="Refresh workspace data"><RefreshCw className={refreshing ? 'animate-spin' : ''} size={14} /></button>
           <button className="icon-button lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
         </div>
 
@@ -93,7 +95,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           {navItem('/dashboard', 'Overview', <Home size={16} />)}
 
           {groupLabel('Boards')}
-          {workspaceBoards.map((board) => navItem(`/board/${board.id}`, board.name, <LayoutGrid size={16} />))}
+          {workspaceBoards.map((board) => navItem(`/board/${board.id}`, board.name === 'Team Board' ? `${workspaces.find((workspace) => workspace.id === selectedWorkspaceId)?.name || 'Workspace'} Board` : board.name, <LayoutGrid size={16} />))}
           {navItem('/calendar', 'Calendar', <Calendar size={16} />)}
 
           {groupLabel('Tools')}

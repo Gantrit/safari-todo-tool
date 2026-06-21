@@ -8,18 +8,13 @@ export default async function CalendarPage() {
   const { data: tasks } = await supabase
     .from('tasks')
     .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*)')
-    .not('due_date', 'is', null)
     .neq('status', 'APPROVED')
-    .order('due_date', { ascending: true })
+    .order('deadline_at', { ascending: true })
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
-        <h1 className="text-xl font-bold" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
-          Calendar
-        </h1>
-      </div>
-      <div className="flex-1 overflow-auto p-6">
+    <div className="h-full overflow-auto">
+      <div className="page-shell">
+        <header className="page-header"><div><p className="page-eyebrow">Schedule overview</p><h1 className="page-title">Calendar</h1><p className="page-description">See deadlines across the team and focus on one day at a time.</p></div></header>
         <CalendarView tasks={tasks || []} />
       </div>
     </div>

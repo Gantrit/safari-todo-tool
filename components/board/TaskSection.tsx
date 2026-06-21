@@ -28,8 +28,8 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
 
   return (
-    <section className="mb-5">
-      <div className="flex items-center gap-2 border-b pb-2" style={{ borderColor: 'var(--border)' }}>
+    <section className="mb-6 last:mb-1">
+      <div className="flex items-center gap-2 pb-2.5">
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="flex min-h-8 flex-1 items-center gap-2 rounded text-left transition-opacity hover:opacity-70"
@@ -52,7 +52,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
           {tasks.length}
         </span>
       </button>
-      <button onClick={onAddTask} className="flex h-8 w-8 flex-none items-center justify-center rounded-[7px] border transition-colors hover:bg-white/5" style={{ color: 'var(--muted)', borderColor: 'var(--border)' }} aria-label={`Add ${label} task`}><Plus size={13} /></button>
+      <button onClick={onAddTask} className="flex h-8 w-8 flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-white/5 hover:text-[var(--text)]" style={{ color: 'var(--muted)' }} aria-label={`Add ${label} task`}><Plus size={14} /></button>
       </div>
 
       {!collapsed && (
@@ -61,7 +61,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onClick={onTaskClick} />
             ))}
-            {tasks.length === 0 && <button onClick={onAddTask} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[9px] border border-dashed text-[11px] font-semibold transition-colors hover:bg-white/[.025]" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}><Plus size={12} /> Add {label.toLowerCase()} task</button>}
+            {tasks.length === 0 && <button onClick={onAddTask} className="flex min-h-12 w-full items-center gap-2 rounded-[9px] px-3 text-left text-[11px] font-semibold transition-colors hover:bg-[var(--surface3)] hover:text-[var(--text)]" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}><span className="flex h-6 w-6 items-center justify-center rounded-[6px]" style={{ background: 'var(--surface3)' }}><Plus size={12} /></span>Add task</button>}
           </SortableContext>
         </div>
       )}

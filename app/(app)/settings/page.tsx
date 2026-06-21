@@ -34,8 +34,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     : { data: [] }
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-8 sm:px-8 lg:py-10">
-      <div className="mb-8"><p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.18em]" style={{ color: 'var(--accent)' }}>Administration</p><h1 className="text-3xl font-extrabold tracking-[-.03em]">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Workspace settings'}</h1><p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>Manage the team, boards, and workspace defaults.</p></div>
+    <div className="page-shell !max-w-[1180px]">
+      <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Workspace settings'}</h1><p className="page-description">Manage workspace identity, team access, boards, and shared defaults.</p></div></header>
       <SettingsForm
         workspace={newWorkspace === '1' ? null : workspace}
         members={members || []}

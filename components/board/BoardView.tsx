@@ -111,7 +111,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
             <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
           </div>
           {members.length > 0 ? (
-          <div className="grid flex-1 grid-flow-col auto-cols-[minmax(360px,1fr)] gap-5 overflow-auto p-5 sm:p-8">
+          <div className={`board-columns flex-1 overflow-auto p-5 sm:p-8 ${members.length === 1 ? 'is-single' : ''}`}>
             {members.map((member) => (
             <MemberColumn
               key={member.id}

@@ -66,8 +66,7 @@ export default function WorkspaceSwitcher({ workspaces, boards, selectedWorkspac
         <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[60] overflow-hidden rounded-[12px] border p-1.5 shadow-2xl" style={{ background: '#1a2018', borderColor: 'var(--border-strong)' }}>
           {workspaces.map((workspace) => {
             const active = workspace.id === selected.id
-            const boardCount = boards.filter((board) => board.workspace_id === workspace.id).length
-            return <button key={workspace.id} onClick={() => selectWorkspace(workspace)} disabled={isPending} className="flex min-h-11 w-full items-center gap-2 rounded-[8px] px-2.5 text-left text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-60"><span className="flex-1 truncate">{workspace.name}</span><span className="text-[10px] font-medium" style={{ color: 'var(--muted)' }}>{boardCount} {boardCount === 1 ? 'board' : 'boards'}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button>
+            return <button key={workspace.id} onClick={() => selectWorkspace(workspace)} disabled={isPending} className="flex min-h-11 w-full items-center gap-2 rounded-[8px] px-2.5 text-left text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-60"><span className="flex-1 truncate">{workspace.name}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button>
           })}
           {canManage && <Link href="/settings?newWorkspace=1" onClick={() => setOpen(false)} className="mt-1 flex min-h-10 items-center gap-2 border-t px-2.5 pt-1 text-xs font-bold" style={{ borderColor: 'var(--border)', color: 'var(--accent)' }}><Plus size={14} /> New Workspace</Link>}
         </div>
