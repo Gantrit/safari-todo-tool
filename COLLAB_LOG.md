@@ -3,6 +3,15 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-21 — branch cleanup — Windows and MacBook standardized on `main`
+- What changed: The Windows local branch was renamed from `master` to `main`, and local `main` now
+  tracks `origin/main`. Both development machines now use the same branch and upstream.
+- Workflow going forward: On Windows and MacBook, use `git pull`, make changes, run
+  `npm.cmd run build` on Windows, then `git add`, `git commit`, and `git push`.
+- Anything the agents should know / not undo: Do not use `git push origin master:main` anymore.
+  `origin/master` may still exist remotely for historical reasons, but it is obsolete and must not
+  be used. No application or database files changed as part of this cleanup.
+
 ## 2026-06-20 — Codex — finish dashboard and sidebar density polish
 - What changed: Strengthened shared page/card/button/nav/metric/row classes in `globals.css`; rebuilt
   the sidebar footer as a readable identity, rank/XP, role and logout block; increased workspace
@@ -52,10 +61,9 @@ Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and C
   `var(--accent)` from `globals.css` instead, consistent with the Mac side's token system.
   `npm.cmd run build` passes. Pushed to both `master` and `main`.
 
-**Branch warning:** this repo is being worked on from two different machines/clones at once —
-a Windows clone (local branch `master`, pushed via `git push origin master:main`) and a Mac
-clone that tracks `main` directly with no `master` branch. Both ultimately push to `origin/main`.
-**Always `git fetch origin` and merge/rebase `origin/main` before pushing** — on 2026-06-20 the
+**Historical branch note (superseded by the 2026-06-21 cleanup above):** this repo was previously
+worked on from a Windows `master` branch and a Mac `main` branch. Both machines now use local
+`main` tracking `origin/main`; do not restore the old cross-branch push workflow. On 2026-06-20 the
 Windows side pushed 2 commits while the Mac side had pushed 15 commits directly to `main` in
 the meantime, causing a rejected push and a manual merge (commit `f471adb`) with one real
 conflict in `app/(app)/dashboard/page.tsx` (resolved in favor of the Mac side's deliberate flat
