@@ -155,18 +155,22 @@ export default function BoardView({ board, members, tasks: initialTasks, current
       )}
 
       {addingFor && (
-        <Modal open={true} onClose={() => setAddingFor(null)} title="Create task" size="xl">
-          <div>
-            <TaskForm
-              boardId={board.id}
-              memberId={addingFor.memberId}
-              section={addingFor.section}
-              members={members}
-              currentUser={currentUser}
-              onCreated={handleTaskCreate}
-              onCancel={() => setAddingFor(null)}
-            />
-          </div>
+        <Modal
+          open={true}
+          onClose={() => setAddingFor(null)}
+          title="Create task"
+          subtitle="Define the work, assign ownership, and set the delivery cadence."
+          size="2xl"
+        >
+          <TaskForm
+            boardId={board.id}
+            memberId={addingFor.memberId}
+            section={addingFor.section}
+            members={members}
+            currentUser={currentUser}
+            onCreated={handleTaskCreate}
+            onCancel={() => setAddingFor(null)}
+          />
         </Modal>
       )}
     </>

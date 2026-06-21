@@ -3,6 +3,18 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-22 - Codex - redesign create-task modal layout
+- What changed: Expanded Create Task to a dedicated `max-w-5xl` modal size with a compact subtitle
+  header, stronger header/content/footer dividers, 40px desktop content padding, a true wide-left
+  two-column grid, larger controls and textareas, 32px main-form rhythm, and a more substantial
+  assignment/automation card with aligned reminder rows and a clearly grouped recurrence frequency.
+- Why: The first refinement remained compressed, especially around labels, paired fields, the
+  automation column, and the footer at desktop widths.
+- Anything the other agent should know / not undo: Frontend presentation only. Task creation,
+  Supabase writes, schema, auth, RLS, XP, reminders, and notification behavior are unchanged.
+  `npm.cmd run build` and `git diff --check` pass. Browser screenshot QA was unavailable because
+  the in-app browser runtime could not initialize in the Windows sandbox.
+
 ## 2026-06-22 - Codex - refine layout density and create-task modal
 - What changed: Reworked the sidebar active item into an inset gold-accented pill; added a bounded
   board surface with calmer header, toolbar, column, section, and empty add-task spacing; capped the
