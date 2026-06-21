@@ -3,6 +3,19 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-22 - Codex - refine layout density and create-task modal
+- What changed: Reworked the sidebar active item into an inset gold-accented pill; added a bounded
+  board surface with calmer header, toolbar, column, section, and empty add-task spacing; capped the
+  single-member board width; widened and restructured Create Task into a spacious two-column form
+  with a dedicated assignment/automation card, aligned switches, and a separated footer. Also
+  increased shared form-control, label, and helper-text spacing.
+- Why: The functional UI remained compressed and table-like compared with the Safari Finance Tool,
+  especially on the board and in task creation.
+- Anything the other agent should know / not undo: Presentation only. No schema, migration, auth,
+  RLS, task status, XP, notification, query, or mutation logic changed. `npm.cmd run build` and
+  `git diff --check` pass. Browser screenshot QA was unavailable because the in-app browser runtime
+  could not start in the Windows sandbox.
+
 ## 2026-06-22 - Codex - premium product pages and missing admin creation flows
 - What changed: Reworked Board column sizing/empty actions, Calendar month and agenda layouts,
   Settings information architecture, Audit Log filtering/table details, and sidebar version/refresh

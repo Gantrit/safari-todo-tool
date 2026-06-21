@@ -105,13 +105,14 @@ export default function BoardView({ board, members, tasks: initialTasks, current
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full flex-col overflow-hidden">
-          <div className="flex flex-none flex-wrap items-center justify-between gap-4 border-b px-5 py-4 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+        <div className="flex h-full flex-col overflow-hidden p-4 sm:p-6 lg:p-8">
+          <div className="board-surface">
+          <div className="board-toolbar">
             <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--muted)' }}><Users size={15} /> {members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</div>
             <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
           </div>
           {members.length > 0 ? (
-          <div className={`board-columns flex-1 overflow-auto p-5 sm:p-8 ${members.length === 1 ? 'is-single' : ''}`}>
+          <div className={`board-columns board-canvas ${members.length === 1 ? 'is-single' : ''}`}>
             {members.map((member) => (
             <MemberColumn
               key={member.id}
@@ -128,6 +129,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
               <div className="app-card max-w-md p-8 text-center"><LayoutGrid className="mx-auto mb-4" size={30} style={{ color: 'var(--accent)' }} /><h2 className="text-lg font-bold">No team members on this board</h2><p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>Invite members from Settings before creating and assigning work.</p></div>
             </div>
           )}
+          </div>
         </div>
 
         <DragOverlay>
@@ -153,7 +155,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
       )}
 
       {addingFor && (
-        <Modal open={true} onClose={() => setAddingFor(null)} title="Create task" size="lg">
+        <Modal open={true} onClose={() => setAddingFor(null)} title="Create task" size="xl">
           <div>
             <TaskForm
               boardId={board.id}

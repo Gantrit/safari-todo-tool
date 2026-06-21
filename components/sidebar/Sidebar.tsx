@@ -48,12 +48,11 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={`nav-item mb-1 flex min-h-10 items-center gap-3 rounded-[8px] px-3 py-2.5 text-[13.5px] font-semibold ${active ? 'active' : ''}`}
+        className={`nav-item mb-1.5 flex min-h-11 items-center gap-3 rounded-[9px] border border-transparent px-3.5 py-2.5 text-[13.5px] font-semibold ${active ? 'active' : ''}`}
       >
-        <span style={{ opacity: active ? 1 : 0.7 }}>{icon}</span>
+        <span className="flex h-5 w-5 flex-none items-center justify-center" style={{ opacity: active ? 1 : 0.7, color: active ? 'var(--accent)' : undefined }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
         {!!badge && <span className="min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{badge}</span>}
-        {active && !badge && <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />}
       </Link>
     )
   }

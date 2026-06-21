@@ -28,11 +28,11 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
 
   return (
-    <section className="mb-6 last:mb-1">
-      <div className="flex items-center gap-2 pb-2.5">
+    <section className="mb-8 last:mb-1">
+      <div className="flex items-center gap-2 pb-3">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex min-h-8 flex-1 items-center gap-2 rounded text-left transition-opacity hover:opacity-70"
+        className="flex min-h-9 flex-1 items-center gap-2.5 rounded text-left transition-opacity hover:opacity-70"
       >
         <ChevronRight
           size={12}
@@ -56,12 +56,12 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
       </div>
 
       {!collapsed && (
-        <div ref={setNodeRef} className="mt-3 min-h-12 space-y-2.5 rounded-[10px] transition-colors" style={{ background: isOver ? 'var(--accent-dim)' : undefined }}>
+        <div ref={setNodeRef} className="mt-3 min-h-14 space-y-3 rounded-[10px] transition-colors" style={{ background: isOver ? 'var(--accent-dim)' : undefined }}>
           <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onClick={onTaskClick} />
             ))}
-            {tasks.length === 0 && <button onClick={onAddTask} className="flex min-h-12 w-full items-center gap-2 rounded-[9px] px-3 text-left text-[11px] font-semibold transition-colors hover:bg-[var(--surface3)] hover:text-[var(--text)]" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}><span className="flex h-6 w-6 items-center justify-center rounded-[6px]" style={{ background: 'var(--surface3)' }}><Plus size={12} /></span>Add task</button>}
+            {tasks.length === 0 && <button onClick={onAddTask} className="flex min-h-14 w-full items-center gap-3 rounded-[10px] border px-3.5 text-left text-[12px] font-semibold transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface3)] hover:text-[var(--text)]" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--muted)' }}><span className="flex h-7 w-7 items-center justify-center rounded-[7px]" style={{ background: 'var(--surface3)', color: 'var(--accent)' }}><Plus size={13} /></span>Add task</button>}
           </SortableContext>
         </div>
       )}

@@ -25,7 +25,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
     >
       {/* Column header */}
       <div
-        className="flex min-h-[78px] flex-shrink-0 items-center gap-3 border-b px-5"
+        className="flex min-h-[88px] flex-shrink-0 items-center gap-3.5 border-b px-5 sm:px-6"
         style={{ borderColor: 'var(--border)' }}
       >
         <div
@@ -52,7 +52,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
       </div>
 
       {/* Task sections */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+      <div className="flex-1 overflow-y-auto p-5 sm:p-6">
         {SECTIONS.map((section) => (
           <TaskSectionComp
             key={section}
