@@ -3,6 +3,19 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-21 — Codex — premium dashboard composition and sidebar footer polish
+- What changed: Refined the dashboard header rhythm; rebuilt the no-workspace setup state as a
+  structured onboarding card; increased KPI hierarchy and equal-height spacing; balanced the task
+  and notification panels with stronger empty states; gave the leaderboard more breathing room; and
+  simplified the sidebar identity, XP, role and logout footer into a cleaner account block.
+- Why: The dashboard still felt sparse and visually fragmented compared with the Safari Finance Tool.
+  This pass uses the available width more deliberately while retaining flat surfaces, restrained
+  borders and the existing shared design tokens.
+- Anything the other agent should know / not undo: Changes are presentation-only in
+  `app/(app)/dashboard/page.tsx`, `app/globals.css`, and `components/sidebar/Sidebar.tsx`. No data
+  queries, schema, migrations, auth, RLS, routing, XP, notifications or task logic changed.
+  `npm.cmd run build` passes. Not committed or pushed.
+
 ## 2026-06-21 — branch cleanup — Windows and MacBook standardized on `main`
 - What changed: The Windows local branch was renamed from `master` to `main`, and local `main` now
   tracks `origin/main`. Both development machines now use the same branch and upstream.

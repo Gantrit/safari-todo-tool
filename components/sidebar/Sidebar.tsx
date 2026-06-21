@@ -104,8 +104,8 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         </nav>
 
         {profile && (
-          <div className="flex-none border-t px-5 py-5" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-            <div className="mb-4 flex min-w-0 items-center gap-3">
+          <div className="sidebar-footer flex-none border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            <div className="flex min-w-0 items-center gap-3">
               <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{getInitials(profile.full_name || profile.email)}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-bold">{profile.full_name || 'Safari teammate'}</span>
@@ -113,16 +113,16 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
               </span>
             </div>
             {levelInfo && (
-              <div className="mb-4 rounded-[10px] border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+              <div className="sidebar-progress">
+                <div className="mb-2.5 flex items-center justify-between gap-2 text-[11px]">
                   <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>L{levelInfo.current.level} {levelInfo.current.title}</span>
                   <span className="font-bold" style={{ color: 'var(--accent)' }}>{profile.xp} XP</span>
                 </div>
                 <XPBar progress={levelInfo.progress} nextLevel={levelInfo.next?.title} />
               </div>
             )}
-            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: 'var(--muted)' }}><span>Account</span><span>{profile.role}</span></div>
-            <button onClick={handleLogout} disabled={loggingOut} className="btn btn-secondary w-full">
+            <div className="sidebar-account-meta"><span>Account</span><span>{profile.role}</span></div>
+            <button onClick={handleLogout} disabled={loggingOut} className="btn btn-secondary min-h-10 w-full">
               {loggingOut ? 'Logging out…' : 'Logout'}
             </button>
           </div>
