@@ -313,9 +313,10 @@ textarea.form-control { min-height: 108px; padding-top: 13px; padding-bottom: 13
 }
 
 .nav-item.active {
-  background: var(--surface2);
+  background: var(--accent-dim);
   color: var(--text);
-  border-color: rgba(200, 169, 106, 0.34);
+  border-color: rgba(200, 169, 106, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(200, 169, 106, 0.05);
 }
 
 .nav-item.active::before {
@@ -666,4 +667,183 @@ textarea.form-control { min-height: 108px; padding-top: 13px; padding-bottom: 13
 
 .app-table tbody tr:hover td {
   background: rgba(200, 169, 106, 0.04);
+}
+
+/* Create Task uses explicit spacing so form rhythm does not depend on utility composition. */
+.create-task-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr);
+  align-items: start;
+  column-gap: 48px;
+  padding: 44px 48px 48px;
+}
+
+.create-task-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.create-task-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.create-task-group > label,
+.create-task-group > .form-label {
+  margin: 0;
+}
+
+.create-task-control {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 16px;
+  color: var(--text);
+  background: var(--surface2);
+  font-size: 14px;
+  outline: none;
+  transition: border-color var(--ease), background var(--ease);
+}
+
+textarea.create-task-control {
+  min-height: 144px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.create-task-control:hover { border-color: var(--border-strong); }
+.create-task-control:focus { border-color: var(--accent); background: var(--surface3); }
+
+.create-task-paired {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+}
+
+.create-task-automation {
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface2);
+}
+
+.create-task-automation-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface3);
+}
+
+.create-task-automation-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 28px;
+}
+
+.create-task-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 24px 48px;
+  border-top: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+/* Board grouping and cards are explicit surfaces, not table-like rows. */
+.task-section-surface {
+  margin-bottom: 28px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(21, 29, 27, 0.62);
+}
+
+.task-section-header {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-card-stack {
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.task-card {
+  min-height: 152px;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.task-card-meta-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.task-card-title {
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.task-card-meta-bottom {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.task-add-row {
+  min-height: 48px;
+  margin-top: 2px;
+}
+
+.sidebar-brand-block {
+  min-height: 96px;
+  padding: 18px 18px 18px 20px;
+}
+
+.sidebar-brand-block a span:nth-child(2) {
+  display: inline-flex;
+  margin-top: 7px;
+  align-items: center;
+  border-radius: 5px;
+  padding: 3px 7px;
+  color: var(--text-secondary) !important;
+  background: var(--surface2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+}
+
+@media (max-width: 900px) {
+  .create-task-body { grid-template-columns: 1fr; gap: 36px; padding: 32px 28px 36px; }
+  .create-task-footer { padding: 22px 28px; }
+}
+
+@media (max-width: 640px) {
+  .create-task-body { padding: 26px 20px 30px; }
+  .create-task-paired { grid-template-columns: 1fr; }
+  .create-task-footer { flex-direction: column-reverse; padding: 20px; }
+  .create-task-footer .btn { width: 100%; }
 }

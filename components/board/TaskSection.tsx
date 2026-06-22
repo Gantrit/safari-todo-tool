@@ -28,11 +28,11 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
 
   return (
-    <section className="mb-10 last:mb-1">
-      <div className="flex items-center gap-2 pb-2">
+    <section className="task-section-surface last:mb-0">
+      <div className="task-section-header">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex min-h-10 flex-1 items-center gap-2.5 rounded-[8px] px-1 text-left transition-colors hover:bg-[var(--surface2)]"
+        className="flex min-h-10 flex-1 items-center gap-2.5 rounded-[8px] px-2 text-left transition-colors hover:bg-[var(--surface3)]"
       >
         <ChevronRight
           size={12}
@@ -56,13 +56,13 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, me
       </div>
 
       {!collapsed && (
-        <div ref={setNodeRef} className="mt-3 min-h-14 space-y-3 rounded-[11px] transition-colors" style={{ background: isOver ? 'var(--accent-dim)' : undefined }}>
+        <div ref={setNodeRef} className="task-card-stack rounded-[11px] transition-colors" style={{ background: isOver ? 'var(--accent-dim)' : undefined }}>
           <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onClick={onTaskClick} />
             ))}
-            {tasks.length === 0 && <div className="flex min-h-16 items-center justify-center rounded-[11px] border border-dashed px-4 text-center text-[11.5px]" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>No tasks in this section</div>}
-            <button onClick={onAddTask} className="flex min-h-11 w-full items-center gap-2.5 rounded-[9px] border px-3.5 text-left text-[11.5px] font-semibold transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface3)] hover:text-[var(--text)]" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--muted)' }}><span className="flex h-6 w-6 items-center justify-center rounded-[6px]" style={{ background: 'var(--surface3)', color: 'var(--accent)' }}><Plus size={12} /></span>Add task</button>
+            {tasks.length === 0 && <div className="flex min-h-20 items-center justify-center rounded-[11px] border border-dashed px-5 py-4 text-center text-[11.5px]" style={{ background: 'var(--surface)', borderColor: 'var(--border-strong)', color: 'var(--muted)' }}>No tasks in this section</div>}
+            <button onClick={onAddTask} className="task-add-row flex w-full items-center gap-2.5 rounded-[9px] border px-3.5 text-left text-[11.5px] font-semibold transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface3)] hover:text-[var(--text)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}><span className="flex h-6 w-6 items-center justify-center rounded-[6px]" style={{ background: 'var(--surface3)', color: 'var(--accent)' }}><Plus size={12} /></span>Add task</button>
           </SortableContext>
         </div>
       )}

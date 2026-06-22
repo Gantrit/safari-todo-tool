@@ -3,6 +3,20 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-23 - Codex - enforce spacious task UI and visible quest actions
+- What changed: Added dedicated Create Task layout classes with 12px label/control gaps, 28px
+  group spacing, 48px desktop columns, 44-48px body padding, and a 24px footer. Rebuilt board
+  sections as separated surfaces and task stacks as 152px-minimum cards with 14px gaps and clear
+  top/title/bottom regions. Open quests now always expose the existing Accept Quest action,
+  including for admins, and accepted quests show a disabled Accepted button. Strengthened the
+  sidebar brand/version block and active navigation pill.
+- Why: Utility-only spacing remained visually compressed in production and the quest action was
+  hidden for admin users.
+- Anything the other agent should know / not undo: Presentation and action exposure only. The
+  existing quest acceptance insert is reused unchanged; no schema, migration, auth, RLS, XP,
+  status, or notification logic changed. `npm.cmd run build` and `git diff --check` pass. Browser
+  screenshot QA remains unavailable because the in-app browser cannot initialize in this sandbox.
+
 ## 2026-06-22 - Codex - finalize Finance Tool UI alignment
 - What changed: Removed card-wide red warning borders from overdue/Notice SLA task cards in favor
   of compact semantic pills, and replaced the workspace menu's remaining hardcoded dark color with

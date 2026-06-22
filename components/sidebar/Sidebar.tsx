@@ -77,13 +77,13 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         className={`fixed inset-y-0 left-0 z-50 flex w-[256px] flex-none flex-col border-r transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
       >
-        <div className="flex min-h-[84px] items-center justify-between gap-3 border-b px-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="sidebar-brand-block flex items-center justify-between gap-3 border-b" style={{ borderColor: 'var(--border)' }}>
           <Link href="/dashboard" className="min-w-0">
-            <span className="block truncate text-[16px] font-extrabold tracking-[-0.01em]">Safari To-Dos</span>
+            <span className="block truncate text-[17px] font-extrabold tracking-[-0.015em]">Safari To-Dos</span>
             <span className="mt-1 block text-[10.5px] font-medium" style={{ color: 'var(--muted)' }}>Task Tracker · v0.2-workspace</span>
           </Link>
-          <button className="icon-button !h-8 !w-8 hidden lg:inline-flex" onClick={() => startRefresh(() => router.refresh())} aria-label="Refresh workspace data" title="Refresh workspace data"><RefreshCw className={refreshing ? 'animate-spin' : ''} size={14} /></button>
-          <button className="icon-button lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
+          <button className="icon-button !h-9 !w-9 hidden flex-none lg:inline-flex" onClick={() => startRefresh(() => router.refresh())} aria-label="Refresh workspace data" title="Refresh workspace data"><RefreshCw className={refreshing ? 'animate-spin' : ''} size={15} /></button>
+          <button className="icon-button !h-9 !w-9 flex-none lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
         </div>
 
         <div className="px-4 pt-4">

@@ -89,44 +89,44 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
     onCreated({ ...(data as Task), assignee_ids: assignedTo, checklist_items: checklistItems as any })
   }
 
-  const fieldClass = 'min-h-[52px] w-full rounded-[10px] border px-4 text-sm outline-none transition-colors hover:border-[var(--border-strong)] focus:border-[var(--accent)]'
+  const fieldClass = 'create-task-control'
   const fieldStyle = { background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }
-  const labelClass = 'mb-3 block text-[10.5px] font-bold uppercase tracking-[.1em]'
-  const groupClass = 'form-group'
+  const labelClass = 'block text-[10.5px] font-bold uppercase tracking-[.1em]'
+  const groupClass = 'create-task-group'
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="grid gap-9 px-5 py-7 sm:px-9 sm:py-9 lg:grid-cols-[minmax(0,2fr)_minmax(310px,1fr)] lg:items-start lg:gap-10 lg:px-10 lg:py-10">
-        <div className="space-y-8">
+      <div className="create-task-body">
+        <div className="create-task-main">
           <div className={groupClass}>
             <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Task title</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} required className={`${fieldClass} text-[15px] font-semibold`} style={fieldStyle} placeholder="What needs to be done?" autoFocus />
           </div>
           <div className={groupClass}>
             <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={`${fieldClass} min-h-36 resize-y py-4 leading-6`} style={fieldStyle} placeholder="Add context, expected outcome, or handoff notes." />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className={fieldClass} style={fieldStyle} placeholder="Add context, expected outcome, or handoff notes." />
           </div>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="create-task-paired">
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Priority</label><select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className={fieldClass} style={fieldStyle}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select></div>
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Deadline · Berlin</label><input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={fieldClass} style={fieldStyle} /></div>
           </div>
           <div className={groupClass}>
             <label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><ListChecks size={13} /> Checklist</label>
-            <textarea value={checklist} onChange={(e) => setChecklist(e.target.value)} rows={5} className={`${fieldClass} min-h-36 resize-y py-4 leading-6`} style={fieldStyle} placeholder={'Collect source files\nSubmit first draft\nFinal QA'} />
+            <textarea value={checklist} onChange={(e) => setChecklist(e.target.value)} rows={5} className={fieldClass} style={fieldStyle} placeholder={'Collect source files\nSubmit first draft\nFinal QA'} />
             <p className="mt-2.5 text-[11.5px] leading-5" style={{ color: 'var(--muted)' }}>One checklist item per line.</p>
           </div>
-          <div className="grid gap-6 pb-1 sm:grid-cols-2">
+          <div className="create-task-paired">
             <div className={groupClass}><label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><Link2 size={13} /> Reference link</label><input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="Drive, brief, or SOP URL" /></div>
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Labels</label><input value={labels} onChange={(e) => setLabels(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="design, review" /></div>
           </div>
         </div>
 
-        <aside className="self-start overflow-hidden rounded-[14px] border" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-          <div className="border-b px-6 py-6" style={{ borderColor: 'var(--border)', background: 'var(--surface3)' }}>
+        <aside className="create-task-automation self-start">
+          <div className="create-task-automation-header">
             <p className="text-[15px] font-bold tracking-[-.01em]">Assignment &amp; automation</p>
             <p className="mt-2 text-xs leading-5" style={{ color: 'var(--muted)' }}>Choose owners and configure deadline follow-ups.</p>
           </div>
-          <div className="space-y-7 p-6">
+          <div className="create-task-automation-body">
           <div className={groupClass}>
             <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Assignees</label>
             <div className="space-y-3">
@@ -153,7 +153,7 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       </div>
 
       {error && <div className="mx-5 mb-6 rounded-[10px] border px-4 py-3.5 text-sm sm:mx-10" style={{ background: 'var(--red-dim)', borderColor: 'rgba(255,98,98,.3)', color: 'var(--red)' }}>{error}</div>}
-      <footer className="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t px-5 py-5 sm:flex-row sm:items-center sm:justify-end sm:px-10 sm:py-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+      <footer className="create-task-footer sticky bottom-0 z-10">
         <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary sm:min-w-28">Cancel</button>
         <button type="submit" disabled={loading || !title.trim() || assignedTo.length === 0} className="btn btn-primary sm:min-w-40">{loading ? <><Loader2 className="animate-spin" size={15} /> Creating task…</> : 'Create task'}</button>
       </footer>

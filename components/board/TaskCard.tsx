@@ -40,15 +40,15 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       {...attributes}
       {...listeners}
       onClick={() => onClick(task)}
-      className="group cursor-pointer rounded-[12px] p-5 transition-[background,border-color,transform] hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--surface3)]"
+      className="task-card group cursor-pointer transition-[background,border-color,transform] hover:-translate-y-px hover:border-[var(--border-strong)] hover:bg-[var(--surface3)]"
       style={{
         ...style,
-        background: 'var(--surface2)',
+        background: 'var(--surface)',
         border: `1px solid ${task.section === 'IMMINENT' ? 'var(--border-strong)' : 'var(--border)'}`,
         boxShadow: task.section === 'IMMINENT' ? '0 0 0 1px var(--accent-dim), inset 3px 0 0 var(--accent)' : undefined,
       }}
     >
-      <div className="mb-3.5 flex flex-wrap items-center gap-1.5">
+      <div className="task-card-meta-top">
         <StatusBadge status={task.status} />
         <PriorityBadge priority={task.priority} />
       </div>
@@ -70,7 +70,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
 
       {/* Title */}
       <p
-        className="mb-4 text-[14px] font-bold leading-[1.5] tracking-[-.01em]"
+        className="task-card-title tracking-[-.01em]"
         style={{
           color: 'var(--text)',
           textDecoration: task.status === 'APPROVED' ? 'line-through' : 'none',
@@ -80,17 +80,9 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {task.title}
       </p>
 
-      {(overdue || slaMissed || task.needs_clarification) && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {overdue && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--red)', background: 'var(--red-dim)', border: '1px solid rgba(239,68,68,0.28)' }}><AlertTriangle size={10} />Overdue</span>}
-          {slaMissed && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,0.25)' }}>Notice SLA</span>}
-          {task.needs_clarification && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,0.25)' }}>Clarification</span>}
-        </div>
-      )}
-
       {/* Footer */}
-      <div className="flex min-h-8 items-center justify-between gap-3 border-t pt-3.5" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-2">
+      <div className="task-card-meta-bottom">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {deadline && (
             <span
               className="flex items-center gap-1.5 text-[11px] font-semibold"
@@ -100,8 +92,11 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
               {deadlineLabel(deadline)}
             </span>
           )}
+          {overdue && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--red)', background: 'var(--red-dim)', border: '1px solid rgba(239,68,68,0.28)' }}><AlertTriangle size={10} />Overdue</span>}
+          {slaMissed && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,0.25)' }}>Notice SLA</span>}
+          {task.needs_clarification && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,0.25)' }}>Clarification</span>}
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="ml-auto flex flex-none items-center gap-2.5">
           {(task.recurring_enabled || task.recurring_frequency) && (
             <Repeat size={10} style={{ color: 'var(--accent)' }} />
           )}
