@@ -63,7 +63,7 @@ export default function WorkspaceSwitcher({ workspaces, boards, selectedWorkspac
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[60] overflow-hidden rounded-[12px] border p-1.5 shadow-2xl" style={{ background: '#1a2018', borderColor: 'var(--border-strong)' }}>
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[60] overflow-hidden rounded-[12px] border p-1.5 shadow-2xl" style={{ background: 'var(--surface3)', borderColor: 'var(--border-strong)' }}>
           {workspaces.map((workspace) => {
             const active = workspace.id === selected.id
             return <button key={workspace.id} onClick={() => selectWorkspace(workspace)} disabled={isPending} className="flex min-h-11 w-full items-center gap-2 rounded-[8px] px-2.5 text-left text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-60"><span className="flex-1 truncate">{workspace.name}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button>

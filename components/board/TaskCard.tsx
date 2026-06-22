@@ -44,7 +44,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       style={{
         ...style,
         background: 'var(--surface2)',
-        border: `1px solid ${overdue || slaMissed ? 'rgba(255,98,98,0.45)' : task.section === 'IMMINENT' ? 'var(--border-strong)' : 'var(--border)'}`,
+        border: `1px solid ${task.section === 'IMMINENT' ? 'var(--border-strong)' : 'var(--border)'}`,
         boxShadow: task.section === 'IMMINENT' ? '0 0 0 1px var(--accent-dim), inset 3px 0 0 var(--accent)' : undefined,
       }}
     >
@@ -82,9 +82,9 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
 
       {(overdue || slaMissed || task.needs_clarification) && (
         <div className="mb-3 flex flex-wrap gap-1.5">
-          {overdue && <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold" style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.35)' }}><AlertTriangle size={10} />Overdue</span>}
-          {slaMissed && <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold" style={{ color: 'var(--red)', border: '1px solid rgba(255,98,98,0.35)' }}>Notice SLA</span>}
-          {task.needs_clarification && <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-semibold" style={{ color: 'var(--amber)', border: '1px solid rgba(243,169,79,0.35)' }}>Clarification</span>}
+          {overdue && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--red)', background: 'var(--red-dim)', border: '1px solid rgba(239,68,68,0.28)' }}><AlertTriangle size={10} />Overdue</span>}
+          {slaMissed && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,0.25)' }}>Notice SLA</span>}
+          {task.needs_clarification && <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: 'var(--amber)', background: 'var(--amber-dim)', border: '1px solid rgba(245,158,11,0.25)' }}>Clarification</span>}
         </div>
       )}
 

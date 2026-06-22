@@ -3,6 +3,16 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-06-22 - Codex - finalize Finance Tool UI alignment
+- What changed: Removed card-wide red warning borders from overdue/Notice SLA task cards in favor
+  of compact semantic pills, and replaced the workspace menu's remaining hardcoded dark color with
+  the shared Finance Tool surface token.
+- Why: Complete the premium dark UI acceptance pass while keeping task warnings readable but calm.
+- Anything the other agent should know / not undo: Presentation only; task, quest, auth, XP,
+  notification, schema, and RLS behavior is unchanged. `npm.cmd run build` and `git diff --check`
+  pass. Browser screenshot QA remained unavailable because the in-app browser could not initialize
+  in the Windows sandbox.
+
 ## 2026-06-22 - Codex - improve task detail and board polish
 - What changed: Rebuilt Task Detail as a `max-w-5xl` premium workspace with a dedicated title/badge
   header, designed description/checklist/files/comments cards, a 310px action rail, and structured
