@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
+import { Archive as ArchiveIcon, CheckCircle2 } from 'lucide-react'
 import PriorityBadge from '@/components/ui/PriorityBadge'
 
 export default async function ArchivePage() {
@@ -12,38 +13,43 @@ export default async function ArchivePage() {
     .eq('user_id', user!.id)
     .order('archived_at', { ascending: false })
 
-  return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text)' }}>
-        Archive
-      </h1>
+  const items = archive || []
 
-      <div className="space-y-2">
-        {(archive || []).length === 0 && (
-          <p style={{ color: 'var(--muted)' }}>No archived tasks yet.</p>
-        )}
-        {(archive || []).map((item: any) => (
-          <div
-            key={item.id}
-            className="flex items-center gap-4 p-4 rounded-[10px]"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-          >
-            <span className="text-base">✅</span>
-            <div className="flex-1">
-              <p
-                className="text-sm font-medium"
-                style={{ color: 'var(--text)', textDecoration: 'line-through', opacity: 0.6 }}
-              >
-                {item.task?.title}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                Archived {formatDate(item.archived_at)}
-              </p>
+  return (
+    <div className="page-shell !max-w-[860px]">
+      <header className="page-header">
+        <div>
+          <p className="page-eyebrow">Completed work</p>
+          <h1 className="page-title">Archive</h1>
+          <p className="page-description">Every approved task lands here — your track record at Safari Studios.</p>
+        </div>
+        <span className="meta-pill !min-h-10 px-4"><CheckCircle2 size={14} /> {items.length} approved</span>
+      </header>
+
+      <section className="app-card">
+        {items.length === 0 ? (
+          <div className="card-empty min-h-[280px]">
+            <div>
+              <ArchiveIcon className="mx-auto mb-4" size={28} style={{ color: 'var(--muted)' }} />
+              <h2 className="font-bold">Nothing archived yet</h2>
+              <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>Tasks appear here once an admin approves them.</p>
             </div>
-            {item.task?.priority && <PriorityBadge priority={item.task.priority} />}
           </div>
-        ))}
-      </div>
+        ) : (
+          <div>
+            {items.map((item: any) => (
+              <div key={item.id} className="flex items-center gap-4 border-b px-5 py-4 last:border-b-0 sm:px-6" style={{ borderColor: 'var(--border)' }}>
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[9px]" style={{ background: 'var(--green-dim)', color: 'var(--green)' }}><CheckCircle2 size={16} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold" style={{ color: 'var(--text)', textDecoration: 'line-through', opacity: 0.65 }}>{item.task?.title || 'Deleted task'}</p>
+                  <p className="mt-1 text-[11px]" style={{ color: 'var(--muted)' }}>Approved {formatDate(item.archived_at)}</p>
+                </div>
+                {item.task?.priority && <PriorityBadge priority={item.task.priority} />}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

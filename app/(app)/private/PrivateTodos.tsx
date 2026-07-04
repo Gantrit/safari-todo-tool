@@ -5,6 +5,7 @@ import { Task, Profile, Priority } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Plus, Check, Trash2 } from 'lucide-react'
+import { playSound } from '@/lib/gamification'
 import PriorityBadge from '@/components/ui/PriorityBadge'
 import { formatDate } from '@/lib/utils'
 
@@ -53,6 +54,7 @@ export default function PrivateTodos({ tasks: initial, profile }: PrivateTodosPr
 
   async function toggleDone(task: Task) {
     const next = task.status === 'DONE' ? 'NOTICED' : 'DONE'
+    if (next === 'DONE') playSound('done')
     await supabase.from('tasks').update({ status: next }).eq('id', task.id)
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
   }

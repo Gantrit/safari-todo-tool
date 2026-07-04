@@ -14,7 +14,20 @@ export default async function QuestsPage() {
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
-  const { data: acceptances } = await supabase.from('quest_acceptances').select('quest_id').eq('user_id', user!.id)
+  // Admins see every acceptance (for review); employees see their own (RLS enforces this)
+  const { data: acceptances } = await supabase
+    .from('quest_acceptances')
+    .select('*, profile:profiles(id, full_name, email)')
+    .order('accepted_at', { ascending: true })
 
-  return <div className="page-shell"><QuestBoard quests={(quests || []) as any} isAdmin={role === 'admin'} userId={user!.id} acceptedQuestIds={(acceptances || []).map((item) => item.quest_id)} /></div>
+  return (
+    <div className="page-shell">
+      <QuestBoard
+        quests={(quests || []) as any}
+        acceptances={(acceptances || []) as any}
+        isAdmin={role === 'admin'}
+        userId={user!.id}
+      />
+    </div>
+  )
 }

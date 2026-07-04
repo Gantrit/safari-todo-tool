@@ -60,7 +60,7 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       remind_3d: remind3d,
       remind_24h: remind24h,
       xp_awarded: false,
-      position: 0,
+      position: Math.floor(Date.now() / 1000),
       reference_url: referenceUrl.trim() || null,
       google_drive_url: referenceUrl.trim() || null,
       recurring_enabled: recurringEnabled,

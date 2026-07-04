@@ -13,8 +13,8 @@ export default function XPBar({ progress, nextLevel }: XPBarProps) {
         style={{ background: 'var(--surface2)' }}
       >
         <div
-          className="h-full rounded-full xp-bar-fill transition-all"
-          style={{ width: `${Math.min(progress, 100)}%`, background: 'var(--accent)' }}
+          className="xp-bar-live h-full rounded-full transition-all"
+          style={{ width: `${Math.min(progress, 100)}%` }}
         />
       </div>
       {nextLevel && (

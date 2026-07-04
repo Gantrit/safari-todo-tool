@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/sidebar/Sidebar'
+import LevelUpWatcher from '@/components/ui/LevelUpWatcher'
+import { getLevelInfo } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -26,6 +28,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="min-w-0 flex-1 overflow-auto pt-16 lg:pt-0">
         {children}
       </main>
+      {profile && (
+        <LevelUpWatcher
+          userId={profile.id}
+          xp={profile.xp || 0}
+          level={getLevelInfo(profile.xp || 0).current.level}
+          rank={getLevelInfo(profile.xp || 0).current.title}
+        />
+      )}
     </div>
   )
 }

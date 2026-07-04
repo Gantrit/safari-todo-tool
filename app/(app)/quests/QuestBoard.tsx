@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Check, Loader2, Plus, Trophy, Users } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Clock3, Loader2, Plus, Send, ThumbsDown, ThumbsUp, Trophy, Users, XCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { deadlineLabel } from '@/lib/utils'
+import { deadlineLabel, getInitials } from '@/lib/utils'
+import { celebrateQuestAccepted, celebrateQuestApproved, celebrateTaskDone, feedbackReject } from '@/lib/gamification'
 import Modal from '@/components/ui/Modal'
 
 type Quest = {
@@ -18,11 +19,19 @@ type Quest = {
   departments?: { name: string } | null
 }
 
-export default function QuestBoard({ quests, isAdmin, userId, acceptedQuestIds }: { quests: Quest[]; isAdmin: boolean; userId: string; acceptedQuestIds: string[] }) {
+type Acceptance = {
+  id: string
+  quest_id: string
+  user_id: string
+  status: 'ACCEPTED' | 'DONE' | 'APPROVED' | 'REJECTED'
+  profile?: { id: string; full_name: string | null; email: string } | null
+}
+
+export default function QuestBoard({ quests, acceptances, isAdmin, userId }: { quests: Quest[]; acceptances: Acceptance[]; isAdmin: boolean; userId: string }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', bonusXp: '10', deadline: '', multiple: false })
   const [saving, setSaving] = useState(false)
-  const [accepting, setAccepting] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -50,13 +59,28 @@ export default function QuestBoard({ quests, isAdmin, userId, acceptedQuestIds }
     router.refresh()
   }
 
-  async function acceptQuest(questId: string) {
-    setAccepting(questId)
-    const { error: acceptError } = await supabase.from('quest_acceptances').insert({ quest_id: questId, user_id: userId })
-    if (acceptError) setError(acceptError.message)
-    setAccepting(null)
+  async function run(key: string, action: () => PromiseLike<{ error: { message: string } | null }>, onSuccess?: () => void) {
+    setBusy(key)
+    setError(null)
+    const { error: rpcError } = await action()
+    if (rpcError) setError(rpcError.message)
+    else onSuccess?.()
+    setBusy(null)
     router.refresh()
   }
+
+  const acceptQuest = (quest: Quest) =>
+    run(`accept:${quest.id}`, () => supabase.rpc('accept_quest', { p_quest_id: quest.id }), celebrateQuestAccepted)
+
+  const submitQuest = (quest: Quest) =>
+    run(`submit:${quest.id}`, () => supabase.rpc('submit_quest', { p_quest_id: quest.id }), celebrateTaskDone)
+
+  const reviewQuest = (quest: Quest, acceptance: Acceptance, approve: boolean) =>
+    run(
+      `review:${acceptance.id}:${approve}`,
+      () => supabase.rpc('review_quest', { p_quest_id: quest.id, p_user_id: acceptance.user_id, p_approve: approve }),
+      () => (approve ? celebrateQuestApproved(quest.bonus_xp) : feedbackReject())
+    )
 
   return (
     <>
@@ -74,8 +98,12 @@ export default function QuestBoard({ quests, isAdmin, userId, acceptedQuestIds }
       {quests.length ? (
         <div className="grid gap-6 md:grid-cols-2">
           {quests.map((quest) => {
-            const accepted = acceptedQuestIds.includes(quest.id)
-            const isOpen = quest.status === 'OPEN'
+            const questAcceptances = acceptances.filter((a) => a.quest_id === quest.id)
+            const mine = questAcceptances.find((a) => a.user_id === userId)
+            const pendingReview = questAcceptances.filter((a) => a.status === 'DONE')
+            const questClosed = ['APPROVED', 'REJECTED'].includes(quest.status)
+            const canAccept = !mine && !questClosed && (quest.allow_multiple_accepts || questAcceptances.length === 0)
+
             return (
               <article key={quest.id} className="app-card flex min-h-[290px] flex-col p-7">
                 <div className="mb-6 flex items-start gap-4">
@@ -100,17 +128,57 @@ export default function QuestBoard({ quests, isAdmin, userId, acceptedQuestIds }
                   </div>
                 </div>
 
+                {/* Admin review queue */}
+                {isAdmin && pendingReview.length > 0 && (
+                  <div className="mb-5 space-y-2.5 rounded-[10px] border p-4" style={{ borderColor: 'rgba(200,169,106,.35)', background: 'var(--accent-dim)' }}>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--accent)' }}>Awaiting review</p>
+                    {pendingReview.map((acceptance) => {
+                      const name = acceptance.profile?.full_name || acceptance.profile?.email || 'Teammate'
+                      return (
+                        <div key={acceptance.id} className="flex items-center gap-3">
+                          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[9px] font-extrabold" style={{ background: 'var(--surface3)', color: 'var(--text)' }}>{getInitials(name)}</span>
+                          <span className="min-w-0 flex-1 truncate text-xs font-semibold">{name}</span>
+                          <button onClick={() => reviewQuest(quest, acceptance, true)} disabled={busy !== null} className="btn !min-h-8 !px-3 text-xs" style={{ background: 'var(--green)', color: '#071007', border: 'none' }}>
+                            {busy === `review:${acceptance.id}:true` ? <Loader2 className="animate-spin" size={12} /> : <ThumbsUp size={12} />} Approve
+                          </button>
+                          <button onClick={() => reviewQuest(quest, acceptance, false)} disabled={busy !== null} className="btn btn-secondary !min-h-8 !px-3 text-xs hover:!text-[var(--red)]">
+                            {busy === `review:${acceptance.id}:false` ? <Loader2 className="animate-spin" size={12} /> : <ThumbsDown size={12} />}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t pt-5" style={{ borderColor: 'var(--border)' }}>
-                  <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--muted)' }}><Users size={13} />{quest.allow_multiple_accepts ? 'Open to multiple people' : 'Single acceptance'}</span>
-                  {isOpen && (
-                    <button
-                      onClick={() => !accepted && acceptQuest(quest.id)}
-                      disabled={accepted || accepting === quest.id}
-                      className={`btn min-h-11 min-w-[138px] ${accepted ? 'btn-secondary' : 'btn-primary'}`}
-                    >
-                      {accepting === quest.id ? <Loader2 className="animate-spin" size={15} /> : accepted ? <Check size={15} /> : <Trophy size={15} />}
-                      {accepted ? 'Accepted' : 'Accept Quest'}
+                  <span className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--muted)' }}>
+                    <Users size={13} />
+                    {quest.allow_multiple_accepts ? 'Open to multiple people' : 'Single acceptance'}
+                    {questAcceptances.length > 0 && ` · ${questAcceptances.length} accepted`}
+                  </span>
+
+                  {/* Employee lifecycle actions */}
+                  {!mine && canAccept && (
+                    <button onClick={() => acceptQuest(quest)} disabled={busy !== null} className="btn btn-primary min-h-11 min-w-[138px]">
+                      {busy === `accept:${quest.id}` ? <Loader2 className="animate-spin" size={15} /> : <Trophy size={15} />} Accept Quest
                     </button>
+                  )}
+                  {!mine && !canAccept && !questClosed && !isAdmin && (
+                    <span className="meta-pill"><Clock3 size={12} /> Already taken</span>
+                  )}
+                  {mine?.status === 'ACCEPTED' && (
+                    <button onClick={() => submitQuest(quest)} disabled={busy !== null} className="btn btn-primary min-h-11 min-w-[150px]">
+                      {busy === `submit:${quest.id}` ? <Loader2 className="animate-spin" size={15} /> : <Send size={14} />} Mark as done
+                    </button>
+                  )}
+                  {mine?.status === 'DONE' && (
+                    <span className="meta-pill" style={{ color: 'var(--amber)' }}><Clock3 size={12} /> Waiting for review</span>
+                  )}
+                  {mine?.status === 'APPROVED' && (
+                    <span className="meta-pill" style={{ color: 'var(--green)' }}><CheckCircle2 size={13} /> +{quest.bonus_xp} XP earned</span>
+                  )}
+                  {mine?.status === 'REJECTED' && (
+                    <span className="meta-pill" style={{ color: 'var(--red)' }}><XCircle size={13} /> Not approved</span>
                   )}
                 </div>
               </article>

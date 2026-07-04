@@ -72,16 +72,34 @@ export default function BoardView({ board, members, tasks: initialTasks, current
 
     const activeIdx = tasks.findIndex((t) => t.id === active.id)
     const overIdx = tasks.findIndex((t) => t.id === over.id)
-    const newTasks = arrayMove(tasks, activeIdx, overIdx)
+    const movedCrossColumn = activeTask.assigned_to !== overTask.assigned_to || activeTask.section !== overTask.section
+
+    const newTasks = arrayMove(
+      movedCrossColumn
+        ? tasks.map((t) => (t.id === active.id ? { ...t, assigned_to: overTask.assigned_to, assignee_ids: [overTask.assigned_to].filter(Boolean) as string[], section: overTask.section } : t))
+        : tasks,
+      activeIdx,
+      overIdx
+    )
     setTasks(newTasks)
 
-    // If dropping on different member's column, reassign
-    if (activeTask.assigned_to !== overTask.assigned_to) {
-      await supabase.from('tasks').update({
-        assigned_to: overTask.assigned_to,
-        section: overTask.section,
-      }).eq('id', active.id)
-    }
+    // Persist new order within the target member+section so it survives reloads
+    const targetMemberId = overTask.assigned_to
+    const targetSection = overTask.section
+    const orderedIds = newTasks
+      .filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(targetMemberId!) && t.section === targetSection && !t.deleted_at)
+      .map((t) => t.id)
+
+    const updates = orderedIds.map((id, index) => {
+      const patch: Record<string, unknown> = { position: index }
+      if (id === active.id && movedCrossColumn) {
+        patch.assigned_to = targetMemberId
+        patch.assignee_ids = [targetMemberId].filter(Boolean)
+        patch.section = targetSection
+      }
+      return supabase.from('tasks').update(patch).eq('id', id)
+    })
+    await Promise.all(updates)
   }
 
   const handleTaskUpdate = useCallback((updatedTask: Task) => {

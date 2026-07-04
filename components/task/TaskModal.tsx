@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { calculateApprovalXp, Task, TaskStatus, Profile } from '@/lib/types'
+import { Task, TaskStatus, Profile } from '@/lib/types'
+import { celebrateApproval, celebrateTaskDone, feedbackReject, playSound } from '@/lib/gamification'
 import Modal from '../ui/Modal'
 import StatusBadge from '../ui/StatusBadge'
 import PriorityBadge from '../ui/PriorityBadge'
@@ -60,6 +61,8 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
       .single()
 
     if (!error && data) {
+      if (next === 'DONE') celebrateTaskDone()
+      else playSound('click')
       onUpdate(data as Task)
     }
     setUpdating(false)
@@ -70,31 +73,35 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
     if (next) await updateStatus(next)
   }
 
-  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT', qualityPenalty = false) {
-    setUpdating(true)
-    const patch: Record<string, unknown> = { status: next, needs_clarification: false }
-    if (next === 'APPROVED') patch.approved_at = new Date().toISOString()
-    if (next === 'REJECTED') patch.rejected_at = new Date().toISOString()
-
+  async function refetchTask(): Promise<Task | null> {
     const { data } = await supabase
       .from('tasks')
-      .update(patch)
-      .eq('id', task.id)
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
+      .eq('id', task.id)
       .single()
+    return (data as Task) || null
+  }
 
-    if (data && next === 'APPROVED' && !task.xp_awarded) {
-      const xp = calculateApprovalXp(task)
-      await Promise.all(assigneeIds.map((userId) => supabase.rpc('award_xp', { p_user_id: userId, p_amount: xp, p_reason: 'Task approved', p_task_id: task.id })))
-      await supabase.from('tasks').update({ xp_awarded: true }).eq('id', task.id)
-      await supabase.from('archive').insert(assigneeIds.map((userId) => ({ task_id: task.id, user_id: userId })))
+  // Approval, rejection, and reopening run through SECURITY DEFINER RPCs so the
+  // XP math, archive entries, and notifications happen atomically server-side.
+  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT', qualityPenalty = false) {
+    setUpdating(true)
+
+    if (next === 'APPROVED') {
+      const { data: result, error } = await supabase.rpc('approve_task', { p_task_id: task.id })
+      if (!error) {
+        const xp = typeof result?.xp_per_assignee === 'number' ? result.xp_per_assignee : undefined
+        celebrateApproval(xp)
+      }
+    } else if (next === 'REJECTED') {
+      const { error } = await supabase.rpc('reject_task', { p_task_id: task.id, p_quality_penalty: qualityPenalty })
+      if (!error) feedbackReject()
+    } else {
+      await supabase.rpc('reopen_task', { p_task_id: task.id })
     }
 
-    if (data && next === 'REJECTED' && qualityPenalty) {
-      await Promise.all(assigneeIds.map((userId) => supabase.rpc('award_xp', { p_user_id: userId, p_amount: -5, p_reason: 'Quality issue on rejected task', p_task_id: task.id })))
-    }
-
-    if (data) onUpdate(data as Task)
+    const fresh = await refetchTask()
+    if (fresh) onUpdate(fresh)
     setUpdating(false)
   }
 

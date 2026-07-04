@@ -40,16 +40,20 @@ NOTICED → IN_EDIT → DONE → APPROVED
 - `DONE → APPROVED` can only be set by an **admin**. On approval the task is struck through and
   moved to that user's Archive, and XP is awarded.
 
-**XP / level system** — cumulative, never resets:
-| Priority | XP on APPROVED | XP penalty on missed deadline |
+**XP / level system** — cumulative, never resets. Awarded ONLY server-side via the
+`approve_task` / `review_quest` RPCs (migration 007); never write XP from the client.
+| Priority | XP on APPROVED | Overdue penalty (applied on admin review) |
 |---|---|---|
-| LOW | +5 | -10 |
-| MEDIUM | +10 | -20 |
-| HIGH | +20 | -40 |
+| LOW | +5 | -5 |
+| MEDIUM | +10 | -10 |
+| HIGH | +20 | -20 |
 
-Levels: 1 Rookie (0xp) → 2 Active (100xp) → 3 Consistent (250xp) → 4 Reliable (500xp) →
-5 Elite (1000xp). Logic lives in [`lib/types.ts`](lib/types.ts) (`XP_VALUES`, `XP_PENALTY`,
-`LEVEL_THRESHOLDS`, `getLevelInfo`).
+Bonuses: +10 if section is IMMINENT (penalty likewise -10 extra when overdue), +1 XP per full
+day early (max +10, measured against `completed_at`), streak +1 XP/day (max +10). Rejected with
+quality flag: -5 XP. Levels: 100 XP per level. Ranks: 1-4 Rookie, 5-9 Reliable, 10-19 Executor,
+20-34 High Performer, 35-49 Elite, 50+ Safari Legend. Logic lives in
+[`lib/types.ts`](lib/types.ts) (`getLevelInfo`, `getRankForLevel`) and
+`supabase/migrations/007_security_and_gameplay.sql` (`approve_task`).
 
 **Other features**: comments + emoji reactions on tasks, subtasks, attachments (incl. Google
 Drive URL per task), in-app notifications + browser notifications + email (assignment, result

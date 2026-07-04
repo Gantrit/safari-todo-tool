@@ -8,6 +8,7 @@ export default async function CalendarPage() {
   const { data: tasks } = await supabase
     .from('tasks')
     .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*)')
+    .is('deleted_at', null)
     .neq('status', 'APPROVED')
     .order('deadline_at', { ascending: true })
 

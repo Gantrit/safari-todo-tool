@@ -13,11 +13,7 @@ export default function MarkAllRead({ userId }: { userId: string }) {
   }
 
   return (
-    <button
-      onClick={markAll}
-      className="text-sm hover:opacity-70 transition-opacity"
-      style={{ color: 'var(--muted)' }}
-    >
+    <button onClick={markAll} className="btn btn-secondary">
       Mark all read
     </button>
   )

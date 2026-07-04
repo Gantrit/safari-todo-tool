@@ -3,6 +3,46 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-04 - Claude (Fable) - security hardening, gameplay engine, quest lifecycle, page polish
+- What changed:
+  1. **NEW MIGRATION `007_security_and_gameplay.sql` — must be run in the Supabase SQL editor.**
+     Locks down `award_xp`/`create_notification`/`seed_demo_workspace` (were callable by ANY
+     authenticated user → unlimited self-XP). Adds a status-transition trigger (non-admins can no
+     longer set APPROVED/REJECTED directly — self-approval was possible via raw update). Adds
+     SECURITY DEFINER RPCs `approve_task`, `reject_task`, `reopen_task` (atomic XP math: early
+     bonus now based on `completed_at` not approval time, streak bonus, overdue penalty per spec,
+     row-locked against double awards, archive rows, approve/reject notifications). Adds quest
+     lifecycle RPCs `accept_quest` (enforces `allow_multiple_accepts`), `submit_quest`,
+     `review_quest` (pays out bonus XP — quests previously NEVER paid XP). Fixes archive RLS
+     (admin inserts were silently blocked → archive was always empty). Fixes SLA cron duplicate
+     notifications.
+  2. `/api/invite` now requires an authenticated admin (was completely unauthenticated while
+     using the service-role key) and assigns role `employee` instead of legacy `user`.
+  3. TaskModal approve/reject/reopen now call the new RPCs instead of client-side XP writes.
+     QuestBoard rebuilt with the full lifecycle (accept → mark done → admin review queue → XP).
+  4. Drag & drop now persists card order (`position`) and keeps `assignee_ids` in sync on
+     cross-column drops (order was lost on reload before). New tasks get creation-time positions.
+  5. Dashboard "My tasks" + Calendar now exclude soft-deleted tasks.
+  6. New `lib/gamification.ts`: Web-Audio synth sounds (approve chime, quest fanfare, level-up,
+     XP coin, reject) + confetti bursts + XP toasts + level-up overlay; `LevelUpWatcher` in the
+     app layout celebrates level-ups/XP gains for the assignee on next page view. Buttons got
+     springy press/hover physics; XP bars shimmer; leaderboard has medals + per-member progress.
+     `--purple` token fixed (was a duplicate of blue).
+  7. Notifications, Archive, Private, and Login pages migrated to the page-shell/app-card design
+     system (they were still on the old Syne-font prototype look).
+- Why: User (Tan) explicitly asked Fable to polish/finish the app, fix real bugs, and make the
+  XP system playful with animations and sounds. Full-code audit found the security holes above.
+- Anything the other agent should know / not undo:
+  * **Run migration 007 in Supabase before relying on approve/reject/quests in production.**
+    Until it runs, TaskModal approve/reject will fail (RPCs don't exist yet) — the old
+    client-side XP path was removed deliberately because it was insecure.
+  * Do NOT reintroduce direct `award_xp` RPC calls or client-side `status: 'APPROVED'` updates —
+    the DB now rejects them by design.
+  * AGENTS.md XP table was stale (old 5-level spec); `lib/types.ts` + migration 007 implement the
+    current spec (100 XP/level, Rookie→Safari Legend ranks).
+  * `npm.cmd run build` passes. Local browser QA impossible: `.env.local` only has placeholder
+    Supabase values (real ones are in Vercel).
+
 ## 2026-06-23 - Codex - enforce spacious task UI and visible quest actions
 - What changed: Added dedicated Create Task layout classes with 12px label/control gaps, 28px
   group spacing, 48px desktop columns, 44-48px body padding, and a 24px footer. Rebuilt board

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Loader2, Mail, ShieldCheck } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -61,113 +62,94 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <div className="w-full max-w-sm p-8 rounded-[10px]" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+    <div className="flex min-h-screen items-center justify-center px-4" style={{ background: 'radial-gradient(90% 70% at 50% 0%, rgba(200,169,106,0.06), transparent 60%), var(--bg)' }}>
+      <div className="w-full max-w-[400px]">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--accent)' }}>
-            Safari To-Dos
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--muted)' }}>Sign in to your workspace</p>
+          <span className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-[13px] text-lg font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>S</span>
+          <h1 className="text-[26px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--text)' }}>Safari To-Dos</h1>
+          <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>Sign in to your workspace</p>
         </div>
 
-        {sent ? (
-          <div className="text-center">
-            <div className="text-4xl mb-4">📬</div>
-            <p style={{ color: 'var(--text)' }}>Check your email for the magic link.</p>
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-2 mb-6">
-              <button
-                onClick={() => setMode('login')}
-                className="flex-1 py-2 text-sm rounded-md transition-all"
-                style={{
-                  background: mode === 'login' ? 'var(--surface2)' : 'transparent',
-                  color: mode === 'login' ? 'var(--text)' : 'var(--muted)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                Password
-              </button>
-              <button
-                onClick={() => setMode('magic')}
-                className="flex-1 py-2 text-sm rounded-md transition-all"
-                style={{
-                  background: mode === 'magic' ? 'var(--surface2)' : 'transparent',
-                  color: mode === 'magic' ? 'var(--text)' : 'var(--muted)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                Magic Link
-              </button>
+        <div className="app-card p-7 sm:p-8">
+          {sent ? (
+            <div className="py-6 text-center">
+              <Mail className="mx-auto mb-4" size={30} style={{ color: 'var(--accent)' }} />
+              <h2 className="font-bold" style={{ color: 'var(--text)' }}>Check your inbox</h2>
+              <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>We sent a magic link to <strong style={{ color: 'var(--text-secondary)' }}>{email}</strong>.</p>
             </div>
-
-            <form onSubmit={mode === 'login' ? handleLogin : handleMagicLink} className="space-y-4">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--muted)' }}>EMAIL</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-md text-sm outline-none"
-                  style={{
-                    background: 'var(--surface2)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text)',
-                  }}
-                  placeholder="you@example.com"
-                />
+          ) : (
+            <>
+              <div className="mb-6 grid grid-cols-2 gap-1 rounded-[9px] border p-1" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
+                {(['login', 'magic'] as const).map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => { setMode(value); setError(null) }}
+                    className="min-h-9 rounded-[7px] text-[12.5px] font-bold transition-colors"
+                    style={{
+                      background: mode === value ? 'var(--surface3)' : 'transparent',
+                      color: mode === value ? 'var(--text)' : 'var(--muted)',
+                      border: mode === value ? '1px solid var(--border-strong)' : '1px solid transparent',
+                    }}
+                  >
+                    {value === 'login' ? 'Password' : 'Magic Link'}
+                  </button>
+                ))}
               </div>
 
-              {mode === 'login' && (
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: 'var(--muted)' }}>PASSWORD</label>
+              <form onSubmit={mode === 'login' ? handleLogin : handleMagicLink} className="space-y-5">
+                <label className="block">
+                  <span className="form-label">Email</span>
                   <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-3 py-2 rounded-md text-sm outline-none"
-                    style={{
-                      background: 'var(--surface2)',
-                      border: '1px solid var(--border)',
-                      color: 'var(--text)',
-                    }}
-                    placeholder="••••••••"
+                    className="form-control"
+                    placeholder="you@safarixstudios.com"
+                    autoFocus
                   />
-                </div>
-              )}
+                </label>
 
-              {error && (
-                <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>
-              )}
-              {resetSent && (
-                <p className="text-sm" style={{ color: 'var(--green)' }}>Password reset email sent.</p>
-              )}
+                {mode === 'login' && (
+                  <label className="block">
+                    <span className="form-label">Password</span>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="form-control"
+                      placeholder="••••••••"
+                    />
+                  </label>
+                )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 text-sm font-semibold rounded-md transition-opacity disabled:opacity-50"
-                style={{ background: 'var(--accent)', color: '#0e0e0e' }}
-              >
-                {loading ? 'Loading...' : mode === 'login' ? 'Sign In' : 'Send Magic Link'}
-              </button>
-              {mode === 'login' && (
-                <button
-                  type="button"
-                  onClick={handlePasswordReset}
-                  disabled={loading}
-                  className="w-full py-2 text-sm transition-opacity disabled:opacity-50"
-                  style={{ color: 'var(--muted)' }}
-                >
-                  Reset password
+                {error && <p className="rounded-[9px] border px-3.5 py-2.5 text-sm" style={{ background: 'var(--red-dim)', borderColor: 'rgba(239,68,68,.3)', color: 'var(--red)' }}>{error}</p>}
+                {resetSent && <p className="rounded-[9px] border px-3.5 py-2.5 text-sm" style={{ background: 'var(--green-dim)', borderColor: 'rgba(34,197,94,.3)', color: 'var(--green)' }}>Password reset email sent.</p>}
+
+                <button type="submit" disabled={loading} className="btn btn-primary min-h-12 w-full">
+                  {loading ? <Loader2 className="animate-spin" size={15} /> : null}
+                  {loading ? 'Signing in…' : mode === 'login' ? 'Sign in' : 'Send magic link'}
                 </button>
-              )}
-            </form>
-          </>
-        )}
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    disabled={loading}
+                    className="w-full py-1 text-center text-xs font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+                    style={{ color: 'var(--muted)' }}
+                  >
+                    Forgot password? Send reset email
+                  </button>
+                )}
+              </form>
+            </>
+          )}
+        </div>
+
+        <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-[11px]" style={{ color: 'var(--muted)' }}>
+          <ShieldCheck size={12} /> Invite-only workspace · ask an admin for access
+        </p>
       </div>
     </div>
   )

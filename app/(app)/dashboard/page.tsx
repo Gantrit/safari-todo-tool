@@ -11,7 +11,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [{ data: profile }, { data: leaderboard }, { data: myTasks }, { data: allOpenTasks }, { data: boards }, { data: workspaces }, { data: notifications }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
     supabase.from('profiles').select('id, full_name, email, xp, level').order('xp', { ascending: false }).limit(10),
-    supabase.from('tasks').select('*').eq('assigned_to', user!.id).neq('status', 'APPROVED').order('deadline_at', { ascending: true, nullsFirst: false }).limit(8),
+    supabase.from('tasks').select('*').eq('assigned_to', user!.id).is('deleted_at', null).neq('status', 'APPROVED').order('deadline_at', { ascending: true, nullsFirst: false }).limit(8),
     supabase.from('tasks').select('id, title, status, priority, section, deadline_at, due_date, assigned_to').is('deleted_at', null).neq('status', 'APPROVED').limit(100),
     supabase.from('boards').select('*').eq('type', 'kanban').order('created_at', { ascending: true }),
     supabase.from('workspaces').select('id, name').order('created_at', { ascending: true }),
@@ -58,12 +58,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <section className="dashboard-metrics grid md:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card dashboard-kpi">
+        <article className="app-card dashboard-kpi xp-hero">
           <div className="flex items-center justify-between gap-2"><span className="metric-label">Your progress</span><Gauge size={16} style={{ color: 'var(--muted)' }} /></div>
           <div>
-            <div className="mb-4 flex items-end gap-2.5"><strong className="metric-value">{profile?.xp || 0}</strong><span className="pb-0.5 text-xs font-semibold" style={{ color: 'var(--accent)' }}>XP</span></div>
-            <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="h-full rounded-full" style={{ width: `${levelInfo.progress}%`, background: 'var(--accent)' }} /></div>
-            <p className="metric-description mt-3">Level {levelInfo.current.level} · {levelInfo.current.title}{levelInfo.next ? ` · ${levelInfo.next.title} next` : ''}</p>
+            <div className="mb-2 flex items-end justify-between gap-2.5">
+              <div className="flex items-end gap-2.5"><strong className="metric-value" style={{ color: 'var(--accent)' }}>{profile?.xp || 0}</strong><span className="pb-0.5 text-xs font-semibold" style={{ color: 'var(--accent)' }}>XP</span></div>
+              <span className="xp-rank-badge">{levelInfo.current.title}</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><div className="xp-bar-live h-full rounded-full" style={{ width: `${Math.min(levelInfo.progress, 100)}%` }} /></div>
+            <p className="metric-description mt-3 flex items-center justify-between gap-2">
+              <span>Level {levelInfo.current.level}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{Math.max(0, levelInfo.next.min - (profile?.xp || 0))} XP to Level {levelInfo.next.level}</span>
+            </p>
           </div>
         </article>
         {metrics.map((metric) => <article key={metric.label} className="app-card dashboard-kpi"><div className="flex items-center justify-between gap-2"><span className="metric-label">{metric.label}</span><span style={{ color: 'var(--muted)' }}>{metric.icon}</span></div><div><strong className="metric-value" style={{ color: metric.tone }}>{metric.value}</strong><p className="metric-description mt-4">{metric.detail}</p></div></article>)}
@@ -85,7 +91,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <section className="app-card dashboard-leaderboard">
         <div className="card-header !justify-start"><Trophy size={19} style={{ color: 'var(--accent)' }} /><div><h2 className="text-[15px] font-bold">Team leaderboard</h2><p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>Cumulative XP across Safari Studios</p></div></div>
         {leaderboard?.length ? (
-          <div>{leaderboard.map((member, index) => { const info = getLevelInfo(member.xp); const isMe = member.id === user!.id; return <div key={member.id} className="dashboard-row flex items-center gap-4" style={{ background: isMe ? 'var(--accent-dim)' : undefined }}><span className="w-7 text-center text-xs font-extrabold" style={{ color: index < 3 ? 'var(--accent)' : 'var(--muted)' }}>#{index + 1}</span><span className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)' }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-bold">{member.full_name || member.email}{isMe && <em className="ml-2 rounded px-1.5 py-0.5 text-[9px] not-italic uppercase tracking-wider" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>you</em>}</span><span className="mt-0.5 block text-[11px]" style={{ color: 'var(--muted)' }}>Level {info.current.level} · {info.current.title}</span></span><strong className="text-sm" style={{ color: 'var(--accent)' }}>{member.xp} XP</strong></div>})}</div>
+          <div>{leaderboard.map((member, index) => { const info = getLevelInfo(member.xp); const isMe = member.id === user!.id; const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null; return <div key={member.id} className="dashboard-row flex items-center gap-4" style={{ background: isMe ? 'var(--accent-dim)' : undefined }}><span className="w-7 text-center text-xs font-extrabold" style={{ color: index < 3 ? 'var(--accent)' : 'var(--muted)' }}>{medal || `#${index + 1}`}</span><span className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)', boxShadow: index === 0 ? '0 0 0 2px rgba(200,169,106,.45)' : undefined }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-bold">{member.full_name || member.email}{isMe && <em className="ml-2 rounded px-1.5 py-0.5 text-[9px] not-italic uppercase tracking-wider" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>you</em>}</span><span className="mt-1 flex items-center gap-2"><span className="h-1 w-24 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><span className="block h-full rounded-full" style={{ width: `${Math.min(info.progress, 100)}%`, background: 'var(--accent)' }} /></span><span className="text-[11px]" style={{ color: 'var(--muted)' }}>Lvl {info.current.level} · {info.current.title}</span></span></span><strong className="text-sm" style={{ color: 'var(--accent)' }}>{member.xp} XP</strong></div>})}</div>
         ) : (
           <div className="card-empty"><p className="text-sm" style={{ color: 'var(--muted)' }}>No XP earned yet. Approved tasks will show up here.</p></div>
         )}
