@@ -3,6 +3,35 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 branch, Phase 1: visual polish
+- Context: User (Tan) commissioned a full 4-phase UI/UX + feature redesign. **This work is on a new
+  branch `redesign-2026`, not `main`.** Deliberate, user-approved deviation from the usual
+  "Codex builds / Claude reviews" split — for this engagement Claude does the whole rebuild.
+- What changed (Phase 1 = pure visual polish, NO logic/data/rights/view changes):
+  1. `app/globals.css` token overhaul. Warmed the dark ramp (olive-charcoal, 6 elevation steps
+     `--surface`…`--surface4`) away from flat green-black; warm ivory text; kept gold `#C8A96A`.
+     Added `--shadow-sm/md/lg/accent`, `--hairline-top`, a 4pt `--space-*` scale, softer radii,
+     and slightly warmer/desaturated semantic colors (meaning preserved). Cards now have real
+     elevation (`--shadow-md` + inset hairline) instead of flat borders.
+  2. Typography: introduced **Fraunces** (warm display serif) via `--font-display`, applied ONLY
+     to `.page-title` + `.metric-value` (big statement moments); Manrope stays for all UI/body.
+     Note: this is NOT the old Syne prototype — Fraunces is a deliberate warm/edel choice.
+  3. Recurring motif: gold hairline rule on `.card-header::before` + `.page-eyebrow::before` tick
+     (echoes the active nav indicator), plus a unified `.icon-chip` treatment for standalone icons.
+  4. Dashboard hierarchy: new `.attention-banner` (overdue dominates, else admin review); overdue
+     KPI card + "My tasks" overdue rows get red emphasis; non-urgent rows recede. Presentational
+     only — reads existing `overdueTasks`/`pendingApproval`.
+  5. Empty/Loading/Error states: new reusable `components/ui/{EmptyState,Skeleton,ErrorState}.tsx`,
+     branded skeleton in `app/(app)/loading.tsx`, new `app/(app)/error.tsx` boundary. Dashboard
+     empties migrated to `EmptyState`. Added `prefers-reduced-motion` guard.
+- Why: User wants warm/edel dark theme with real visual hierarchy; ui-ux-pro-max consulted (CSVs)
+  for luxury palette + Fraunces/Manrope pairing direction.
+- Anything the other agent should know / not undo:
+  * All design tokens live centrally in `app/globals.css` `:root` — theme via tokens, not per-file hex.
+  * `.env.local` is placeholders only on this machine, so the app can't be run/screenshotted here;
+    visual verification was done via a token-accurate static preview, not the live app.
+  * Phases 2–4 (collapsible task rows, view switcher, rights UI, role-model cleanup) still pending.
+
 ## 2026-07-04 - Claude (Fable) - security hardening, gameplay engine, quest lifecycle, page polish
 - What changed:
   1. **NEW MIGRATION `007_security_and_gameplay.sql` — must be run in the Supabase SQL editor.**
