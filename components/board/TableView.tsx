@@ -64,7 +64,7 @@ export default function TableView({ tasks, members, currentUser, onTaskClick, on
         <div className="flex flex-col gap-2">
           <SortableContext items={sorted.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             {sorted.map((task) => (
-              <TaskCard key={task.id} task={task} onClick={onTaskClick} currentUser={currentUser} onDelete={onDelete} showAssignee />
+              <TaskCard key={task.id} task={task} onClick={onTaskClick} currentUser={currentUser} onDelete={onDelete} showAssignee draggable={false} />
             ))}
           </SortableContext>
         </div>

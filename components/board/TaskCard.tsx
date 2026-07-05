@@ -16,9 +16,10 @@ interface TaskCardProps {
   currentUser: Profile
   onDelete: (task: Task) => void
   showAssignee?: boolean
+  draggable?: boolean
 }
 
-export default function TaskCard({ task, onClick, currentUser, onDelete, showAssignee = false }: TaskCardProps) {
+export default function TaskCard({ task, onClick, currentUser, onDelete, showAssignee = false, draggable = true }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
 
@@ -48,14 +49,14 @@ export default function TaskCard({ task, onClick, currentUser, onDelete, showAss
       className={`task-row group ${expanded ? 'is-open' : ''} ${isImminent ? 'is-imminent' : ''} ${task.status === 'APPROVED' ? 'is-done' : ''}`}
     >
       <div className="task-row-head">
-        {/* Colour bar = combined status/priority, also the drag handle */}
+        {/* Colour bar = combined status/priority; also the drag handle when draggable */}
         <span
-          {...attributes}
-          {...listeners}
+          {...(draggable ? attributes : {})}
+          {...(draggable ? listeners : {})}
           className="task-row-bar"
-          style={{ background: barColor }}
-          aria-label="Drag task"
-          title="Drag to move"
+          style={{ background: barColor, cursor: draggable ? undefined : 'default' }}
+          aria-label={draggable ? 'Drag task' : undefined}
+          title={draggable ? 'Drag to move' : undefined}
         />
 
         <button
