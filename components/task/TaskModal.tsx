@@ -195,10 +195,10 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             </section>
           </main>
 
-          <aside className="px-5 py-7 sm:px-7 sm:py-8" style={{ background: 'var(--surface2)' }}>
-            <div className="space-y-6 lg:sticky lg:top-0">
+          <aside className="px-5 py-7 sm:px-8 sm:py-8" style={{ background: 'var(--surface2)' }}>
+            <div className="space-y-7 lg:sticky lg:top-0">
               <section>
-                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task actions</p>
+                <p className="mb-3.5 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task actions</p>
           {canAdvanceStatus() && nextStatus && (
             <button
               onClick={advanceStatus}
@@ -224,16 +224,16 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
               </section>
 
           {isAssignee && !['DONE', 'APPROVED'].includes(task.status) && (
-            <section className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
-              <p className="mb-2 text-xs font-bold">Need clarification?</p>
-              <p className="mb-3 text-[11px] leading-5" style={{ color: 'var(--muted)' }}>Ask the creator for missing context before continuing.</p>
+            <section className="rounded-[11px] border p-4 sm:p-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <p className="mb-1.5 text-xs font-bold">Need clarification?</p>
+              <p className="mb-3.5 text-[11px] leading-5" style={{ color: 'var(--muted)' }}>Ask the creator for missing context before continuing.</p>
               <textarea value={clarificationNote} onChange={(event) => setClarificationNote(event.target.value)} rows={3} placeholder="Explain what is unclear..." className="form-control !min-h-24 text-xs" />
-              <button onClick={requestClarification} disabled={updating || !clarificationNote.trim()} className="mt-2.5 min-h-10 w-full rounded-[9px] border px-3 text-xs font-bold disabled:opacity-50" style={{ color: 'var(--amber)', borderColor: 'rgba(243,169,79,.35)' }}>Request clarification</button>
+              <button onClick={requestClarification} disabled={updating || !clarificationNote.trim()} className="mt-3 min-h-10 w-full rounded-[9px] border px-3 text-xs font-bold disabled:opacity-50" style={{ color: 'var(--amber)', borderColor: 'rgba(243,169,79,.35)' }}>Request clarification</button>
             </section>
           )}
 
-              <section className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
-                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task details</p>
+              <section>
+                <p className="mb-3.5 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task details</p>
                 <div className="overflow-hidden rounded-[11px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                   <DetailRow icon={<UserRound size={14} />} label="Assignees"><div className="space-y-2">{assignees.map((assignee) => <div key={assignee.id} className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{getInitials(assignee.full_name || assignee.email)}</span><span className="truncate text-xs font-semibold">{assignee.full_name || assignee.email}</span></div>)}</div></DetailRow>
                   <DetailRow icon={<UserRound size={14} />} label="Creator"><p className="truncate text-xs font-semibold">{task.creator_profile?.full_name || task.creator_profile?.email || 'Unknown'}</p><p className="mt-1 text-[10.5px]" style={{ color: 'var(--muted)' }}>{formatRelative(task.created_at)}</p></DetailRow>

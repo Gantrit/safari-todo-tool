@@ -71,10 +71,11 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     setBusy(null); router.refresh()
   }
   async function deleteBoard(id: string, name: string) {
-    if (!confirm(`Delete “${name}” and all of its tasks?`)) return
-    const { error } = await supabase.from('boards').delete().eq('id', id)
+    if (!confirm(`Delete “${name}”? Its tasks are archived (soft-deleted), not permanently erased.`)) return
+    setBusy(`board-${id}`); setMessage(null)
+    const { error } = await supabase.rpc('soft_delete_board', { p_board_id: id })
     if (error) setMessage({ text: error.message, type: 'error' })
-    router.refresh()
+    setBusy(null); router.refresh()
   }
   async function changeRole(userId: string, role: Role) {
     setBusy(`role-${userId}`); setMessage(null)
@@ -173,7 +174,7 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
                 <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[8px]" style={{ background: 'var(--surface2)', color: 'var(--text-secondary)' }}><LayoutGrid size={15} /></span>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{board.name === 'Team Board' ? `${workspace.name} Board` : board.name}</strong><span className="text-xs capitalize" style={{ color: 'var(--muted)' }}>{board.type} board</span></span>
                 <button onClick={() => setOpenAccessBoard(open ? null : board.id)} className="btn btn-secondary !min-h-8 !px-3 !text-[12px]">{open ? 'Done' : 'Manage access'}</button>
-                <button onClick={() => deleteBoard(board.id, board.name)} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" aria-label={`Delete ${board.name}`}><Trash2 size={13} /></button>
+                <button onClick={() => deleteBoard(board.id, board.name)} disabled={busy === `board-${board.id}`} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" aria-label={`Delete ${board.name}`}>{busy === `board-${board.id}` ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}</button>
               </div>
               {open && (
                 <div className="flex flex-wrap gap-2 px-5 pb-5 sm:px-6" style={{ background: 'var(--surface2)' }}>

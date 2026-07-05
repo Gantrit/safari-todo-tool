@@ -83,10 +83,20 @@ export default function BoardView({ board, members, tasks: initialTasks, current
 
   const liveTasks = useMemo(() => tasks.filter((t) => !t.deleted_at), [tasks])
   const filteredTasks = useMemo(() => filterTasks(liveTasks, filters), [liveTasks, filters])
-  const creators = useMemo(
-    () => members.filter((m) => liveTasks.some((t) => t.created_by === m.id)),
-    [members, liveTasks]
-  )
+  // Build the "Created by" filter from the actual task creators, not just board
+  // members — a task created by someone who isn't a column on this board (e.g. an
+  // admin) must still be filterable. Resolve names via members first, then the
+  // task's joined creator_profile, else a minimal fallback.
+  const creators = useMemo(() => {
+    const byId = new Map(members.map((m) => [m.id, m]))
+    const ids = Array.from(new Set(liveTasks.map((t) => t.created_by).filter(Boolean)))
+    return ids.map((id) => {
+      const member = byId.get(id)
+      if (member) return member
+      const fromTask = liveTasks.find((t) => t.created_by === id)?.creator_profile
+      return (fromTask ?? { id, full_name: 'Unknown', email: '' }) as Profile
+    })
+  }, [members, liveTasks])
   const focusMember = members.find((m) => m.id === focusMemberId) || members.find((m) => m.id === currentUser.id) || members[0] || null
   const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id))
 
@@ -118,11 +128,19 @@ export default function BoardView({ board, members, tasks: initialTasks, current
     if (overId.startsWith('section:')) {
       const [, newMemberId, sectionValue] = overId.split(':')
       const newSection = sectionValue as TaskSection
+      // Preserve multi-assignee: if the task already belongs to the target member
+      // (e.g. a section move within its own lane, or a multi-assignee task), keep
+      // all assignees and only change the section. Only a drag onto a *different*
+      // member reassigns ownership to that single member.
+      const currentAssignees = (activeTask.assignee_ids?.length ? activeTask.assignee_ids : [activeTask.assigned_to]).filter(Boolean) as string[]
+      const alreadyMember = currentAssignees.includes(newMemberId)
+      const nextAssignees = alreadyMember ? currentAssignees : [newMemberId]
+      const nextAssignedTo = alreadyMember ? activeTask.assigned_to : newMemberId
       const updatedTasks = tasks.map((t) =>
-        t.id === active.id ? { ...t, assigned_to: newMemberId, assignee_ids: [newMemberId], section: newSection } : t
+        t.id === active.id ? { ...t, assigned_to: nextAssignedTo, assignee_ids: nextAssignees, section: newSection } : t
       )
       setTasks(updatedTasks)
-      await supabase.from('tasks').update({ assigned_to: newMemberId, assignee_ids: [newMemberId], section: newSection }).eq('id', active.id)
+      await supabase.from('tasks').update({ assigned_to: nextAssignedTo, assignee_ids: nextAssignees, section: newSection }).eq('id', active.id)
       return
     }
 
@@ -134,9 +152,16 @@ export default function BoardView({ board, members, tasks: initialTasks, current
     const overIdx = tasks.findIndex((t) => t.id === over.id)
     const movedCrossColumn = activeTask.assigned_to !== overTask.assigned_to || activeTask.section !== overTask.section
 
+    // Preserve multi-assignee (see section-drop handler above): only collapse to a
+    // single assignee when the task is moving to a member it isn't assigned to yet.
+    const currentAssignees = (activeTask.assignee_ids?.length ? activeTask.assignee_ids : [activeTask.assigned_to]).filter(Boolean) as string[]
+    const alreadyMember = overTask.assigned_to ? currentAssignees.includes(overTask.assigned_to) : true
+    const nextAssignees = alreadyMember ? currentAssignees : [overTask.assigned_to].filter(Boolean) as string[]
+    const nextAssignedTo = alreadyMember ? activeTask.assigned_to : overTask.assigned_to
+
     const newTasks = arrayMove(
       movedCrossColumn
-        ? tasks.map((t) => (t.id === active.id ? { ...t, assigned_to: overTask.assigned_to, assignee_ids: [overTask.assigned_to].filter(Boolean) as string[], section: overTask.section } : t))
+        ? tasks.map((t) => (t.id === active.id ? { ...t, assigned_to: nextAssignedTo, assignee_ids: nextAssignees, section: overTask.section } : t))
         : tasks,
       activeIdx,
       overIdx
@@ -153,8 +178,8 @@ export default function BoardView({ board, members, tasks: initialTasks, current
     const updates = orderedIds.map((id, index) => {
       const patch: Record<string, unknown> = { position: index }
       if (id === active.id && movedCrossColumn) {
-        patch.assigned_to = targetMemberId
-        patch.assignee_ids = [targetMemberId].filter(Boolean)
+        patch.assigned_to = nextAssignedTo
+        patch.assignee_ids = nextAssignees
         patch.section = targetSection
       }
       return supabase.from('tasks').update(patch).eq('id', id)
