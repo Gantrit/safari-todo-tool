@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Task, Profile, TaskSection } from '@/lib/types'
+import { Task, Profile, TaskSection, canWriteTasks } from '@/lib/types'
 import MemberColumn from './MemberColumn'
 import MemberRowsView from './MemberRowsView'
 import TableView from './TableView'
@@ -279,7 +279,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
             <BoardViewSwitcher view={view} onChange={setView} />
             <div className="flex items-center gap-3">
               <span className="hidden text-[11px] font-semibold sm:inline" style={{ color: 'var(--muted)' }}>{members.length} {members.length === 1 ? 'member' : 'members'} · {liveTasks.filter((t) => t.status !== 'APPROVED').length} active</span>
-              <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
+              {canWriteTasks(currentUser.role) && <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>}
             </div>
           </div>
 

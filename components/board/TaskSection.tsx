@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Task, TaskSection as TSectionType, Profile } from '@/lib/types'
+import { Task, TaskSection as TSectionType, Profile, canWriteTasks } from '@/lib/types'
 import { ChevronRight, Plus } from 'lucide-react'
 import TaskCard from './TaskCard'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -30,6 +30,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
   const [quickTitle, setQuickTitle] = useState('')
   const { label, color } = SECTION_LABELS[section]
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
+  const canWrite = canWriteTasks(currentUser.role)
 
   const submitQuickAdd = () => {
     const title = quickTitle.trim()
@@ -56,7 +57,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
             {tasks.length}
           </span>
         </button>
-        <button onClick={onAddTask} className="flex h-8 w-8 flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-white/5 hover:text-[var(--text)]" style={{ color: 'var(--muted)' }} aria-label={`Open full form for ${label}`} title="Create task with full form"><Plus size={14} /></button>
+        {canWrite && <button onClick={onAddTask} className="flex h-8 w-8 flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-white/5 hover:text-[var(--text)]" style={{ color: 'var(--muted)' }} aria-label={`Open full form for ${label}`} title="Create task with full form"><Plus size={14} /></button>}
       </div>
 
       {!collapsed && (
@@ -68,7 +69,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
           </SortableContext>
 
           {/* Quick add — type a title, press Enter to create with sensible defaults */}
-          <div className="quick-add">
+          {canWrite && <div className="quick-add">
             <Plus size={14} style={{ color: 'var(--muted)', flex: 'none' }} />
             <input
               value={quickTitle}
@@ -86,7 +87,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
             ) : (
               <span className="quick-add-hint">↵</span>
             )}
-          </div>
+          </div>}
         </div>
       )}
     </section>

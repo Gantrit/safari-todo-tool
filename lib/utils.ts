@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { format, formatDistanceToNow, isPast, differenceInCalendarDays, differenceInHours, endOfMonth, endOfWeek, setHours, setMinutes, setSeconds } from 'date-fns'
 import type { Task, TaskStatus, Priority } from './types'
+import { canManageTeam } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -114,8 +115,8 @@ export function taskAccentColor(status: TaskStatus, priority: Priority): string 
   return byPriority[priority]
 }
 
-/** Whether the given user may delete a task: the creator, or any admin. */
+/** Whether the given user may delete a task: the creator, a manager, or an admin. */
 export function canDeleteTask(task: Pick<Task, 'created_by' | 'creator_id'>, user: { id: string; role?: string | null }): boolean {
-  if (user.role === 'admin') return true
+  if (canManageTeam(user.role)) return true
   return task.created_by === user.id || task.creator_id === user.id
 }

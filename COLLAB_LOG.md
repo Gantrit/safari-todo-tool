@@ -3,6 +3,35 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 4: roles + board permissions
+- Branch `redesign-2026`. Most sensitive phase — extends the EXISTING role model, no parallel system.
+- **TWO NEW MIGRATIONS — run in the Supabase SQL editor, in order, after 008:**
+  * **`009_roles_and_permissions.sql`** — retires `user` (→`employee`), adds `manager` to the role
+    CHECK (profiles + workspace_members), default role now `employee`. Adds `can_manage()`
+    (admin OR manager). Fixes board creation: `boards_insert`/`boards_delete` now gate on
+    `is_admin()` (the old member-join policy denied admins who weren't in `workspace_members`).
+    Extends team powers to managers: status-transition trigger, `approve_task`/`reject_task`/
+    `reopen_task`, `tasks_update`, and `soft_delete_task` now use `can_manage()`. New admin-only
+    RPCs `set_member_role`, `set_member_deactivated` (needed because profiles_update RLS is self-only).
+  * **`010_board_access.sql`** — enforces the (previously dormant) `board_access` table. SEEDS
+    access for every existing (member × board) pair FIRST (nobody gets locked out), lets users read
+    their own access rows, then makes `boards_select`/`tasks_select` require a `board_access` row
+    (admins bypass). Triggers auto-grant access on new boards and new memberships.
+- **Role mapping (stored value = product name):** admin=Admin, manager=Manager (new),
+  employee=Member, guest=Viewer. Chosen over a full value-rename (safer, no data churn). Labels +
+  helpers live in `lib/types.ts` (`ROLE_LABELS`, `roleLabel`, `canManageTeam`, `isViewerRole`,
+  `canWriteTasks`). `Role` type dropped `user`.
+- Rights: Viewer read-only (UI hides create/quick-add/delete/status; RLS enforces), Member = own
+  tasks + delete own, Manager = team-wide manage + delete (approved by user), Admin = everything.
+- Settings (`SettingsForm.tsx` + page): per-member role dropdown, deactivate/reactivate + remove
+  (confirm dialogs), and per-board access toggles per member. Deactivated users are blocked in
+  `app/(app)/layout.tsx` via `DeactivatedNotice` (data kept, access off).
+- Client gating added in TaskModal (managers can approve/reject/reopen; viewers read-only), TaskSection
+  (no quick-add/create for viewers), BoardView (no Create task for viewers). `canDeleteTask` now
+  includes managers.
+- Not undo: don't re-narrow the manager gates back to admin-only; don't enforce board_access without
+  the seed step (would lock everyone out).
+
 ## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 3: board view switcher
 - Branch `redesign-2026`. Makes the board usable at ~25 members. No schema/data changes.
 - New segmented view switcher at the top of the board with 5 views, all inside ONE `DndContext`
