@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/sidebar/Sidebar'
 import LevelUpWatcher from '@/components/ui/LevelUpWatcher'
+import DeactivatedNotice from '@/components/ui/DeactivatedNotice'
 import { getLevelInfo } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase.from('boards').select('*').order('created_at', { ascending: true }),
     supabase.from('notifications').select('*').eq('user_id', user.id).eq('read', false).order('created_at', { ascending: false }).limit(20),
   ])
+
+  // Deactivated members keep their data but lose access.
+  if (profile?.deactivated_at) return <DeactivatedNotice />
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: 'var(--bg)' }}>

@@ -33,6 +33,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     ? await supabase.from('boards').select('*').eq('workspace_id', workspace.id)
     : { data: [] }
 
+  const boardIds = (boards || []).map((b) => b.id)
+  const { data: boardAccess } = boardIds.length
+    ? await supabase.from('board_access').select('board_id, user_id').in('board_id', boardIds)
+    : { data: [] }
+
   return (
     <div className="page-shell !max-w-[1180px]">
       <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Workspace settings'}</h1><p className="page-description">Manage workspace identity, team access, boards, and shared defaults.</p></div></header>
@@ -40,6 +45,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         workspace={newWorkspace === '1' ? null : workspace}
         members={members || []}
         boards={newWorkspace === '1' ? [] : boards || []}
+        boardAccess={newWorkspace === '1' ? [] : boardAccess || []}
         currentUser={profile!}
       />
     </div>

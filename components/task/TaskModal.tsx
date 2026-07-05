@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Task, TaskStatus, Profile } from '@/lib/types'
+import { Task, TaskStatus, Profile, canManageTeam, isViewerRole, canWriteTasks } from '@/lib/types'
 import { celebrateApproval, celebrateTaskDone, feedbackReject, playSound } from '@/lib/gamification'
 import Modal from '../ui/Modal'
 import StatusBadge from '../ui/StatusBadge'
@@ -36,13 +36,16 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   const [clarificationNote, setClarificationNote] = useState('')
   const supabase = createClient()
 
-  const isAdmin = currentUser.role === 'admin'
+  const canManage = canManageTeam(currentUser.role)
+  const isViewer = isViewerRole(currentUser.role)
+  const canWrite = canWriteTasks(currentUser.role)
   const assigneeIds = task.assignee_ids || [task.assigned_to].filter(Boolean) as string[]
   const isAssignee = assigneeIds.includes(currentUser.id)
   const canAdvanceStatus = () => {
+    if (isViewer) return false
     if (task.status === 'APPROVED') return false
     if (task.status === 'DONE') return false
-    return isAdmin || isAssignee || task.created_by === currentUser.id
+    return canManage || isAssignee || task.created_by === currentUser.id
   }
 
   async function updateStatus(next: TaskStatus) {
@@ -139,7 +142,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   const deadline = task.deadline_at || task.due_date || null
   const overdue = isOverdue(deadline) && task.status !== 'APPROVED'
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
-  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || (isAdmin && task.status === 'DONE') || (isAdmin && ['APPROVED', 'REJECTED'].includes(task.status))
+  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || (canManage && task.status === 'DONE') || (canManage && ['APPROVED', 'REJECTED'].includes(task.status))
 
   return (
     <Modal open={true} onClose={onClose} size="2xl">
@@ -182,7 +185,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
                 </div>
                 <div>
                   <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>Result link</p>
-                  {task.result_url && !showResultInput ? <div className="space-y-2"><a href={task.result_url} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--accent)' }}><ExternalLink size={13} /><span className="truncate">Open submitted result</span></a><button onClick={() => setShowResultInput(true)} className="text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>Edit result link</button></div> : showResultInput ? <div className="space-y-2.5"><input value={resultUrl} onChange={(event) => setResultUrl(event.target.value)} placeholder="https://..." className="form-control" /><button onClick={submitResult} disabled={updating || !resultUrl.trim()} className="btn btn-primary min-h-10 w-full">Save result</button></div> : <button onClick={() => setShowResultInput(true)} className="flex min-h-10 w-full items-center gap-2.5 rounded-[9px] border px-3 text-left text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}><Plus size={13} /> Add result link</button>}
+                  {task.result_url && !showResultInput ? <div className="space-y-2"><a href={task.result_url} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--accent)' }}><ExternalLink size={13} /><span className="truncate">Open submitted result</span></a><button onClick={() => setShowResultInput(true)} className="text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>Edit result link</button></div> : showResultInput ? <div className="space-y-2.5"><input value={resultUrl} onChange={(event) => setResultUrl(event.target.value)} placeholder="https://..." className="form-control" /><button onClick={submitResult} disabled={updating || !resultUrl.trim()} className="btn btn-primary min-h-10 w-full">Save result</button></div> : canWrite ? <button onClick={() => setShowResultInput(true)} className="flex min-h-10 w-full items-center gap-2.5 rounded-[9px] border px-3 text-left text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}><Plus size={13} /> Add result link</button> : <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>No result submitted.</p>}
                 </div>
               </div>
             </section>
@@ -206,7 +209,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             </button>
           )}
 
-          {isAdmin && task.status === 'DONE' && (
+          {canManage && task.status === 'DONE' && (
             <div className="space-y-2.5">
               <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>Approve task</button>
               <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}><XCircle size={14} /> Reject task</button>
@@ -214,7 +217,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             </div>
           )}
 
-          {isAdmin && ['APPROVED', 'REJECTED'].includes(task.status) && (
+          {canManage && ['APPROVED', 'REJECTED'].includes(task.status) && (
             <button onClick={() => adminDecision('IN_EDIT')} disabled={updating} className="btn btn-secondary min-h-11 w-full"><RotateCcw size={14} /> Reopen task</button>
           )}
           {!hasStatusAction && <div className="rounded-[9px] border px-3.5 py-3 text-xs leading-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>No status action is available for this task.</div>}

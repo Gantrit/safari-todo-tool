@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'employee' | 'guest' | 'user'
+export type Role = 'admin' | 'manager' | 'employee' | 'guest'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
 export type TaskStatus = 'ASSIGNED' | 'NOTICED' | 'IN_EDIT' | 'DONE' | 'APPROVED' | 'REJECTED'
 export type TaskSection = 'DAILY' | 'IMMINENT' | 'WEEKLY' | 'MONTHLY'
@@ -255,12 +255,41 @@ export function getRankForLevel(level: number) {
 }
 
 export function normalizeRole(role: Role | string | null | undefined): Role {
-  if (role === 'admin' || role === 'guest' || role === 'employee') return role
+  if (role === 'admin' || role === 'manager' || role === 'guest' || role === 'employee') return role
+  // Legacy 'user' (and anything unknown/null) maps to Member.
   return 'employee'
 }
 
 export function isAdminRole(role: Role | string | null | undefined) {
   return role === 'admin'
+}
+
+/** Display names: stored values map to the product role names. */
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: 'Admin',
+  manager: 'Manager',
+  employee: 'Member',
+  guest: 'Viewer',
+}
+
+export function roleLabel(role: Role | string | null | undefined): string {
+  return ROLE_LABELS[normalizeRole(role)]
+}
+
+/** Admin or Manager — the team-management tier (approve, edit/delete any task). */
+export function canManageTeam(role: Role | string | null | undefined): boolean {
+  const r = normalizeRole(role)
+  return r === 'admin' || r === 'manager'
+}
+
+/** Viewer — read-only, no task writes. */
+export function isViewerRole(role: Role | string | null | undefined): boolean {
+  return normalizeRole(role) === 'guest'
+}
+
+/** Can this role create/edit tasks at all (everyone except Viewer)? */
+export function canWriteTasks(role: Role | string | null | undefined): boolean {
+  return !isViewerRole(role)
 }
 
 export function getTaskDeadline(task: Pick<Task, 'deadline_at' | 'due_date'>) {

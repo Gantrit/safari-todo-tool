@@ -3,6 +3,119 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 4: roles + board permissions
+- Branch `redesign-2026`. Most sensitive phase — extends the EXISTING role model, no parallel system.
+- **TWO NEW MIGRATIONS — run in the Supabase SQL editor, in order, after 008:**
+  * **`009_roles_and_permissions.sql`** — retires `user` (→`employee`), adds `manager` to the role
+    CHECK (profiles + workspace_members), default role now `employee`. Adds `can_manage()`
+    (admin OR manager). Fixes board creation: `boards_insert`/`boards_delete` now gate on
+    `is_admin()` (the old member-join policy denied admins who weren't in `workspace_members`).
+    Extends team powers to managers: status-transition trigger, `approve_task`/`reject_task`/
+    `reopen_task`, `tasks_update`, and `soft_delete_task` now use `can_manage()`. New admin-only
+    RPCs `set_member_role`, `set_member_deactivated` (needed because profiles_update RLS is self-only).
+  * **`010_board_access.sql`** — enforces the (previously dormant) `board_access` table. SEEDS
+    access for every existing (member × board) pair FIRST (nobody gets locked out), lets users read
+    their own access rows, then makes `boards_select`/`tasks_select` require a `board_access` row
+    (admins bypass). Triggers auto-grant access on new boards and new memberships.
+- **Role mapping (stored value = product name):** admin=Admin, manager=Manager (new),
+  employee=Member, guest=Viewer. Chosen over a full value-rename (safer, no data churn). Labels +
+  helpers live in `lib/types.ts` (`ROLE_LABELS`, `roleLabel`, `canManageTeam`, `isViewerRole`,
+  `canWriteTasks`). `Role` type dropped `user`.
+- Rights: Viewer read-only (UI hides create/quick-add/delete/status; RLS enforces), Member = own
+  tasks + delete own, Manager = team-wide manage + delete (approved by user), Admin = everything.
+- Settings (`SettingsForm.tsx` + page): per-member role dropdown, deactivate/reactivate + remove
+  (confirm dialogs), and per-board access toggles per member. Deactivated users are blocked in
+  `app/(app)/layout.tsx` via `DeactivatedNotice` (data kept, access off).
+- Client gating added in TaskModal (managers can approve/reject/reopen; viewers read-only), TaskSection
+  (no quick-add/create for viewers), BoardView (no Create task for viewers). `canDeleteTask` now
+  includes managers.
+- Not undo: don't re-narrow the manager gates back to admin-only; don't enforce board_access without
+  the seed step (would lock everyone out).
+
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 3: board view switcher
+- Branch `redesign-2026`. Makes the board usable at ~25 members. No schema/data changes.
+- New segmented view switcher at the top of the board with 5 views, all inside ONE `DndContext`
+  and all reusing the Phase-2 `TaskCard`/`TaskSection` (no re-built rows):
+  * `members` (default) — `MemberRowsView`: each member is a collapsible lane with an open-count
+    badge; **collapsed lanes render no tasks at all** (only expanded members mount their
+    `TaskSection`s — the perf story for 25 members).
+  * `table` — `TableView`: flat, sortable list (Deadline/Priority/Status/Member/Title, asc/desc)
+    of the same rows with `showAssignee` (member shown as an avatar column in each row).
+  * `focus` — one member (default = current user), rows always expanded, member picker above.
+  * `selection` — multi-select members via chips, shows only the chosen ones.
+  * `columns` — the existing `MemberColumn` matrix, kept as-is.
+- **Structural decision:** kept the column matrix as the `columns` view rather than retiring it.
+  It's the only view with cross-member drag-and-drop reordering (an existing feature), so dropping
+  it would silently remove that. The four new views are additive and share one row renderer + one
+  filter pipeline, so there's no duplicated task-row logic. `members` is the new default.
+- Filters (`lib/boardViews.ts` `filterTasks`): Status + Urgency + **Created-by** (the "creator"
+  filter — `department_id`/`project_id` aren't meaningfully populated, so I used `created_by`,
+  which is). Combinable, apply across ALL views. `BoardFilterBar` = toggle chips in a panel.
+- View + filters + focus/selection persisted per board in `localStorage` (`safari:boardview:<id>`),
+  hydrated in an effect after mount (SSR-safe; not a lazy initializer, to avoid hydration mismatch).
+- New files: `lib/boardViews.ts`, `components/board/{MemberRowsView,TableView,BoardViewSwitcher,
+  BoardFilterBar}.tsx`. `TaskCard` gained an optional `showAssignee` prop (table only).
+- Note: dragging works in columns + member-rows (section droppables); in table it technically
+  reorders global position — low risk (thin bar handle) but flag if you want it disabled there.
+- Still pending: Phase 4 (rights UI, role-model cleanup in `lib/types.ts`).
+
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 2: task rows, quick-add, delete
+- Branch `redesign-2026` (continues from Phase 1). First phase with real logic changes.
+- **NEW MIGRATION `008_task_delete_rpc.sql` — must be run in the Supabase SQL editor after 007.**
+  Adds `soft_delete_task(p_task_id)` (SECURITY DEFINER): sets `deleted_at` if the caller is the
+  task's creator OR an admin (`is_admin()` from 007). Needed because `tasks_update`/`tasks_delete`
+  RLS only allow creator/assignee — an admin who is neither could not delete otherwise. Uses the
+  EXISTING role model, no parallel roles. Until it runs, the delete button will error.
+- What changed:
+  1. `TaskCard` rebuilt as a compact, collapsible ClickUp-style row: colour bar (combined
+     status/priority, doubles as drag handle) + title + urgency chip when collapsed; description,
+     checklist progress, assignees, reminders, labels, reference + "Open details" on expand.
+     Expand is animated via `grid-template-rows 0fr→1fr`, multiple open at once,
+     `prefers-reduced-motion` respected. The full `TaskModal` is still reachable via "Open details".
+  2. Graded urgency in `lib/utils.ts` `getUrgency()` — overdue (red) / today·≤2h (orange) /
+     tomorrow·≤3d (yellow) / further (neutral), colour AND text. New `--orange`/`--yellow` tokens.
+     Also `taskAccentColor()` and `canDeleteTask()` helpers.
+  3. Quick-add: per-section single-line input in `TaskSection` — type a title, Enter inserts a task
+     with defaults (that section, **assignee = the column's member**, priority MEDIUM, status
+     ASSIGNED, Berlin end-of-period deadline). Optimistic insert in `BoardView.handleQuickAdd`,
+     reconciled with the server row (rolls back on error). The full "Create task" modal is unchanged.
+     Design note: assignee defaults to the column owner (not always the current user) so the task
+     appears in the lane where it was typed — for your own column that is you.
+  4. Delete: trash button on each row, visible only to creator/admin (`canDeleteTask`). Confirmation
+     modal, then optimistic removal via `soft_delete_task` RPC (rollback + error on failure).
+- Not undo: don't reintroduce a whole-card `onClick`→modal on the row (drag/click conflict); the
+  colour bar is the drag handle, chevron/title toggle expand, "Open details" opens the modal.
+- Still pending: Phases 3–4 (view switcher, rights UI, role-model cleanup in `lib/types.ts`).
+
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 branch, Phase 1: visual polish
+- Context: User (Tan) commissioned a full 4-phase UI/UX + feature redesign. **This work is on a new
+  branch `redesign-2026`, not `main`.** Deliberate, user-approved deviation from the usual
+  "Codex builds / Claude reviews" split — for this engagement Claude does the whole rebuild.
+- What changed (Phase 1 = pure visual polish, NO logic/data/rights/view changes):
+  1. `app/globals.css` token overhaul. Warmed the dark ramp (olive-charcoal, 6 elevation steps
+     `--surface`…`--surface4`) away from flat green-black; warm ivory text; kept gold `#C8A96A`.
+     Added `--shadow-sm/md/lg/accent`, `--hairline-top`, a 4pt `--space-*` scale, softer radii,
+     and slightly warmer/desaturated semantic colors (meaning preserved). Cards now have real
+     elevation (`--shadow-md` + inset hairline) instead of flat borders.
+  2. Typography: introduced **Fraunces** (warm display serif) via `--font-display`, applied ONLY
+     to `.page-title` + `.metric-value` (big statement moments); Manrope stays for all UI/body.
+     Note: this is NOT the old Syne prototype — Fraunces is a deliberate warm/edel choice.
+  3. Recurring motif: gold hairline rule on `.card-header::before` + `.page-eyebrow::before` tick
+     (echoes the active nav indicator), plus a unified `.icon-chip` treatment for standalone icons.
+  4. Dashboard hierarchy: new `.attention-banner` (overdue dominates, else admin review); overdue
+     KPI card + "My tasks" overdue rows get red emphasis; non-urgent rows recede. Presentational
+     only — reads existing `overdueTasks`/`pendingApproval`.
+  5. Empty/Loading/Error states: new reusable `components/ui/{EmptyState,Skeleton,ErrorState}.tsx`,
+     branded skeleton in `app/(app)/loading.tsx`, new `app/(app)/error.tsx` boundary. Dashboard
+     empties migrated to `EmptyState`. Added `prefers-reduced-motion` guard.
+- Why: User wants warm/edel dark theme with real visual hierarchy; ui-ux-pro-max consulted (CSVs)
+  for luxury palette + Fraunces/Manrope pairing direction.
+- Anything the other agent should know / not undo:
+  * All design tokens live centrally in `app/globals.css` `:root` — theme via tokens, not per-file hex.
+  * `.env.local` is placeholders only on this machine, so the app can't be run/screenshotted here;
+    visual verification was done via a token-accurate static preview, not the live app.
+  * Phases 2–4 (collapsible task rows, view switcher, rights UI, role-model cleanup) still pending.
+
 ## 2026-07-04 - Claude (Fable) - security hardening, gameplay engine, quest lifecycle, page polish
 - What changed:
   1. **NEW MIGRATION `007_security_and_gameplay.sql` — must be run in the Supabase SQL editor.**
