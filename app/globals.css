@@ -37,6 +37,12 @@
   --blue: #4FBEF0;
   --purple: #A78BFA;
 
+  /* ---- Urgency ramp (overdue → soon → near → far) ---- */
+  --orange: #F5883E;
+  --orange-dim: rgba(245, 136, 62, 0.13);
+  --yellow: #E3C24E;
+  --yellow-dim: rgba(227, 194, 78, 0.13);
+
   /* ---- Radii (softer, edel) ---- */
   --radius-sm: 7px;
   --radius: 11px;
@@ -447,10 +453,9 @@ textarea.form-control { min-height: 108px; padding-top: 13px; padding-bottom: 13
 
 .metric-value {
   display: block;
-  font-family: var(--font-display);
-  font-size: 46px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -1246,4 +1251,186 @@ textarea.create-task-control {
   font-size: 13px;
   line-height: 1.6;
   color: var(--muted);
+}
+
+/* ============================================================
+   Compact task rows (ClickUp-style, collapsible)
+   ============================================================ */
+.task-row {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
+}
+
+.task-row:hover {
+  border-color: var(--border-strong);
+  background: var(--surface2);
+}
+
+.task-row.is-open {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md), var(--hairline-top);
+}
+
+.task-row.is-imminent {
+  box-shadow: inset 3px 0 0 var(--accent-line);
+}
+
+.task-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 10px 0 0;
+}
+
+/* Colour-coded status/priority bar doubles as the drag handle */
+.task-row-bar {
+  align-self: stretch;
+  width: 5px;
+  flex: none;
+  border-radius: 10px 0 0 10px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.task-row-bar:active { cursor: grabbing; }
+
+.task-row-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 6px;
+  color: var(--muted);
+  transition: background var(--ease), color var(--ease);
+}
+
+.task-row-toggle:hover { background: var(--surface3); color: var(--text); }
+
+.task-row-toggle svg { transition: transform 0.22s ease; }
+.task-row.is-open .task-row-toggle svg { transform: rotate(90deg); }
+
+.task-row-title {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-row.is-done .task-row-title { text-decoration: line-through; color: var(--muted); }
+
+.urgency-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.task-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  opacity: 0;
+  transition: opacity var(--ease);
+}
+
+.task-row:hover .task-row-actions,
+.task-row.is-open .task-row-actions,
+.task-row:focus-within .task-row-actions { opacity: 1; }
+
+.task-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: background var(--ease), color var(--ease);
+}
+
+.task-row-action:hover { background: var(--surface3); color: var(--text); }
+.task-row-action.is-danger:hover { background: var(--red-dim); color: var(--red); }
+
+/* Smooth collapse via animatable grid rows */
+.task-row-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+
+.task-row-collapse.is-open { grid-template-rows: 1fr; }
+.task-row-collapse > .task-row-collapse-inner { overflow: hidden; }
+
+.task-row-body {
+  padding: 4px 14px 15px 18px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   Quick add — single-line inline task capture
+   ============================================================ */
+.quick-add {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  transition: border-color var(--ease), background var(--ease);
+}
+
+.quick-add:focus-within {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--surface3);
+}
+
+.quick-add-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.quick-add-input::placeholder { color: var(--muted); }
+
+.quick-add-hint {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-row-collapse,
+  .task-row-toggle svg { transition: none; }
 }

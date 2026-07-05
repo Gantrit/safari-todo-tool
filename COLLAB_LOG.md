@@ -3,6 +3,34 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 2: task rows, quick-add, delete
+- Branch `redesign-2026` (continues from Phase 1). First phase with real logic changes.
+- **NEW MIGRATION `008_task_delete_rpc.sql` — must be run in the Supabase SQL editor after 007.**
+  Adds `soft_delete_task(p_task_id)` (SECURITY DEFINER): sets `deleted_at` if the caller is the
+  task's creator OR an admin (`is_admin()` from 007). Needed because `tasks_update`/`tasks_delete`
+  RLS only allow creator/assignee — an admin who is neither could not delete otherwise. Uses the
+  EXISTING role model, no parallel roles. Until it runs, the delete button will error.
+- What changed:
+  1. `TaskCard` rebuilt as a compact, collapsible ClickUp-style row: colour bar (combined
+     status/priority, doubles as drag handle) + title + urgency chip when collapsed; description,
+     checklist progress, assignees, reminders, labels, reference + "Open details" on expand.
+     Expand is animated via `grid-template-rows 0fr→1fr`, multiple open at once,
+     `prefers-reduced-motion` respected. The full `TaskModal` is still reachable via "Open details".
+  2. Graded urgency in `lib/utils.ts` `getUrgency()` — overdue (red) / today·≤2h (orange) /
+     tomorrow·≤3d (yellow) / further (neutral), colour AND text. New `--orange`/`--yellow` tokens.
+     Also `taskAccentColor()` and `canDeleteTask()` helpers.
+  3. Quick-add: per-section single-line input in `TaskSection` — type a title, Enter inserts a task
+     with defaults (that section, **assignee = the column's member**, priority MEDIUM, status
+     ASSIGNED, Berlin end-of-period deadline). Optimistic insert in `BoardView.handleQuickAdd`,
+     reconciled with the server row (rolls back on error). The full "Create task" modal is unchanged.
+     Design note: assignee defaults to the column owner (not always the current user) so the task
+     appears in the lane where it was typed — for your own column that is you.
+  4. Delete: trash button on each row, visible only to creator/admin (`canDeleteTask`). Confirmation
+     modal, then optimistic removal via `soft_delete_task` RPC (rollback + error on failure).
+- Not undo: don't reintroduce a whole-card `onClick`→modal on the row (drag/click conflict); the
+  colour bar is the drag handle, chevron/title toggle expand, "Open details" opens the modal.
+- Still pending: Phases 3–4 (view switcher, rights UI, role-model cleanup in `lib/types.ts`).
+
 ## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 branch, Phase 1: visual polish
 - Context: User (Tan) commissioned a full 4-phase UI/UX + feature redesign. **This work is on a new
   branch `redesign-2026`, not `main`.** Deliberate, user-approved deviation from the usual

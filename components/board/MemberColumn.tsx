@@ -12,11 +12,13 @@ interface MemberColumnProps {
   tasks: Task[]
   onTaskClick: (task: Task) => void
   onAddTask: (memberId: string, section: TaskSection) => void
-  currentUserId: string
+  onQuickAdd: (memberId: string, section: TaskSection, title: string) => void
+  onDelete: (task: Task) => void
+  currentUser: Profile
 }
 
-export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, currentUserId }: MemberColumnProps) {
-  const isOwn = member.id === currentUserId
+export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, onQuickAdd, onDelete, currentUser }: MemberColumnProps) {
+  const isOwn = member.id === currentUser.id
 
   return (
     <div
@@ -60,6 +62,9 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, cu
             tasks={tasks.filter((t) => t.section === section)}
             onTaskClick={onTaskClick}
             onAddTask={() => onAddTask(member.id, section)}
+            onQuickAdd={onQuickAdd}
+            onDelete={onDelete}
+            currentUser={currentUser}
             memberId={member.id}
           />
         ))}

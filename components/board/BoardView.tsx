@@ -18,7 +18,8 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutGrid, Plus, Users } from 'lucide-react'
+import { berlinDefaultDeadline } from '@/lib/utils'
+import { AlertTriangle, LayoutGrid, Loader2, Plus, Trash2, Users } from 'lucide-react'
 
 interface BoardViewProps {
   board: any
@@ -32,6 +33,9 @@ export default function BoardView({ board, members, tasks: initialTasks, current
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [addingFor, setAddingFor] = useState<{ memberId: string; section: TaskSection } | null>(null)
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const supabase = createClient()
@@ -112,6 +116,96 @@ export default function BoardView({ board, members, tasks: initialTasks, current
     setAddingFor(null)
   }, [])
 
+  // Quick add — optimistic insert with sensible defaults (current section,
+  // column owner as assignee, medium priority), reconciled with the server row.
+  const handleQuickAdd = useCallback(async (memberId: string, section: TaskSection, title: string) => {
+    const trimmed = title.trim()
+    if (!trimmed) return
+
+    const deadline = berlinDefaultDeadline(section)
+    const deadlineIso = deadline.toISOString()
+    const nowIso = new Date().toISOString()
+    const position = Math.floor(Date.now() / 1000)
+    const tempId = `temp-${position}-${Math.random().toString(36).slice(2, 7)}`
+
+    const optimistic: Task = {
+      id: tempId,
+      board_id: board.id,
+      assigned_to: memberId,
+      assignee_ids: [memberId],
+      created_by: currentUser.id,
+      creator_id: currentUser.id,
+      title: trimmed,
+      description: null,
+      priority: 'MEDIUM',
+      status: 'ASSIGNED',
+      section,
+      due_date: deadlineIso.slice(0, 10),
+      deadline_at: deadlineIso,
+      remind_3d: false,
+      remind_24h: false,
+      xp_awarded: false,
+      position,
+      parent_task_id: null,
+      result_url: null,
+      labels: [],
+      google_drive_url: null,
+      created_at: nowIso,
+      updated_at: nowIso,
+    }
+    setTasks((prev) => [...prev, optimistic])
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        board_id: board.id,
+        assigned_to: memberId,
+        assignee_ids: [memberId],
+        created_by: currentUser.id,
+        creator_id: currentUser.id,
+        title: trimmed,
+        priority: 'MEDIUM',
+        status: 'ASSIGNED',
+        section,
+        due_date: deadlineIso.slice(0, 10),
+        deadline_at: deadlineIso,
+        remind_3d: false,
+        remind_24h: false,
+        xp_awarded: false,
+        position,
+        labels: [],
+      })
+      .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
+      .single()
+
+    if (error || !data) {
+      setTasks((prev) => prev.filter((t) => t.id !== tempId))
+      return
+    }
+    setTasks((prev) => prev.map((t) => (t.id === tempId ? (data as Task) : t)))
+  }, [board.id, currentUser.id, supabase])
+
+  // Soft-delete via SECURITY DEFINER RPC (creator or admin, enforced in DB).
+  const confirmDelete = async () => {
+    if (!deletingTask || deleteLoading) return
+    const target = deletingTask
+    const snapshot = tasks
+    setDeleteLoading(true)
+    setDeleteError(null)
+    setTasks((prev) => prev.filter((t) => t.id !== target.id))
+
+    const { error } = await supabase.rpc('soft_delete_task', { p_task_id: target.id })
+    setDeleteLoading(false)
+
+    if (error) {
+      setTasks(snapshot)
+      setDeleteError(error.message || 'Task could not be deleted.')
+      return
+    }
+    if (selectedTask?.id === target.id) setSelectedTask(null)
+    setDeletingTask(null)
+  }
+
   const activeTask = tasks.find((t) => t.id === activeId)
   const defaultMember = members.find((member) => member.id === currentUser.id) || members[0]
 
@@ -138,7 +232,9 @@ export default function BoardView({ board, members, tasks: initialTasks, current
               tasks={tasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id) && !t.deleted_at)}
               onTaskClick={setSelectedTask}
               onAddTask={(memberId, section) => setAddingFor({ memberId, section })}
-              currentUserId={currentUser.id}
+              onQuickAdd={handleQuickAdd}
+              onDelete={(task) => { setDeleteError(null); setDeletingTask(task) }}
+              currentUser={currentUser}
             />
             ))}
           </div>
@@ -189,6 +285,30 @@ export default function BoardView({ board, members, tasks: initialTasks, current
             onCreated={handleTaskCreate}
             onCancel={() => setAddingFor(null)}
           />
+        </Modal>
+      )}
+
+      {deletingTask && (
+        <Modal open={true} onClose={() => { if (!deleteLoading) setDeletingTask(null) }} title="Delete task" size="sm">
+          <div className="px-5 py-5 sm:px-7">
+            <div className="flex items-start gap-4">
+              <div className="icon-chip is-danger" style={{ width: 42, height: 42 }}><AlertTriangle size={19} /></div>
+              <div className="min-w-0">
+                <p className="text-sm leading-6" style={{ color: 'var(--text)' }}>
+                  Delete <span className="font-bold">“{deletingTask.title}”</span>? It will be removed from the board and archived out of view. This can’t be undone from here.
+                </p>
+              </div>
+            </div>
+            {deleteError && (
+              <div className="mt-4 rounded-[10px] border px-3.5 py-3 text-[12.5px]" style={{ background: 'var(--red-dim)', borderColor: 'rgba(240,85,90,.3)', color: 'var(--red)' }}>{deleteError}</div>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button type="button" onClick={() => setDeletingTask(null)} disabled={deleteLoading} className="btn btn-secondary">Cancel</button>
+            <button type="button" onClick={confirmDelete} disabled={deleteLoading} className="btn btn-primary" style={{ background: 'var(--red)', borderColor: 'var(--red)', color: '#fff', boxShadow: 'none' }}>
+              {deleteLoading ? <><Loader2 className="animate-spin" size={15} /> Deleting…</> : <><Trash2 size={15} /> Delete task</>}
+            </button>
+          </div>
         </Modal>
       )}
     </>
