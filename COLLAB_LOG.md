@@ -3,6 +3,38 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-05 - Claude (Opus 4.8) - Post-merge screening fixes (3 bugs)
+
+Static review of the merged `redesign-2026` work found 3 real bugs; fixed on branch
+`redesign-2026-fixes`. Build passes.
+- **NEW MIGRATION — run in Supabase SQL editor after 010:** `011_board_soft_delete.sql`.
+  Root cause: `tasks.board_id` had `ON DELETE CASCADE`, so deleting a board in Settings
+  permanently hard-deleted every task on it (bypassing soft-delete + audit; only a `confirm()`
+  guarded it). Fix relaxes that FK to `ON DELETE SET NULL` and adds admin-only
+  `soft_delete_board()` RPC that soft-deletes the board's live tasks first, then removes the
+  board. **Until 011 is applied, the "Delete board" button errors safely (function missing) —
+  no more silent data loss either way.**
+- `SettingsForm.tsx` `deleteBoard` now calls `rpc('soft_delete_board')` instead of a raw
+  `boards.delete()`; button shows a spinner while busy.
+- `BoardView.tsx` drag-and-drop no longer silently collapses a **multi-assignee** task to a
+  single assignee: cross-member drag only reassigns to the target member when the task isn't
+  already assigned to them; otherwise it keeps all assignees and just changes the section.
+  Applied to both the optimistic update and the position-persistence patch.
+- `BoardView.tsx` "Created by" filter is now built from actual task creators (resolved via
+  members → task.creator_profile → fallback), so tasks created by non-board-members are
+  filterable instead of invisible in the filter.
+- Not undo: keep the `board_id` FK as `SET NULL` and route board deletion through
+  `soft_delete_board` — don't restore the raw cascade delete.
+
+## 2026-07-05 - Claude (Opus 4.8) - TaskModal sidebar spacing polish
+- `components/task/TaskModal.tsx` only, no logic/schema changes. Right-hand action column felt
+  cramped ("nah dran"): the "Need clarification?" and "Task details" blocks were separated by thin
+  `border-t` dividers directly under the primary action button.
+- Change: aside vertical rhythm `space-y-6` → `space-y-7`, aside padding `sm:px-7` → `sm:px-8`,
+  section labels `mb-3` → `mb-3.5`. The "Need clarification?" block is now a self-contained
+  `var(--surface)` card (matching the Task-details card) instead of a `border-t` section — clearer
+  grouping + breathing room. Purely visual; build passes.
+
 ## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 4: roles + board permissions
 - Branch `redesign-2026`. Most sensitive phase — extends the EXISTING role model, no parallel system.
 - **TWO NEW MIGRATIONS — run in the Supabase SQL editor, in order, after 008:**
