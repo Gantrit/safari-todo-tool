@@ -1,11 +1,16 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Task, Profile, TaskSection } from '@/lib/types'
 import MemberColumn from './MemberColumn'
+import MemberRowsView from './MemberRowsView'
+import TableView from './TableView'
+import BoardViewSwitcher from './BoardViewSwitcher'
+import BoardFilterBar from './BoardFilterBar'
 import TaskModal from '../task/TaskModal'
 import TaskForm from '../task/TaskForm'
 import Modal from '../ui/Modal'
+import EmptyState from '../ui/EmptyState'
 import {
   DndContext,
   DragEndEvent,
@@ -18,8 +23,16 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { createClient } from '@/lib/supabase/client'
-import { berlinDefaultDeadline } from '@/lib/utils'
-import { AlertTriangle, LayoutGrid, Loader2, Plus, Trash2, Users } from 'lucide-react'
+import { berlinDefaultDeadline, getInitials } from '@/lib/utils'
+import {
+  BoardViewMode,
+  BoardFilters,
+  EMPTY_FILTERS,
+  filterTasks,
+  loadBoardViewState,
+  saveBoardViewState,
+} from '@/lib/boardViews'
+import { AlertTriangle, LayoutGrid, Loader2, Plus, Trash2, UserRound, Users } from 'lucide-react'
 
 interface BoardViewProps {
   board: any
@@ -38,7 +51,50 @@ export default function BoardView({ board, members, tasks: initialTasks, current
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  // View + filter state (persisted per board in localStorage)
+  const [view, setView] = useState<BoardViewMode>('members')
+  const [focusMemberId, setFocusMemberId] = useState<string | null>(currentUser.id)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([currentUser.id])
+  const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS)
+  const [hydrated, setHydrated] = useState(false)
+
   const supabase = createClient()
+
+  // Hydrate persisted view/filters after mount. Doing this in an effect (not a
+  // lazy initializer) is deliberate: the component is SSR-rendered, so reading
+  // localStorage during render would cause a hydration mismatch.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const saved = loadBoardViewState(board.id)
+    if (saved) {
+      if (saved.view) setView(saved.view)
+      if (saved.focusMemberId !== undefined) setFocusMemberId(saved.focusMemberId)
+      if (saved.selectedMemberIds) setSelectedMemberIds(saved.selectedMemberIds)
+      if (saved.filters) setFilters({ ...EMPTY_FILTERS, ...saved.filters })
+    }
+    setHydrated(true)
+  }, [board.id])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (!hydrated) return
+    saveBoardViewState(board.id, { view, focusMemberId, selectedMemberIds, filters })
+  }, [hydrated, board.id, view, focusMemberId, selectedMemberIds, filters])
+
+  const liveTasks = useMemo(() => tasks.filter((t) => !t.deleted_at), [tasks])
+  const filteredTasks = useMemo(() => filterTasks(liveTasks, filters), [liveTasks, filters])
+  const creators = useMemo(
+    () => members.filter((m) => liveTasks.some((t) => t.created_by === m.id)),
+    [members, liveTasks]
+  )
+  const focusMember = members.find((m) => m.id === focusMemberId) || members.find((m) => m.id === currentUser.id) || members[0] || null
+  const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id))
+
+  const toggleSelected = (id: string) =>
+    setSelectedMemberIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
+
+  const openDelete = (task: Task) => { setDeleteError(null); setDeletingTask(task) }
+  const openFullForm = (memberId: string, section: TaskSection) => setAddingFor({ memberId, section })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -220,24 +276,81 @@ export default function BoardView({ board, members, tasks: initialTasks, current
         <div className="flex h-full flex-col overflow-hidden p-4 sm:p-7 lg:p-9">
           <div className="board-surface">
           <div className="board-toolbar">
-            <div><div className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--text-secondary)' }}><Users size={15} style={{ color: 'var(--accent)' }} /> Team workload</div><p className="mt-1.5 text-[11px]" style={{ color: 'var(--muted)' }}>{members.length} team {members.length === 1 ? 'member' : 'members'} · {tasks.filter((task) => !task.deleted_at && task.status !== 'APPROVED').length} active tasks</p></div>
-            <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
+            <BoardViewSwitcher view={view} onChange={setView} />
+            <div className="flex items-center gap-3">
+              <span className="hidden text-[11px] font-semibold sm:inline" style={{ color: 'var(--muted)' }}>{members.length} {members.length === 1 ? 'member' : 'members'} · {liveTasks.filter((t) => t.status !== 'APPROVED').length} active</span>
+              <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>
+            </div>
           </div>
+
           {members.length > 0 ? (
-          <div className={`board-columns board-canvas ${members.length === 1 ? 'is-single' : ''}`}>
-            {members.map((member) => (
-            <MemberColumn
-              key={member.id}
-              member={member}
-              tasks={tasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id) && !t.deleted_at)}
-              onTaskClick={setSelectedTask}
-              onAddTask={(memberId, section) => setAddingFor({ memberId, section })}
-              onQuickAdd={handleQuickAdd}
-              onDelete={(task) => { setDeleteError(null); setDeletingTask(task) }}
-              currentUser={currentUser}
-            />
-            ))}
-          </div>
+            <>
+              <div className="flex flex-none flex-col gap-3 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+                {view === 'focus' && (
+                  <div className="board-list-toolbar !mb-0">
+                    <span className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Focus on</span>
+                    {members.map((m) => (
+                      <button key={m.id} onClick={() => setFocusMemberId(m.id)} className={`filter-chip ${focusMember?.id === m.id ? 'is-active' : ''}`}>
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-extrabold" style={{ background: 'var(--surface3)', color: 'var(--text)' }}>{getInitials(m.full_name || m.email)}</span>
+                        {m.full_name?.split(' ')[0] || m.email}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {view === 'selection' && (
+                  <div className="board-list-toolbar !mb-0">
+                    <span className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Members</span>
+                    {members.map((m) => (
+                      <button key={m.id} onClick={() => toggleSelected(m.id)} className={`filter-chip ${selectedMemberIds.includes(m.id) ? 'is-active' : ''}`}>
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-extrabold" style={{ background: 'var(--surface3)', color: 'var(--text)' }}>{getInitials(m.full_name || m.email)}</span>
+                        {m.full_name?.split(' ')[0] || m.email}
+                      </button>
+                    ))}
+                    <div className="ml-auto flex gap-2">
+                      <button onClick={() => setSelectedMemberIds(members.map((m) => m.id))} className="filter-chip">All</button>
+                      <button onClick={() => setSelectedMemberIds([])} className="filter-chip">None</button>
+                    </div>
+                  </div>
+                )}
+                <BoardFilterBar filters={filters} onChange={setFilters} creators={creators} />
+              </div>
+
+              {view === 'columns' ? (
+                <div className={`board-columns board-canvas ${members.length === 1 ? 'is-single' : ''}`}>
+                  {members.map((member) => (
+                    <MemberColumn
+                      key={member.id}
+                      member={member}
+                      tasks={filteredTasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id))}
+                      onTaskClick={setSelectedTask}
+                      onAddTask={openFullForm}
+                      onQuickAdd={handleQuickAdd}
+                      onDelete={openDelete}
+                      currentUser={currentUser}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="board-scroll">
+                  {view === 'members' && (
+                    <MemberRowsView members={members} tasks={filteredTasks} currentUser={currentUser} onTaskClick={setSelectedTask} onAddTask={openFullForm} onQuickAdd={handleQuickAdd} onDelete={openDelete} />
+                  )}
+                  {view === 'table' && (
+                    <TableView tasks={filteredTasks} members={members} currentUser={currentUser} onTaskClick={setSelectedTask} onDelete={openDelete} />
+                  )}
+                  {view === 'focus' && (focusMember ? (
+                    <MemberRowsView members={[focusMember]} tasks={filteredTasks} currentUser={currentUser} collapsible={false} initiallyExpanded onTaskClick={setSelectedTask} onAddTask={openFullForm} onQuickAdd={handleQuickAdd} onDelete={openDelete} />
+                  ) : (
+                    <div className="board-stack"><div className="app-card"><EmptyState tone="muted" icon={<UserRound size={22} />} title="No one to focus on" text="Add a team member to this board first." /></div></div>
+                  ))}
+                  {view === 'selection' && (selectedMembers.length > 0 ? (
+                    <MemberRowsView members={selectedMembers} tasks={filteredTasks} currentUser={currentUser} initiallyExpanded onTaskClick={setSelectedTask} onAddTask={openFullForm} onQuickAdd={handleQuickAdd} onDelete={openDelete} />
+                  ) : (
+                    <div className="board-stack"><div className="app-card"><EmptyState tone="muted" icon={<Users size={22} />} title="No members selected" text="Pick one or more members above to see just their tasks." /></div></div>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <div className="flex flex-1 items-center justify-center p-8">
               <div className="app-card max-w-md p-8 text-center"><LayoutGrid className="mx-auto mb-4" size={30} style={{ color: 'var(--accent)' }} /><h2 className="text-lg font-bold">No team members on this board</h2><p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>Invite members from Settings before creating and assigning work.</p></div>

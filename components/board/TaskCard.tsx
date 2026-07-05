@@ -15,9 +15,10 @@ interface TaskCardProps {
   onClick: (task: Task) => void
   currentUser: Profile
   onDelete: (task: Task) => void
+  showAssignee?: boolean
 }
 
-export default function TaskCard({ task, onClick, currentUser, onDelete }: TaskCardProps) {
+export default function TaskCard({ task, onClick, currentUser, onDelete, showAssignee = false }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
 
@@ -70,6 +71,15 @@ export default function TaskCard({ task, onClick, currentUser, onDelete }: TaskC
         <button type="button" className="task-row-title" onClick={() => setExpanded((v) => !v)}>
           {task.title}
         </button>
+
+        {showAssignee && assignees.length > 0 && (
+          <span className="flex flex-none items-center gap-1.5" title={assignees.map((a) => a.full_name || a.email).join(', ')}>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>
+              {getInitials(assignees[0].full_name || assignees[0].email)}
+            </span>
+            {assignees.length > 1 && <span className="text-[10px] font-bold" style={{ color: 'var(--muted)' }}>+{assignees.length - 1}</span>}
+          </span>
+        )}
 
         {urgency.level !== 'none' && (
           <span className="urgency-chip" style={{ color: urgency.color, background: urgency.bg }}>

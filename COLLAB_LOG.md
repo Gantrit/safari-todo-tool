@@ -3,6 +3,33 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 3: board view switcher
+- Branch `redesign-2026`. Makes the board usable at ~25 members. No schema/data changes.
+- New segmented view switcher at the top of the board with 5 views, all inside ONE `DndContext`
+  and all reusing the Phase-2 `TaskCard`/`TaskSection` (no re-built rows):
+  * `members` (default) — `MemberRowsView`: each member is a collapsible lane with an open-count
+    badge; **collapsed lanes render no tasks at all** (only expanded members mount their
+    `TaskSection`s — the perf story for 25 members).
+  * `table` — `TableView`: flat, sortable list (Deadline/Priority/Status/Member/Title, asc/desc)
+    of the same rows with `showAssignee` (member shown as an avatar column in each row).
+  * `focus` — one member (default = current user), rows always expanded, member picker above.
+  * `selection` — multi-select members via chips, shows only the chosen ones.
+  * `columns` — the existing `MemberColumn` matrix, kept as-is.
+- **Structural decision:** kept the column matrix as the `columns` view rather than retiring it.
+  It's the only view with cross-member drag-and-drop reordering (an existing feature), so dropping
+  it would silently remove that. The four new views are additive and share one row renderer + one
+  filter pipeline, so there's no duplicated task-row logic. `members` is the new default.
+- Filters (`lib/boardViews.ts` `filterTasks`): Status + Urgency + **Created-by** (the "creator"
+  filter — `department_id`/`project_id` aren't meaningfully populated, so I used `created_by`,
+  which is). Combinable, apply across ALL views. `BoardFilterBar` = toggle chips in a panel.
+- View + filters + focus/selection persisted per board in `localStorage` (`safari:boardview:<id>`),
+  hydrated in an effect after mount (SSR-safe; not a lazy initializer, to avoid hydration mismatch).
+- New files: `lib/boardViews.ts`, `components/board/{MemberRowsView,TableView,BoardViewSwitcher,
+  BoardFilterBar}.tsx`. `TaskCard` gained an optional `showAssignee` prop (table only).
+- Note: dragging works in columns + member-rows (section droppables); in table it technically
+  reorders global position — low risk (thin bar handle) but flag if you want it disabled there.
+- Still pending: Phase 4 (rights UI, role-model cleanup in `lib/types.ts`).
+
 ## 2026-07-05 - Claude (Opus 4.8) - redesign-2026 Phase 2: task rows, quick-add, delete
 - Branch `redesign-2026` (continues from Phase 1). First phase with real logic changes.
 - **NEW MIGRATION `008_task_delete_rpc.sql` — must be run in the Supabase SQL editor after 007.**
