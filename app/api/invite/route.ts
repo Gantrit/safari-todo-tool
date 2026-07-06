@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createAdminClient()
 
     const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
     })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
