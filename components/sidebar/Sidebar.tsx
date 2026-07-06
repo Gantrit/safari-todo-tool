@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown } from 'lucide-react'
+import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown, UserCog } from 'lucide-react'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
 import { getInitials } from '@/lib/utils'
@@ -109,6 +109,9 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           {groupLabel('Activity')}
           {navItem('/notifications', 'Notifications', <Bell size={16} />, unreadCount)}
           {navItem('/archive', 'Archive', <Archive size={16} />)}
+
+          {groupLabel('Account')}
+          {navItem('/account', 'Account settings', <UserCog size={16} />)}
 
           {profile?.role === 'admin' && <>{groupLabel('Administration')}{navItem('/guild', 'Guild Hall', <Crown size={16} />)}{navItem('/audit', 'Audit log', <ShieldCheck size={16} />)}{navItem('/settings', 'Settings', <Settings size={16} />)}</>}
         </nav>

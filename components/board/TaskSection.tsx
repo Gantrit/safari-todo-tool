@@ -62,7 +62,7 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
     <section className="task-section-surface last:mb-0">
       <div className="task-section-header">
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => (tasks.length === 0 ? setManuallyOpened(false) : setCollapsed(!collapsed))}
           className="flex min-h-10 flex-1 items-center gap-2.5 rounded-[8px] px-2 text-left transition-colors hover:bg-[var(--surface3)]"
         >
           <ChevronRight

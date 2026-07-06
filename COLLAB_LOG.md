@@ -3,6 +3,28 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-06 - Claude (Sonnet 5) - Empty-section collapse fix + personal Account settings
+
+Two follow-ups from user testing of the same session's board redesign:
+
+- **Fixed `TaskSection.tsx`**: collapsing an empty, manually-expanded section (clicking the header
+  chevron) previously left it as a full-width empty header row instead of reverting to the slim
+  "+ Section" chip — `manuallyOpened` state was never reset. Header click handler now checks
+  `tasks.length === 0` and resets to the chip in that case instead of toggling `collapsed`.
+- **NEW `/account` page + `AccountForm.tsx`, all roles** (previously missing entirely): `/settings`
+  redirects any non-admin straight to `/dashboard`, so regular members had no UI to change their
+  display name or toggle notifications, even though `profiles.full_name` and
+  `notification_preferences` (in_app_enabled/email_enabled) already existed and already had
+  working self-service RLS — just no route. Sidebar gets a new "Account" group (visible to
+  everyone) linking to it. Notification prefs are upserted (`onConflict: 'user_id'`) since
+  `handle_new_user()` never seeds a `notification_preferences` row for new signups (only migration
+  004's one-time backfill did, for users that existed at that time) — new users hit this page with
+  no existing row, upsert handles it, no migration needed.
+- Added `NotificationPreferences` type to `lib/types.ts`.
+- Verified live in browser: name save round-trips, notification checkboxes persist across reload,
+  empty-section chip open/collapse cycle behaves correctly (Daily To-Dos expand → collapse →
+  back to chip, Weekly/Monthly untouched). `npm run build` clean.
+
 ## 2026-07-06 - Claude (Sonnet 5) - Remove IMMINENT section, ClickUp-style Create Task
 
 User feedback on the board UI: IMMINENT was redundant as a section since Priority

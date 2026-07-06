@@ -153,6 +153,16 @@ export interface Attachment {
   created_at: string
 }
 
+export interface NotificationPreferences {
+  user_id: string
+  in_app_enabled: boolean
+  email_enabled: boolean
+  digest_assignments: boolean
+  email_from: string
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Notification {
   id: string
   user_id: string
