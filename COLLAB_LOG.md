@@ -3,6 +3,27 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-06 - Claude (Opus 4.8) - Invite/auth flow + single-org model
+
+- **Fixed the production invite failure** (two bugs). (1) "Database error saving new user" was
+  `handle_new_user()` missing `SET search_path` → the auth-schema trigger couldn't resolve
+  unqualified `profiles` (`42P01` in Postgres logs). **NEW migration `013`** pins
+  `search_path = public, pg_temp` + qualifies `public.profiles`. (2) The app had NO auth callback
+  or set-password route, so the invite link (session in URL hash) dead-ended on `/login`. Added
+  `app/(auth)/set-password` (invite/recovery → choose password) and `app/(auth)/callback`
+  (magic link → dashboard); `middleware.ts` treats both as public so the hash token survives;
+  invite + reset now redirect to `/set-password`, magic link to `/callback`.
+  **Requires:** Supabase Auth → URL Configuration → Redirect URLs must include the Vercel + local
+  URLs (`/**`), or Supabase rejects the redirect.
+- **Collapsed to a single-organization model** (user decision). App had 2 accidental workspaces;
+  deleting a board left its workspace in the switcher. **NEW migration `014`** (idempotent) merges
+  all workspaces into the oldest (moves boards + workspace_members, deletes empties, renames to
+  "Safari Studios"). Sidebar `WorkspaceSwitcher` now static when ≤1 workspace + no "New workspace";
+  settings reworded to "Organization & team". Boards are the departments. Guild KPI clipping fixed
+  (`.metric-value` line-height 1→1.08).
+- **Migrations 013 + 014 must be run in the Supabase SQL editor** (013 already run by user; 014 pending).
+- Open: deeper Settings visual redesign still wanted (only wording/switcher cleanup done so far).
+
 ## 2026-07-06 - Claude (Opus 4.8) - Character spacing + AGENTS.md rewrite
 
 - `app/(app)/character/page.tsx`: more generous, consistent spacing (hero p-7→p-8 + more
