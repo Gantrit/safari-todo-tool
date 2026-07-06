@@ -59,7 +59,8 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     if (!inviteEmail.trim()) return
     setBusy('invite'); setMessage(null)
     const response = await fetch('/api/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: inviteEmail.trim(), workspaceId: workspace?.id }) })
-    setMessage({ text: response.ok ? `Invite sent to ${inviteEmail}.` : 'Invite could not be sent.', type: response.ok ? 'success' : 'error' })
+    const body = await response.json().catch(() => null)
+    setMessage({ text: response.ok ? `Invite sent to ${inviteEmail}.` : (body?.error || 'Invite could not be sent.'), type: response.ok ? 'success' : 'error' })
     if (response.ok) setInviteEmail('')
     setBusy(null)
   }
