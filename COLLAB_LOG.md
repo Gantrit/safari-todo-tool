@@ -3,6 +3,23 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-06 - Claude (Opus 4.8) - Character spacing + AGENTS.md rewrite
+
+- `app/(app)/character/page.tsx`: more generous, consistent spacing (hero p-7→p-8 + more
+  internal gaps, stat grid gap-4→gap-5 & cards p-5→p-6, section rhythm mb-6→mb-7, list bodies
+  py-4→py-5). Purely visual — build green, verified live.
+- **Rewrote `AGENTS.md`** — the old version was stale: it claimed Codex is the sole builder and
+  Claude only reviews (both build now), listed only the `admin`/`user` role model, missed the
+  character/guild/leaderboard pages and the board view variants, and said migrations stop at 003.
+  New version reflects the current roles (admin/manager/employee/guest), full page/component map,
+  migrations 001–012, and the server-side-only XP RPCs (approve_task/review_quest/admin_adjust_xp).
+  Shorter and accurate. If anything here drifts again, trust the code + COLLAB_LOG over it.
+- Also earlier this session: surfaced the real `/api/invite` error in Settings (was a generic
+  "Invite could not be sent"). Known open issue: production invite still returns Supabase
+  "Database error saving new user" — a DB-side trigger/constraint on user creation, NOT an env
+  var problem (service-role key + APP_URL are set and the auth/v1/invite call is reached). Needs
+  a look at the `handle_new_user` trigger / profiles insert on invited signups. Deferred by user.
+
 ## 2026-07-06 - Claude (Fable 5) - Guild Hall / Character / Leaderboard + pre-launch fixes
 
 Full live screening (logged into local dev via browser preview; complete task flow incl. real

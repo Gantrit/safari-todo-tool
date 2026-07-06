@@ -1,110 +1,94 @@
 # Safari To-Dos — Agent Briefing
 
-This file is read automatically by both AI coding agents working on this repo:
-- **Codex / ChatGPT** — reads `AGENTS.md` directly.
-- **Claude Code** — reads `CLAUDE.md`, which imports this file via `@AGENTS.md`.
+Read this file and the last 2–3 entries of `COLLAB_LOG.md` at the start of every session, and
+append a `COLLAB_LOG.md` entry at the end of any session where you changed something. Do it
+automatically — the user shouldn't have to ask.
 
-Both agents work on the **same repo, same branch**, at different times, without the human
-repeating context. **Read this file and `COLLAB_LOG.md` at the start of every session, and
-append to `COLLAB_LOG.md` at the end of any session where you changed something** — see
-"Cross-agent handoff protocol" below. Do this automatically, the user should never have to ask.
+Two AI agents work on this repo at different times: **Claude Code** (reads `CLAUDE.md` →
+`@AGENTS.md`) and **Codex/ChatGPT** (reads `AGENTS.md`). Same repo, same `main` branch. Either
+agent may build features, fix bugs, or refactor — always check `git log` and the file tree first
+so you don't re-scaffold or silently revert the other's work.
 
-## What this project is
+## What this is
 
-**Safari To-Dos** is an internal project-management / task tool for "Safari Studios" — a small
-team (e.g. Tan, Furkan, Hares). It replaces ad-hoc task tracking with a gamified board: every
-team member has a column, tasks move through an approval workflow, and completing work on time
-earns XP toward a level rank.
+Internal gamified task tool for **Safari Studios** (small team). Every member has a board column;
+tasks move through an approval flow; completing work on time earns XP toward a level/rank. Must
+stay lean — not a heavy PM/KPI tool.
 
-Stack:
-- **Next.js 14 (App Router)** + TypeScript + Tailwind CSS
-- **Supabase**: Postgres (schema + RLS), Auth, Realtime, Storage
-- **@dnd-kit** for drag-and-drop
-- **Resend** for transactional email (optional, via Supabase Edge Functions)
-- Deployed via **Vercel**, source on **GitHub**
+**Stack:** Next.js (App Router) + TypeScript + Tailwind · Supabase (Postgres/RLS/Auth/Realtime) ·
+@dnd-kit for drag-and-drop · Resend for optional email · deployed on **Vercel** (`main` branch,
+`safari-todo-tool.vercel.app`), source on GitHub.
 
-Repo root (this folder) = the whole app, bootstrapped with `create-next-app`.
+## Core model
 
-## Core product model
+**Board** = matrix grid, one column per member, each column split into sections `IMMINENT`,
+`DAILY`, `WEEKLY`, `MONTHLY`. Board offers several views (member rows, table, focus, selection,
+columns). Plus Calendar, Archive, per-user Private todos.
 
-**Board** = matrix grid. One column per team member. Each column is split into 4 collapsible
-sections: `DAILY`, `IMMINENT`, `WEEKLY`, `MONTHLY`. There's also a Calendar board view, an
-Archive, a private per-user todo space, and admin Settings (invite users, manage workspace/boards,
-Google Drive link).
+**Status flow** (enforced by RLS trigger, migration 007):
+`ASSIGNED → NOTICED → IN_EDIT → DONE → APPROVED`, plus `REJECTED` and a `NEED_CLARIFICATION`
+flag. Assignee drives up to `DONE`; only admin/manager can `APPROVE`/`REJECT`/reopen. On approval
+the task is archived and XP awarded.
 
-**Task status flow** (one-directional, enforced by role):
-```
-NOTICED → IN_EDIT → DONE → APPROVED
-```
-- `NOTICED → IN_EDIT → DONE` is set by the assignee.
-- `DONE → APPROVED` can only be set by an **admin**. On approval the task is struck through and
-  moved to that user's Archive, and XP is awarded.
+**Roles:** `admin` (full control), `manager` (task approval + most admin task rights), `employee`
+(= "Member", normal user), `guest` (= "Viewer", read-only). Legacy `user` maps to `employee`.
+Per-board visibility via `board_access`. Deactivated users keep data but lose access.
 
-**XP / level system** — cumulative, never resets. Awarded ONLY server-side via the
-`approve_task` / `review_quest` RPCs (migration 007); never write XP from the client.
-| Priority | XP on APPROVED | Overdue penalty (applied on admin review) |
-|---|---|---|
-| LOW | +5 | -5 |
-| MEDIUM | +10 | -10 |
-| HIGH | +20 | -20 |
+**XP / levels** — cumulative, never resets. **Only ever written server-side** via RPCs, never
+from the client:
+- `approve_task` (007): base by priority (LOW +5 / MEDIUM +10 / HIGH +20), +10 if IMMINENT,
+  +1/day early (max +10), streak +1/day (max +10); overdue penalty mirrors the base and is
+  applied on admin review.
+- `review_quest` (007): pays a quest's fixed bonus XP on approval.
+- `admin_adjust_xp` (012): admin-only manual correction with mandatory reason.
 
-Bonuses: +10 if section is IMMINENT (penalty likewise -10 extra when overdue), +1 XP per full
-day early (max +10, measured against `completed_at`), streak +1 XP/day (max +10). Rejected with
-quality flag: -5 XP. Levels: 100 XP per level. Ranks: 1-4 Rookie, 5-9 Reliable, 10-19 Executor,
-20-34 High Performer, 35-49 Elite, 50+ Safari Legend. Logic lives in
-[`lib/types.ts`](lib/types.ts) (`getLevelInfo`, `getRankForLevel`) and
-`supabase/migrations/007_security_and_gameplay.sql` (`approve_task`).
+100 XP/level. Ranks: 1–4 Rookie, 5–9 Reliable, 10–19 Executor, 20–34 High Performer, 35–49 Elite,
+50+ Safari Legend. Level/rank math: `getLevelInfo`/`getRankForLevel` in [`lib/types.ts`](lib/types.ts).
 
-**Other features**: comments + emoji reactions on tasks, subtasks, attachments (incl. Google
-Drive URL per task), in-app notifications + browser notifications + email (assignment, result
-submitted, 24h NOTICED reminder, 3-day/24h deadline reminders), per-user private todos only
-visible to that user, role-based RLS (`admin` vs `user`).
+**Other features:** comments, subtasks/checklists, per-task reference links, in-app + email
+notifications, quests, admin-editable templates, admin audit log with filters, soft delete
+(`deleted_at`, admin-recoverable).
 
-Full type definitions: [`lib/types.ts`](lib/types.ts).
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — run in order:
-`001_initial_schema.sql` → `002_rls_policies.sql` → `003_functions.sql`.
-Setup / env vars / deploy steps: [`SETUP.md`](SETUP.md).
-
-## Current app structure (as of last update — check git log for freshness)
+## Structure
 
 ```
-app/(auth)/login                     — login page
-app/(app)/dashboard                  — landing after login
-app/(app)/board/[boardId]            — main kanban board
-app/(app)/calendar                   — calendar board view
-app/(app)/archive                    — approved/archived tasks
-app/(app)/private                    — personal private todos
-app/(app)/notifications              — notification feed
-app/(app)/settings                   — admin: invite users, manage workspace
-app/api/invite                       — invite endpoint
+app/(auth)/login
+app/(app)/dashboard          landing after login
+app/(app)/board/[boardId]    main board (view switcher, quick-add, drag-and-drop)
+app/(app)/calendar           deadline calendar
+app/(app)/character          personal progress: level/rank/quest log/XP history (all users)
+app/(app)/leaderboard        all-time / weekly / monthly standings (all users)
+app/(app)/quests             bonus challenges
+app/(app)/templates          reusable task templates
+app/(app)/private            personal private todos
+app/(app)/archive            approved tasks
+app/(app)/notifications
+app/(app)/guild              admin: XP management / roster (Guild Hall)
+app/(app)/audit              admin: audit log
+app/(app)/settings           admin: workspace, invites, members/roles, boards & access
+app/api/invite               invite endpoint (uses Supabase service-role key)
 
-components/board/   — BoardView, MemberColumn, TaskSection, TaskCard
-components/task/    — TaskModal, TaskForm, SubtaskList, CommentSection
-components/calendar/ CalendarView
-components/sidebar/  Sidebar, WorkspaceSwitcher
-components/ui/       Modal, PriorityBadge, StatusBadge, XPBar
+components/board/   BoardView + view variants, MemberColumn, TaskSection, task rows
+components/task/    TaskModal, TaskForm, SubtaskList, CommentSection
+components/sidebar/ Sidebar, WorkspaceSwitcher
+components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher, etc.
+lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-## Division of labor (current arrangement, set by the human)
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`012`, run in
+order in the Supabase SQL editor. Env vars / deploy steps: [`SETUP.md`](SETUP.md).
 
-- **Codex / ChatGPT** builds the bulk of the feature work — new pages, components, Supabase
-  queries, migrations.
-- **Claude** comes in afterward for improvements: refactors, bug fixes, polish, reviewing
-  Codex's changes, filling gaps.
+## Working rules
 
-This means: don't assume you're starting from a clean slate. Always check `git log` and the
-actual file tree before proposing changes — the other agent may have built or changed things
-since your last session. Don't re-scaffold something that already exists.
+- Keep Next.js (never revert to Vite). Use the `NEXT_PUBLIC_*` env var names. Never hardcode
+  secrets; never write XP from the client.
+- Any schema change = a new numbered migration file; tell the user where/when to run it in
+  Supabase. Empty states must not crash. Run `npm run build` (Windows: `npm.cmd run build`) and
+  fix errors before reporting done.
+- **Do not push automatically unless the user explicitly asks.**
 
-## Cross-agent handoff protocol
+## Handoff protocol
 
-1. **At the start of a session**, read `COLLAB_LOG.md` (most recent entries first) to see what
-   the other agent did last, what's in progress, and any known issues or decisions.
-2. **Before ending a session** where you made non-trivial changes (new feature, schema change,
-   significant refactor, decision the other agent should know about), append a new entry to
-   `COLLAB_LOG.md` using the template at the top of that file. Keep entries short — a future
-   agent should be able to read just the last 2-3 entries and know what changed and why.
-3. If you made a decision that overrides or changes something the *other* agent set up
-   (renamed a table, changed an API shape, swapped a library), say so explicitly in the log
-   entry so they don't silently revert it.
-4. Don't wait for the human to ask you to do this — it's expected every session.
+1. Start: read the most recent `COLLAB_LOG.md` entries.
+2. End (if you changed something non-trivial): append a short entry — what changed, why, and
+   anything the other agent must not undo. New migrations must be called out explicitly.

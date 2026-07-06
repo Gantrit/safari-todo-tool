@@ -79,25 +79,25 @@ export default async function CharacterPage() {
         <Link href="/leaderboard" className="btn btn-secondary self-start xl:self-auto"><Trophy size={16} /> Leaderboard</Link>
       </header>
 
-      <section className="app-card mb-6 p-6 sm:p-7">
-        <div className="flex flex-wrap items-center gap-5">
+      <section className="app-card mb-7 p-7 sm:p-8">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-4">
           <span className="flex h-16 w-16 flex-none items-center justify-center rounded-full text-lg font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{getInitials(profile?.full_name || profile?.email || '?')}</span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-[20px] font-extrabold tracking-[-.02em]">{profile?.full_name || profile?.email}</h2>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h2 className="text-[22px] font-extrabold tracking-[-.02em]">{profile?.full_name || profile?.email}</h2>
               <span className="xp-rank-badge">{info.current.title}</span>
             </div>
-            <p className="mt-1 text-[12.5px]" style={{ color: 'var(--muted)' }}>Level {info.current.level} · {xp.toLocaleString()} XP lifetime</p>
+            <p className="mt-2 text-[13px]" style={{ color: 'var(--muted)' }}>Level {info.current.level} · {xp.toLocaleString()} XP lifetime</p>
           </div>
           {streak > 1 && (
-            <div className="flex flex-none items-center gap-2 rounded-[10px] border px-3.5 py-2.5" style={{ borderColor: 'rgba(240,140,60,.35)', background: 'rgba(240,140,60,.08)' }}>
+            <div className="flex flex-none items-center gap-2 rounded-[10px] border px-4 py-2.5" style={{ borderColor: 'rgba(240,140,60,.35)', background: 'rgba(240,140,60,.08)' }}>
               <Flame size={17} style={{ color: 'var(--amber)' }} />
               <span className="text-[13px] font-extrabold" style={{ color: 'var(--amber)' }}>{streak}-day streak</span>
             </div>
           )}
         </div>
-        <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between gap-2 text-[12px] font-bold">
+        <div className="mt-7">
+          <div className="mb-2.5 flex items-center justify-between gap-3 text-[12px] font-bold">
             <span style={{ color: 'var(--text-secondary)' }}>Level {info.current.level}</span>
             <span style={{ color: 'var(--accent)' }}>{Math.max(0, info.next.min - xp)} XP to Level {info.next.level}</span>
           </div>
@@ -107,33 +107,33 @@ export default async function CharacterPage() {
         </div>
       </section>
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card p-5">
-          <div className="flex items-center justify-between gap-2"><span className="metric-label">XP this week</span><Sparkles size={15} style={{ color: 'var(--accent)' }} /></div>
-          <strong className="metric-value mt-3 block" style={{ color: weekXp >= 0 ? 'var(--accent)' : 'var(--red)' }}>{weekXp >= 0 ? `+${weekXp}` : weekXp}</strong>
-          <p className="metric-description mt-2">Since Monday</p>
+      <section className="mb-7 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="app-card p-6">
+          <div className="flex items-center justify-between gap-3"><span className="metric-label">XP this week</span><Sparkles size={15} style={{ color: 'var(--accent)' }} /></div>
+          <strong className="metric-value mt-4 block" style={{ color: weekXp >= 0 ? 'var(--accent)' : 'var(--red)' }}>{weekXp >= 0 ? `+${weekXp}` : weekXp}</strong>
+          <p className="metric-description mt-2.5">Since Monday</p>
         </article>
-        <article className="app-card p-5">
-          <div className="flex items-center justify-between gap-2"><span className="metric-label">Tasks approved</span><CheckCircle2 size={15} style={{ color: 'var(--green)' }} /></div>
-          <strong className="metric-value mt-3 block">{tasks.length}</strong>
-          <p className="metric-description mt-2">Lifetime, all boards</p>
+        <article className="app-card p-6">
+          <div className="flex items-center justify-between gap-3"><span className="metric-label">Tasks approved</span><CheckCircle2 size={15} style={{ color: 'var(--green)' }} /></div>
+          <strong className="metric-value mt-4 block">{tasks.length}</strong>
+          <p className="metric-description mt-2.5">Lifetime, all boards</p>
         </article>
-        <article className="app-card p-5">
-          <div className="flex items-center justify-between gap-2"><span className="metric-label">On-time rate</span><Clock3 size={15} style={{ color: 'var(--muted)' }} /></div>
-          <strong className="metric-value mt-3 block">{onTimeRate === null ? '—' : `${onTimeRate}%`}</strong>
-          <p className="metric-description mt-2">{onTimeRate === null ? 'No approvals yet' : 'Of approved tasks met their deadline'}</p>
+        <article className="app-card p-6">
+          <div className="flex items-center justify-between gap-3"><span className="metric-label">On-time rate</span><Clock3 size={15} style={{ color: 'var(--muted)' }} /></div>
+          <strong className="metric-value mt-4 block">{onTimeRate === null ? '—' : `${onTimeRate}%`}</strong>
+          <p className="metric-description mt-2.5">{onTimeRate === null ? 'No approvals yet' : 'Of approved tasks met their deadline'}</p>
         </article>
-        <article className="app-card p-5">
-          <div className="flex items-center justify-between gap-2"><span className="metric-label">Quests completed</span><Swords size={15} style={{ color: 'var(--muted)' }} /></div>
-          <strong className="metric-value mt-3 block">{questsCompleted}</strong>
-          <p className="metric-description mt-2">{activeQuests.length ? `${activeQuests.length} active right now` : 'Visit Quests to pick one up'}</p>
+        <article className="app-card p-6">
+          <div className="flex items-center justify-between gap-3"><span className="metric-label">Quests completed</span><Swords size={15} style={{ color: 'var(--muted)' }} /></div>
+          <strong className="metric-value mt-4 block">{questsCompleted}</strong>
+          <p className="metric-description mt-2.5">{activeQuests.length ? `${activeQuests.length} active right now` : 'Visit Quests to pick one up'}</p>
         </article>
       </section>
 
-      <section className="app-card mb-6 p-6">
-        <h2 className="mb-1 text-[15px] font-bold">Rank ladder</h2>
-        <p className="mb-5 text-xs" style={{ color: 'var(--muted)' }}>100 XP per level. Keep shipping to climb.</p>
-        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="app-card mb-7 p-7 sm:p-8">
+        <h2 className="mb-1.5 text-[15px] font-bold">Rank ladder</h2>
+        <p className="mb-6 text-xs" style={{ color: 'var(--muted)' }}>100 XP per level. Keep shipping to climb.</p>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {RANK_LADDER.map((rank, index) => {
             const reached = index <= currentRankIndex
             const isCurrent = index === currentRankIndex
@@ -161,8 +161,8 @@ export default async function CharacterPage() {
             <Link href="/quests" className="text-xs font-bold" style={{ color: 'var(--accent)' }}>All quests →</Link>
           </div>
           {quests.length ? (
-            <div className="px-5 py-4">
-              <div className="space-y-2">
+            <div className="px-5 py-5">
+              <div className="space-y-2.5">
                 {quests.slice(0, 8).map((quest, index) => {
                   const meta = ACCEPTANCE_LABEL[quest.status] || ACCEPTANCE_LABEL.ACCEPTED
                   return (
@@ -195,7 +195,7 @@ export default async function CharacterPage() {
             <ScrollText size={16} style={{ color: 'var(--muted)' }} />
           </div>
           {entries.length ? (
-            <div className="px-5 py-4">
+            <div className="px-5 py-5">
               <div className="space-y-1.5">
                 {entries.slice(0, 12).map((entry, index) => (
                   <div key={index} className="flex items-center justify-between gap-3 rounded-[8px] px-3 py-2" style={{ background: 'var(--surface2)' }}>
