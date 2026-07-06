@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ExternalLink, LayoutGrid, Loader2, Plus, ShieldOff, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react'
+import { Building2, ExternalLink, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, Role } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
@@ -36,6 +36,16 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
   const [access, setAccess] = useState<Set<string>>(new Set(boardAccess.map((a) => `${a.board_id}:${a.user_id}`)))
   const [openAccessBoard, setOpenAccessBoard] = useState<string | null>(null)
+
+  // boardAccess is a prop from the server component; router.refresh() re-fetches it,
+  // but this component instance stays mounted, so the initial useState() snapshot
+  // above would otherwise go stale (e.g. after the auto-grant trigger in migration
+  // 010 seeds access for a newly added member).
+  useEffect(() => {
+    setAccess(new Set(boardAccess.map((a) => `${a.board_id}:${a.user_id}`)))
+  }, [boardAccess])
+  const [renamingBoard, setRenamingBoard] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
@@ -69,6 +79,13 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     setBusy('board'); setMessage(null)
     const { error } = await supabase.from('boards').insert({ workspace_id: workspace.id, name: newBoardName.trim(), type: 'kanban' })
     if (error) setMessage({ text: error.message, type: 'error' }); else setNewBoardName('')
+    setBusy(null); router.refresh()
+  }
+  async function renameBoard(id: string) {
+    if (!renameValue.trim()) return
+    setBusy(`rename-${id}`); setMessage(null)
+    const { error } = await supabase.from('boards').update({ name: renameValue.trim() }).eq('id', id)
+    if (error) setMessage({ text: error.message, type: 'error' }); else setRenamingBoard(null)
     setBusy(null); router.refresh()
   }
   async function deleteBoard(id: string, name: string) {
@@ -107,7 +124,7 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     setAccess(next)
     const { error } = has
       ? await supabase.from('board_access').delete().eq('board_id', boardId).eq('user_id', userId)
-      : await supabase.from('board_access').insert({ board_id: boardId, user_id: userId, can_comment: true })
+      : await supabase.from('board_access').upsert({ board_id: boardId, user_id: userId, can_comment: true }, { onConflict: 'board_id,user_id' })
     if (error) {
       setAccess(access) // revert
       setMessage({ text: error.message, type: 'error' })
@@ -169,11 +186,24 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
       <div>
         {boards.map((board) => {
           const open = openAccessBoard === board.id
+          const renaming = renamingBoard === board.id
+          const displayName = board.name === 'Team Board' ? `${workspace.name} Board` : board.name
           return (
             <div key={board.id}>
               <div className="settings-row">
                 <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[8px]" style={{ background: 'var(--surface2)', color: 'var(--text-secondary)' }}><LayoutGrid size={15} /></span>
-                <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{board.name === 'Team Board' ? `${workspace.name} Board` : board.name}</strong><span className="text-xs capitalize" style={{ color: 'var(--muted)' }}>{board.type} board</span></span>
+                {renaming ? (
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="form-control !min-h-8 !py-1 !text-sm" autoFocus onKeyDown={(e) => e.key === 'Enter' && renameBoard(board.id)} />
+                    <button onClick={() => renameBoard(board.id)} disabled={busy === `rename-${board.id}` || !renameValue.trim()} className="btn btn-secondary !min-h-8 !px-3 !text-[12px]">{busy === `rename-${board.id}` ? <Loader2 className="animate-spin" size={13} /> : 'Save'}</button>
+                    <button onClick={() => setRenamingBoard(null)} className="btn btn-secondary !min-h-8 !px-3 !text-[12px]">Cancel</button>
+                  </div>
+                ) : (
+                  <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{displayName}</strong><span className="text-xs capitalize" style={{ color: 'var(--muted)' }}>{board.type} board</span></span>
+                )}
+                {!renaming && (
+                  <button onClick={() => { setRenamingBoard(board.id); setRenameValue(board.name) }} className="icon-button !h-8 !w-8" aria-label={`Rename ${board.name}`} title="Rename board"><Pencil size={13} /></button>
+                )}
                 <button onClick={() => setOpenAccessBoard(open ? null : board.id)} className="btn btn-secondary !min-h-8 !px-3 !text-[12px]">{open ? 'Done' : 'Manage access'}</button>
                 <button onClick={() => deleteBoard(board.id, board.name)} disabled={busy === `board-${board.id}`} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" aria-label={`Delete ${board.name}`}>{busy === `board-${board.id}` ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}</button>
               </div>

@@ -29,11 +29,14 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
     if (data.user && workspaceId) {
-      await supabase.from('workspace_members').upsert({
+      const { error: memberError } = await supabase.from('workspace_members').upsert({
         workspace_id: workspaceId,
         user_id: data.user.id,
         role: 'employee',
       })
+      if (memberError) {
+        return NextResponse.json({ error: `Invited, but could not add to workspace: ${memberError.message}` }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ success: true })

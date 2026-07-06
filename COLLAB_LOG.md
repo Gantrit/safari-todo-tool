@@ -59,6 +59,42 @@ assignee list and bulky reminder toggles. Full plan in `PLAN_clickup_style_board
   section in the UI) until it's applied — expected, not a bug.
 
 
+## 2026-07-06 - Claude (Sonnet 5) - Board rename, board-access opt-in, invite error surfacing
+
+Triggered by user hitting a real "duplicate key value violates unique constraint
+board_access_pkey" error while manually testing the invite → register → grant-access flow live
+(Marian's account) in Settings.
+
+- **Board rename was fully broken at the DB level, not just missing UI:** `boards` had `INSERT`/
+  `DELETE` RLS policies (002, 009) but **no `UPDATE` policy at all**, so any rename attempt was
+  silently denied by RLS regardless of UI. **NEW migration `015_board_rename.sql`** (admin-only
+  `boards_update` via `is_admin()`) — **run by user, confirmed**. Added a pencil-icon inline
+  rename control per board row in `app/(app)/settings/SettingsForm.tsx` (`renameBoard()`,
+  `renamingBoard`/`renameValue` state).
+- **Root cause of the duplicate-key error:** migration 010's `seed_member_board_access_trigger`
+  auto-grants a new workspace member access to *every* existing board immediately on
+  `workspace_members` insert (it was written to avoid lockout when 010 first shipped, but keeps
+  firing for every new member since). So Marian already had `board_access` rows for both boards
+  in the DB the moment she was added — but `SettingsForm`'s local `access` React state (seeded
+  once via `useState(boardAccess...)`) goes stale after any `router.refresh()` (component stays
+  mounted, prop changes don't reset `useState`'s initial value), so the UI still showed her
+  checkbox as unchecked. Clicking it then tried to `INSERT` a row that already existed.
+  - Fixed the stale-state bug generally: added a `useEffect` in `SettingsForm.tsx` that
+    resyncs `access` whenever the `boardAccess` prop changes.
+  - Made `toggleAccess`'s grant path an `upsert` (`onConflict: 'board_id,user_id'`) instead of
+    a plain `insert`, so a duplicate grant is a no-op instead of an error, as defense in depth.
+- **Product decision (explicitly asked, user chose "opt-in"):** board access should NOT
+  auto-grant on join. New members must start with zero board access; admin grants per board in
+  Settings, member sees it after a refresh. **NEW migration
+  `016_board_access_opt_in.sql`** drops both 010 auto-grant triggers/functions
+  (`seed_board_access_trigger`/`seed_member_board_access_trigger` and their functions) and
+  clears existing auto-seeded `board_access` rows for all non-admin members (one-time cleanup,
+  re-grant as needed in Settings afterward) — **run by user, confirmed**.
+- **`/api/invite`** now returns the actual error if the `workspace_members` upsert fails instead
+  of silently reporting `{ success: true }` — this silent failure is the likely reason Marian's
+  account existed in `auth.users`/`profiles` but had no `workspace_members` row for a while
+  (fixed by hand via a one-off SQL insert before 016 existed).
+
 ## 2026-07-06 - Claude (Opus 4.8) - Invite/auth flow + single-org model
 
 - **Fixed the production invite failure** (two bugs). (1) "Database error saving new user" was
