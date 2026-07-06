@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw } from 'lucide-react'
+import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown } from 'lucide-react'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
 import { getInitials } from '@/lib/utils'
@@ -97,8 +97,12 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           {workspaceBoards.map((board) => navItem(`/board/${board.id}`, board.name === 'Team Board' ? `${workspaces.find((workspace) => workspace.id === selectedWorkspaceId)?.name || 'Workspace'} Board` : board.name, <LayoutGrid size={16} />))}
           {navItem('/calendar', 'Calendar', <Calendar size={16} />)}
 
-          {groupLabel('Tools')}
+          {groupLabel('Progress')}
+          {navItem('/character', 'My character', <Swords size={16} />)}
           {navItem('/quests', 'Quests', <Trophy size={16} />)}
+          {navItem('/leaderboard', 'Leaderboard', <Medal size={16} />)}
+
+          {groupLabel('Tools')}
           {navItem('/templates', 'Templates', <ClipboardList size={16} />)}
           {navItem('/private', 'My private tasks', <Lock size={16} />)}
 
@@ -106,7 +110,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           {navItem('/notifications', 'Notifications', <Bell size={16} />, unreadCount)}
           {navItem('/archive', 'Archive', <Archive size={16} />)}
 
-          {profile?.role === 'admin' && <>{groupLabel('Administration')}{navItem('/audit', 'Audit log', <ShieldCheck size={16} />)}{navItem('/settings', 'Settings', <Settings size={16} />)}</>}
+          {profile?.role === 'admin' && <>{groupLabel('Administration')}{navItem('/guild', 'Guild Hall', <Crown size={16} />)}{navItem('/audit', 'Audit log', <ShieldCheck size={16} />)}{navItem('/settings', 'Settings', <Settings size={16} />)}</>}
         </nav>
 
         {profile && (
@@ -124,7 +128,12 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
                   <span className="font-bold" style={{ color: 'var(--text-secondary)' }}>L{levelInfo.current.level} {levelInfo.current.title}</span>
                   <span className="font-bold" style={{ color: 'var(--accent)' }}>{profile.xp} XP</span>
                 </div>
-                <XPBar progress={levelInfo.progress} nextLevel={levelInfo.next?.title} />
+                <XPBar
+                  progress={levelInfo.progress}
+                  nextLevel={levelInfo.next.title !== levelInfo.current.title
+                    ? `${levelInfo.next.title} at Level ${levelInfo.next.level}`
+                    : `Level ${levelInfo.next.level} · ${Math.max(0, levelInfo.next.min - profile.xp)} XP to go`}
+                />
               </div>
             )}
             <div className="sidebar-account-meta"><span>Account</span><span>{profile.role}</span></div>

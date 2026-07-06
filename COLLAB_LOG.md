@@ -3,6 +3,37 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-06 - Claude (Fable 5) - Guild Hall / Character / Leaderboard + pre-launch fixes
+
+Full live screening (logged into local dev via browser preview; complete task flow incl. real
+XP payout verified end-to-end) plus the missing gamification surface. Build passes; all new
+pages verified live in the browser.
+- **NEW MIGRATION — run in Supabase SQL editor after 011:** `012_guild_xp_management.sql`.
+  Adds admin-only SELECT policy on `xp_log`, `admin_adjust_xp(user, amount, reason)` RPC
+  (is_admin gate, ±1000 cap, mandatory reason, pays through `award_xp` → xp_log + audit +
+  notification, new `xp_adjusted` notification type), and `xp_leaderboard(p_since)` RPC for
+  weekly/monthly standings. **Until applied, Guild XP buttons and weekly/monthly leaderboard
+  tabs show a clear "migration 012 required" message (verified live) — nothing breaks.**
+- **NEW `/guild` (admin-only, sidebar "Guild Hall"):** member roster sorted by XP, guild KPI
+  cards, per-member expandable panel (tasks approved, quests, next level), Award/Deduct XP
+  flow (quick amounts + custom + reason), per-member XP history.
+- **NEW `/character` (all users, sidebar "My character"):** hero card (level/rank/XP bar/
+  streak), stat cards (week XP, tasks approved, on-time rate, quests), rank ladder, quest
+  log, XP history.
+- **NEW `/leaderboard` (all users):** All-time / This week / This month tabs, top-3 podium
+  cards, rest as list. Weekly/monthly call `xp_leaderboard` client-side.
+- **Dashboard:** the big leaderboard section is REPLACED by a compact link strip to
+  `/leaderboard`. Don't reintroduce the full leaderboard there.
+- **Sidebar:** new "Progress" group (My character, Quests, Leaderboard); "Guild Hall" under
+  Administration. Footer XP label fixed (no more "Next: Rookie" for same-rank level-ups).
+- **Settings workspace-scoping bug fixed:** `settings/page.tsx` picked `workspaceMembers[0]`
+  regardless of the selected workspace (showed "Safari" while sidebar was on "Backend"). Now
+  honors `?workspace=` and shows workspace switcher pills when the admin has several.
+- Quest cards: removed forced `min-h-[290px]` (dead empty space on short cards).
+- Launch notes for the human: only 1 real user exists so far (invites need
+  `SUPABASE_SERVICE_ROLE_KEY` + `NEXT_PUBLIC_APP_URL` set on Vercel for /api/invite), and two
+  near-empty duplicate workspaces ("Backend" + "Safari") should be consolidated.
+
 ## 2026-07-05 - Claude (Opus 4.8) - Post-merge screening fixes (3 bugs)
 
 Static review of the merged `redesign-2026` work found 3 real bugs; fixed on branch

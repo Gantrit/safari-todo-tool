@@ -105,7 +105,7 @@ export default function QuestBoard({ quests, acceptances, isAdmin, userId }: { q
             const canAccept = !mine && !questClosed && (quest.allow_multiple_accepts || questAcceptances.length === 0)
 
             return (
-              <article key={quest.id} className="app-card flex min-h-[290px] flex-col p-7">
+              <article key={quest.id} className="app-card flex flex-col p-6 sm:p-7">
                 <div className="mb-6 flex items-start gap-4">
                   <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[10px]" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}><Trophy size={21} /></span>
                   <div className="min-w-0 flex-1">

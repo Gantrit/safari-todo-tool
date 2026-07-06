@@ -146,14 +146,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </article>
       </section>
 
-      <section className="app-card dashboard-leaderboard">
-        <div className="card-header !justify-start"><Trophy size={19} style={{ color: 'var(--accent)' }} /><div><h2 className="text-[15px] font-bold">Team leaderboard</h2><p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>Cumulative XP across Safari Studios</p></div></div>
-        {leaderboard?.length ? (
-          <div>{leaderboard.map((member, index) => { const info = getLevelInfo(member.xp); const isMe = member.id === user!.id; const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null; return <div key={member.id} className="dashboard-row flex items-center gap-4" style={{ background: isMe ? 'var(--accent-dim)' : undefined }}><span className="w-7 text-center text-xs font-extrabold" style={{ color: index < 3 ? 'var(--accent)' : 'var(--muted)' }}>{medal || `#${index + 1}`}</span><span className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)', boxShadow: index === 0 ? '0 0 0 2px rgba(200,169,106,.45)' : undefined }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] font-bold">{member.full_name || member.email}{isMe && <em className="ml-2 rounded px-1.5 py-0.5 text-[9px] not-italic uppercase tracking-wider" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>you</em>}</span><span className="mt-1 flex items-center gap-2"><span className="h-1 w-24 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}><span className="block h-full rounded-full" style={{ width: `${Math.min(info.progress, 100)}%`, background: 'var(--accent)' }} /></span><span className="text-[11px]" style={{ color: 'var(--muted)' }}>Lvl {info.current.level} · {info.current.title}</span></span></span><strong className="text-sm" style={{ color: 'var(--accent)' }}>{member.xp} XP</strong></div>})}</div>
-        ) : (
-          <EmptyState tone="muted" icon={<Trophy size={22} />} title="No XP yet" text="Approved tasks will earn XP and appear on the leaderboard." />
-        )}
-      </section>
+      <Link href="/leaderboard" className="app-card group flex items-center gap-4 !p-5 transition-colors hover:border-[var(--border-strong)]">
+        <span className="icon-chip flex-none" style={{ width: 42, height: 42 }}><Trophy size={19} style={{ color: 'var(--accent)' }} /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14.5px] font-bold">Team leaderboard</span>
+          <span className="mt-0.5 block text-xs" style={{ color: 'var(--muted)' }}>All-time, weekly and monthly standings</span>
+        </span>
+        {(leaderboard || []).slice(0, 3).map((member, index) => (
+          <span key={member.id} className="hidden h-9 w-9 flex-none items-center justify-center rounded-full text-[11px] font-extrabold sm:flex" style={{ background: index === 0 ? 'var(--accent)' : 'var(--surface3)', color: index === 0 ? '#0b0d09' : 'var(--text)', marginLeft: index ? -8 : 0, border: '2px solid var(--surface)' }}>{getInitials(member.full_name || member.email)}</span>
+        ))}
+        <ArrowRight size={17} className="flex-none transition-transform group-hover:translate-x-0.5" style={{ color: 'var(--accent)' }} />
+      </Link>
     </div>
   )
 }
