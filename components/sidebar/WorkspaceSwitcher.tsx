@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Check, ChevronDown, Loader2, Plus } from 'lucide-react'
+import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react'
 type WorkspaceSummary = { id: string; name: string }
 type BoardSummary = { id: string; name: string; workspace_id: string }
 
@@ -14,6 +13,8 @@ interface WorkspaceSwitcherProps {
   canManage?: boolean
 }
 
+// Single-org model: boards are the departments, so with one workspace this is a
+// static identity block. The dropdown only appears in the rare case of >1 org.
 export default function WorkspaceSwitcher({ workspaces, boards, selectedWorkspaceId, canManage = false }: WorkspaceSwitcherProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -36,29 +37,37 @@ export default function WorkspaceSwitcher({ workspaces, boards, selectedWorkspac
   }
 
   if (!selected) {
-    const message = canManage ? 'No workspace yet' : 'Ask an admin to invite you'
-    if (!canManage) {
-      return (
-        <div className="flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px]" style={{ color: 'var(--muted)' }}>
-          <Building2 size={16} style={{ opacity: 0.7 }} />
-          <span className="truncate">{message}</span>
-        </div>
-      )
-    }
     return (
-      <Link href="/settings?newWorkspace=1" className="nav-item flex items-center gap-[10px] rounded-[6px] px-3 py-[9px] text-[13px] font-medium">
+      <div className="flex items-center gap-[10px] rounded-[12px] border px-3.5 py-[13px] text-[13px]" style={{ borderColor: 'var(--border)', background: 'var(--surface2)', color: 'var(--muted)' }}>
         <Building2 size={16} style={{ opacity: 0.7 }} />
-        <span className="flex-1 truncate">{message}</span>
-        <Plus size={14} style={{ color: 'var(--accent)' }} />
-      </Link>
+        <span className="truncate">{canManage ? 'No organization yet' : 'Ask an admin to invite you'}</span>
+      </div>
+    )
+  }
+
+  const identity = (
+    <>
+      <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-xs font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>{selected.name?.[0]?.toUpperCase()}</span>
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Organization</span>
+        <span className="block truncate text-sm font-bold">{selected.name}</span>
+      </span>
+    </>
+  )
+
+  // One workspace → static identity, no interactive affordance.
+  if (workspaces.length <= 1) {
+    return (
+      <div className="flex min-h-[62px] w-full items-center gap-3 rounded-[12px] border px-3.5" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+        {identity}
+      </div>
     )
   }
 
   return (
     <div className="relative" ref={rootRef}>
       <button onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex min-h-[62px] w-full items-center gap-3 rounded-[12px] border px-3.5 text-left transition-colors" style={{ background: 'var(--surface2)', borderColor: open ? 'var(--border-strong)' : 'var(--border)' }}>
-        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[9px] text-xs font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>{selected.name?.[0]?.toUpperCase()}</span>
-        <span className="min-w-0 flex-1"><span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Workspace</span><span className="block truncate text-sm font-bold">{selected.name}</span></span>
+        {identity}
         {isPending ? <Loader2 className="animate-spin" size={15} style={{ color: 'var(--accent)' }} /> : <ChevronDown size={15} style={{ color: 'var(--muted)', transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 160ms' }} />}
       </button>
 
@@ -68,7 +77,6 @@ export default function WorkspaceSwitcher({ workspaces, boards, selectedWorkspac
             const active = workspace.id === selected.id
             return <button key={workspace.id} onClick={() => selectWorkspace(workspace)} disabled={isPending} className="flex min-h-11 w-full items-center gap-2 rounded-[8px] px-2.5 text-left text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-60"><span className="flex-1 truncate">{workspace.name}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button>
           })}
-          {canManage && <Link href="/settings?newWorkspace=1" onClick={() => setOpen(false)} className="mt-1 flex min-h-10 items-center gap-2 border-t px-2.5 pt-1 text-xs font-bold" style={{ borderColor: 'var(--border)', color: 'var(--accent)' }}><Plus size={14} /> New Workspace</Link>}
         </div>
       )}
     </div>

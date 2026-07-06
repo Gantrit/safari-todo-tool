@@ -45,7 +45,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="page-shell !max-w-[1180px]">
-      <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Workspace settings'}</h1><p className="page-description">Manage workspace identity, team access, boards, and shared defaults.</p></div></header>
+      <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Organization & team'}</h1><p className="page-description">Your team, its boards, and who can access what — all in one place.</p></div></header>
       {newWorkspace !== '1' && allWorkspaces.length > 1 && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Workspace:</span>
