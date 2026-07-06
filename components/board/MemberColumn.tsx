@@ -5,7 +5,7 @@ import { getInitials } from '@/lib/utils'
 import TaskSectionComp from './TaskSection'
 import { Plus } from 'lucide-react'
 
-const SECTIONS: TaskSection[] = ['IMMINENT', 'DAILY', 'WEEKLY', 'MONTHLY']
+const SECTIONS: TaskSection[] = ['DAILY', 'WEEKLY', 'MONTHLY']
 
 interface MemberColumnProps {
   member: Profile

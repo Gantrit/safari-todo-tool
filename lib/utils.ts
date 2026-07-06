@@ -105,6 +105,16 @@ export function getUrgency(deadline: string | null, status?: TaskStatus): Urgenc
   return { level: 'far', label: formatDate(deadline) || 'Scheduled', color: 'var(--muted)', bg: 'transparent' }
 }
 
+/**
+ * Whether a task is within its near-deadline XP-bonus window (see
+ * NEAR_DEADLINE_WINDOW_HOURS in lib/types.ts) — future deadline, not yet settled.
+ */
+export function isNearDeadline(deadline: string | null, status?: TaskStatus): boolean {
+  if (!deadline || status === 'APPROVED' || status === 'REJECTED') return false
+  const hours = differenceInHours(new Date(deadline), new Date())
+  return hours >= 0 && hours <= 24
+}
+
 /** Combined status/priority colour for the task-row accent bar. */
 export function taskAccentColor(status: TaskStatus, priority: Priority): string {
   if (status === 'APPROVED') return 'var(--green)'

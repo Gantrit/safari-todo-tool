@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'manager' | 'employee' | 'guest'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
 export type TaskStatus = 'ASSIGNED' | 'NOTICED' | 'IN_EDIT' | 'DONE' | 'APPROVED' | 'REJECTED'
-export type TaskSection = 'DAILY' | 'IMMINENT' | 'WEEKLY' | 'MONTHLY'
+export type TaskSection = 'DAILY' | 'WEEKLY' | 'MONTHLY'
 export type BoardType = 'kanban' | 'calendar'
 export type NotificationType =
   | 'assignment'
@@ -232,7 +232,8 @@ export const XP_PENALTY: Record<Priority, number> = {
   HIGH: -20,
 }
 
-export const IMMINENT_XP_BONUS = 10
+export const NEAR_DEADLINE_XP_BONUS = 10
+export const NEAR_DEADLINE_WINDOW_HOURS = 24
 export const MAX_EARLY_COMPLETION_BONUS = 10
 export const MAX_STREAK_BONUS = 10
 
@@ -298,12 +299,16 @@ export function getTaskDeadline(task: Pick<Task, 'deadline_at' | 'due_date'>) {
 
 export function calculateApprovalXp(task: Pick<Task, 'priority' | 'section' | 'deadline_at' | 'due_date'>, completedAt = new Date()) {
   const base = XP_VALUES[task.priority]
-  const imminent = task.section === 'IMMINENT' ? IMMINENT_XP_BONUS : 0
   const deadline = getTaskDeadline(task)
   let early = 0
+  let nearDeadline = 0
   if (deadline) {
     const diffMs = new Date(deadline).getTime() - completedAt.getTime()
-    early = Math.max(0, Math.min(MAX_EARLY_COMPLETION_BONUS, Math.floor(diffMs / 86_400_000)))
+    if (diffMs >= 0) {
+      early = Math.max(0, Math.min(MAX_EARLY_COMPLETION_BONUS, Math.floor(diffMs / 86_400_000)))
+      // Completed within the last NEAR_DEADLINE_WINDOW_HOURS before the deadline (but not late).
+      if (diffMs <= NEAR_DEADLINE_WINDOW_HOURS * 3_600_000) nearDeadline = NEAR_DEADLINE_XP_BONUS
+    }
   }
-  return base + imminent + early
+  return base + nearDeadline + early
 }

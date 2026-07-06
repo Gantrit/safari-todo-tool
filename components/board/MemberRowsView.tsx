@@ -7,7 +7,7 @@ import { taskBelongsToMember } from '@/lib/boardViews'
 import TaskSection from './TaskSection'
 import { ChevronRight } from 'lucide-react'
 
-const SECTIONS: TSectionType[] = ['IMMINENT', 'DAILY', 'WEEKLY', 'MONTHLY']
+const SECTIONS: TSectionType[] = ['DAILY', 'WEEKLY', 'MONTHLY']
 
 interface MemberRowsViewProps {
   members: Profile[]

@@ -20,13 +20,13 @@ interface TaskSectionProps {
 
 const SECTION_LABELS: Record<TSectionType, { label: string; color: string }> = {
   DAILY: { label: 'Daily To-Dos', color: 'var(--text)' },
-  IMMINENT: { label: 'Imminent', color: 'var(--accent)' },
   WEEKLY: { label: 'Weekly To-Dos', color: 'var(--blue)' },
   MONTHLY: { label: 'Monthly To-Dos', color: 'var(--purple)' },
 }
 
 export default function TaskSection({ section, tasks, onTaskClick, onAddTask, onQuickAdd, onDelete, currentUser, memberId }: TaskSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [manuallyOpened, setManuallyOpened] = useState(false)
   const [quickTitle, setQuickTitle] = useState('')
   const { label, color } = SECTION_LABELS[section]
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
@@ -37,6 +37,25 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
     if (!title) return
     onQuickAdd(memberId, section, title)
     setQuickTitle('')
+  }
+
+  // Days with nothing planned in a section are common — collapse it to a slim
+  // "+ Section" chip instead of an empty header/card-stack taking up space.
+  if (tasks.length === 0 && !manuallyOpened) {
+    if (!canWrite) return null
+    return (
+      <button
+        ref={setNodeRef}
+        type="button"
+        onClick={() => setManuallyOpened(true)}
+        className="mb-2 flex h-8 w-full items-center gap-2 rounded-[8px] border border-dashed px-2.5 text-left transition-colors hover:bg-[var(--surface3)] last:mb-0"
+        style={{ borderColor: isOver ? 'var(--accent)' : 'var(--border)', background: isOver ? 'var(--accent-dim)' : undefined }}
+        aria-label={`Add a ${label} task`}
+      >
+        <Plus size={12} style={{ color: 'var(--muted)' }} />
+        <span className="text-[10.5px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>{label}</span>
+      </button>
+    )
   }
 
   return (

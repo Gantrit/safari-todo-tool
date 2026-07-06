@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Task, Profile } from '@/lib/types'
-import { getInitials, getUrgency, taskAccentColor, canDeleteTask } from '@/lib/utils'
+import { getInitials, getUrgency, isNearDeadline, taskAccentColor, canDeleteTask } from '@/lib/utils'
 import PriorityBadge from '../ui/PriorityBadge'
 import StatusBadge from '../ui/StatusBadge'
 import { useSortable } from '@dnd-kit/sortable'
@@ -40,7 +40,7 @@ export default function TaskCard({ task, onClick, currentUser, onDelete, showAss
   const commentCount = task.comments?.length || 0
   const attachmentCount = task.attachments?.length || 0
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
-  const isImminent = task.section === 'IMMINENT'
+  const isImminent = isNearDeadline(deadline, task.status)
 
   return (
     <div

@@ -3,6 +3,40 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-06 - Claude (Sonnet 5) - Remove IMMINENT section, ClickUp-style Create Task
+
+User feedback on the board UI: IMMINENT was redundant as a section since Priority
+(LOW/MEDIUM/HIGH) already exists, and the Create Task modal wasted space with an always-expanded
+assignee list and bulky reminder toggles. Full plan in `PLAN_clickup_style_board.md`.
+
+- **`TaskSection` is now `'DAILY' | 'WEEKLY' | 'MONTHLY'`** — dropped `IMMINENT`. **NEW migration
+  `017_remove_imminent_section.sql`** (not yet run by user as of this entry — confirm before next
+  session assumes it's live): backfills existing `IMMINENT` tasks/templates to `DAILY`, tightens
+  the `tasks`/`task_templates` section CHECK constraints, and redefines `approve_task()`.
+- **The old +10 "imminent" XP bonus is now a deadline-proximity bonus**, not a section flag:
+  completing a task within `NEAR_DEADLINE_WINDOW_HOURS` (24h, confirmed with user) before its
+  deadline earns the same +10, regardless of Daily/Weekly/Monthly. Mirrored in both
+  `approve_task()` (SQL, migration 017) and the client-side preview in
+  `calculateApprovalXp` (`lib/types.ts`) — keep these two in sync if the window ever changes.
+  Also added `isNearDeadline()` in `lib/utils.ts` (used by `TaskCard.tsx`'s `.is-imminent` visual
+  accent) so the board highlight matches the XP rule instead of the old section check.
+- **`TaskSection.tsx`**: sections with zero tasks now collapse to a slim dashed "+ {label}" chip
+  (droppable, so drag-and-drop into an empty section still works) instead of rendering an empty
+  header + card-stack. Click to expand in place. Viewers (no write access) don't see the chip at
+  all if a section is empty — nothing to add, nothing to show.
+- **`TaskForm.tsx`** (Create Task modal): Assignees list is now a disclosure (collapsed by default,
+  shows selected-avatar chips + chevron, click to expand) instead of always-expanded. Reminders
+  are plain checkboxes instead of big toggle switches. Added a **Category** field (Daily/Weekly/
+  Monthly select, default Daily) between Reminders and Recurring task — this is the new home for
+  what section a task lands in; the `section` prop passed in from the board's "+" button is now
+  just the field's initial default, not the value used on submit (`category` state is).
+- Verified live in browser (Tan/Admin login, Backend board): empty-section chips, disclosure
+  toggle, and the new Category field all behave as designed. `npm run build` clean.
+- **Don't re-scaffold**: if migration 017 hasn't been run yet by the time you read this, existing
+  `IMMINENT` rows in the live DB will simply not render anywhere on the board (no matching
+  section in the UI) until it's applied — expected, not a bug.
+
+
 ## 2026-07-06 - Claude (Opus 4.8) - Invite/auth flow + single-org model
 
 - **Fixed the production invite failure** (two bugs). (1) "Database error saving new user" was

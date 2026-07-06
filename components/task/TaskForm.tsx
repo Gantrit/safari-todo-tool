@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Task, Priority, TaskSection, Profile } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { berlinDefaultDeadline, getInitials } from '@/lib/utils'
-import { Bell, Check, Link2, ListChecks, Loader2, Repeat2 } from 'lucide-react'
+import { Bell, Check, ChevronDown, Link2, ListChecks, Loader2, Repeat2 } from 'lucide-react'
 
 interface TaskFormProps {
   boardId: string
@@ -21,6 +21,8 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('MEDIUM')
   const [assignedTo, setAssignedTo] = useState<string[]>([memberId])
+  const [assigneesOpen, setAssigneesOpen] = useState(false)
+  const [category, setCategory] = useState<TaskSection>(section)
   const [deadline, setDeadline] = useState(() => berlinDefaultDeadline(section).toISOString().slice(0, 16))
   const [referenceUrl, setReferenceUrl] = useState('')
   const [checklist, setChecklist] = useState('')
@@ -54,7 +56,7 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       description: description.trim() || null,
       priority,
       status: 'ASSIGNED',
-      section,
+      section: category,
       due_date: deadline ? deadline.slice(0, 10) : null,
       deadline_at: deadline ? new Date(deadline).toISOString() : null,
       remind_3d: remind3d,
@@ -128,19 +130,37 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
           </div>
           <div className="create-task-automation-body">
           <div className={groupClass}>
-            <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Assignees</label>
-            <div className="space-y-3">
-              {members.map((member) => { const active = assignedTo.includes(member.id); return <button key={member.id} type="button" onClick={() => toggleAssignee(member.id)} className="flex min-h-[54px] w-full items-center gap-3 rounded-[10px] border px-3.5 text-left transition-colors hover:border-[var(--border-strong)]" style={{ background: active ? 'var(--accent-dim)' : 'var(--surface)', borderColor: active ? 'rgba(200,169,106,.42)' : 'var(--border)' }}><span className="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-extrabold" style={{ background: active ? 'var(--accent)' : 'var(--surface3)', color: active ? '#0b0d09' : 'var(--text)' }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1 truncate text-xs font-semibold">{member.full_name || member.email}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button> })}
-            </div>
+            <button type="button" onClick={() => setAssigneesOpen((v) => !v)} className="flex w-full items-center gap-2 text-left">
+              <label className={`${labelClass} cursor-pointer`} style={{ color: 'var(--text-secondary)' }}>Assignees</label>
+              <span className="flex -space-x-1.5">
+                {assignedTo.map((id) => { const member = members.find((m) => m.id === id); return member ? <span key={id} className="flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-extrabold ring-2 ring-[var(--surface)]" style={{ background: 'var(--accent)', color: '#0b0d09' }}>{getInitials(member.full_name || member.email)}</span> : null })}
+              </span>
+              <ChevronDown size={14} className="ml-auto flex-none transition-transform" style={{ color: 'var(--muted)', transform: assigneesOpen ? 'rotate(180deg)' : 'none' }} />
+            </button>
+            {assigneesOpen && (
+              <div className="mt-3 space-y-3">
+                {members.map((member) => { const active = assignedTo.includes(member.id); return <button key={member.id} type="button" onClick={() => toggleAssignee(member.id)} className="flex min-h-[54px] w-full items-center gap-3 rounded-[10px] border px-3.5 text-left transition-colors hover:border-[var(--border-strong)]" style={{ background: active ? 'var(--accent-dim)' : 'var(--surface)', borderColor: active ? 'rgba(200,169,106,.42)' : 'var(--border)' }}><span className="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-extrabold" style={{ background: active ? 'var(--accent)' : 'var(--surface3)', color: active ? '#0b0d09' : 'var(--text)' }}>{getInitials(member.full_name || member.email)}</span><span className="min-w-0 flex-1 truncate text-xs font-semibold">{member.full_name || member.email}</span>{active && <Check size={14} style={{ color: 'var(--accent)' }} />}</button> })}
+              </div>
+            )}
             {assignedTo.length === 0 && <p className="mt-2 text-xs" style={{ color: 'var(--red)' }}>Select at least one assignee.</p>}
           </div>
 
           <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
             <div className="mb-4 flex items-center gap-2 text-xs font-bold"><Bell size={14} style={{ color: 'var(--accent)' }} /> Reminders</div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <Toggle checked={remind3d} onChange={setRemind3d} label="3 days before" />
-              <Toggle checked={remind24h} onChange={setRemind24h} label="24 hours before" />
+            <div className="space-y-2.5">
+              <label className="flex items-center gap-2.5 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}><input type="checkbox" checked={remind3d} onChange={(e) => setRemind3d(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--accent)]" /> 3 days before</label>
+              <label className="flex items-center gap-2.5 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}><input type="checkbox" checked={remind24h} onChange={(e) => setRemind24h(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--accent)]" /> 24 hours before</label>
             </div>
+          </div>
+
+          <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+            <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Category</label>
+            <p className="mt-1 mb-3 text-[11.5px] leading-5" style={{ color: 'var(--muted)' }}>Which board bucket this task lives in. Defaults to Daily.</p>
+            <select value={category} onChange={(e) => setCategory(e.target.value as TaskSection)} className={fieldClass} style={fieldStyle}>
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+            </select>
           </div>
 
           <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
