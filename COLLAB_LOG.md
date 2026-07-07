@@ -3,6 +3,39 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-07 - Claude (Opus 4.8) - Email wiring, account security, quest edit/categories, archive split, calendar filter
+
+User feedback batch. `npm run build` green. **TWO NEW MIGRATIONS — must be run in Supabase (021, 022).**
+
+- **Account: change email + password** (`app/(app)/account/AccountForm.tsx`, page passes `currentEmail`):
+  two new sections using `supabase.auth.updateUser({ email })` / `({ password })`. No migration. Email
+  change sends a Supabase confirmation link; password change is instant (needs Supabase SMTP for the
+  email side, fine for a small team).
+- **Email notifications actually wired (Resend)** — before, `email_enabled` + `RESEND_API_KEY` existed
+  but NOTHING sent mail (`create_notification` only inserts in-app rows). Now:
+  - **NEW migration `021_email_notifications.sql`**: enables `pg_net`; single-row `email_webhook_config`
+    (admin RLS) holding `app_url` + `webhook_secret`; AFTER INSERT trigger on `notifications` fires an
+    async `net.http_post` to `/api/email/notify`. No-ops until `app_url` is set; wrapped so it can never
+    break the notification insert.
+  - **NEW route `app/api/email/notify/route.ts`**: verifies `x-webhook-secret` (env `EMAIL_WEBHOOK_SECRET`),
+    respects `notification_preferences.email_enabled`, sends via Resend HTTP API (no SDK dep). Env:
+    `RESEND_API_KEY`, `EMAIL_WEBHOOK_SECRET`, `EMAIL_FROM`. Setup steps documented in `SETUP.md`.
+- **Quests: edit + delete** (`QuestBoard.tsx`) — there was NO edit/delete before. Admin now edits a quest
+  in the same modal (edit mode) and soft-deletes via `deleted_at` (page already filters it out). Uses the
+  existing `quests_admin_all` RLS — no migration.
+- **Quest categories = editable `departments`** (they already back `quests.department_id`):
+  - **NEW migration `022_quest_categories.sql`**: adds admin write RLS to `departments` (was seed-only).
+  - Quest create/edit form gets a category dropdown; quest board gets a category filter bar; cards show a
+    category pill. Settings has a new **"Quest categories"** CRUD section (add/rename/delete). NB categories
+    are shared with tasks' `department_id` — deleting one just SET NULLs, nothing is lost.
+- **Archive rebuilt two-column** (`app/(app)/archive/ArchiveView.tsx` + page): left = approved to-dos
+  (unchanged data), right = the user's APPROVED quest acceptances, with a period filter (All / 7 / 30 / 90d)
+  applied to both. No migration.
+- **Calendar board filter** (`components/calendar/CalendarView.tsx` + page passes `boards` + `userId`):
+  toggle chips "Focus (mine)" + one per kanban board, multi-select union. Default = Focus only (own to-dos).
+- **Decision:** permissions stay role-based (no matrix). To let Marian create templates / approve, set her
+  to **Manager** in Settings (`can_manage()` = admin OR manager). Settings auto-saves — no save button.
+
 ## 2026-07-07 - Claude (Opus 4.8) - Checklist fixes, task editing, recurring engine, template bundles
 
 User feedback batch. Bug fixes verified live in browser preview (against current DB); template

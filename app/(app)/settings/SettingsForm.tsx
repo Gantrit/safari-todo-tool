@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ExternalLink, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react'
+import { Building2, ExternalLink, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, Role } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
@@ -20,15 +20,23 @@ interface MemberRow {
   profiles?: { id?: string; full_name?: string | null; email?: string | null; role?: string; deactivated_at?: string | null } | null
 }
 
+interface Category { id: string; name: string; slug: string; position: number }
+
 interface SettingsFormProps {
   workspace: { id: string; name: string } | null
   members: MemberRow[]
   boards: { id: string; name: string; type: string }[]
   boardAccess: { board_id: string; user_id: string }[]
+  categories: Category[]
   currentUser: Profile
 }
 
-export default function SettingsForm({ workspace, members, boards, boardAccess, currentUser }: SettingsFormProps) {
+function slugify(name: string) {
+  const base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return `${base || 'category'}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+export default function SettingsForm({ workspace, members, boards, boardAccess, categories, currentUser }: SettingsFormProps) {
   const [wsName, setWsName] = useState(workspace?.name || '')
   const [inviteEmail, setInviteEmail] = useState('')
   const [newBoardName, setNewBoardName] = useState('')
@@ -46,6 +54,9 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
   }, [boardAccess])
   const [renamingBoard, setRenamingBoard] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [newCategory, setNewCategory] = useState('')
+  const [renamingCategory, setRenamingCategory] = useState<string | null>(null)
+  const [categoryRenameValue, setCategoryRenameValue] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
@@ -107,6 +118,28 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     if (!workspace?.id || id === currentUser.id || !confirm(`Remove ${name} from this workspace? This does not delete their account.`)) return
     setBusy(`remove-${id}`)
     const { error } = await supabase.from('workspace_members').delete().eq('user_id', id).eq('workspace_id', workspace.id)
+    if (error) setMessage({ text: error.message, type: 'error' })
+    setBusy(null); router.refresh()
+  }
+  async function addCategory() {
+    if (!newCategory.trim()) return
+    setBusy('category'); setMessage(null)
+    const position = (categories.reduce((max, c) => Math.max(max, c.position), 0) || 0) + 10
+    const { error } = await supabase.from('departments').insert({ name: newCategory.trim(), slug: slugify(newCategory), position })
+    if (error) setMessage({ text: error.message, type: 'error' }); else setNewCategory('')
+    setBusy(null); router.refresh()
+  }
+  async function renameCategory(id: string) {
+    if (!categoryRenameValue.trim()) return
+    setBusy(`cat-rename-${id}`); setMessage(null)
+    const { error } = await supabase.from('departments').update({ name: categoryRenameValue.trim() }).eq('id', id)
+    if (error) setMessage({ text: error.message, type: 'error' }); else setRenamingCategory(null)
+    setBusy(null); router.refresh()
+  }
+  async function deleteCategory(id: string, name: string) {
+    if (!confirm(`Delete category "${name}"? Quests and tasks in it become uncategorized — nothing else is lost.`)) return
+    setBusy(`cat-${id}`); setMessage(null)
+    const { error } = await supabase.from('departments').delete().eq('id', id)
     if (error) setMessage({ text: error.message, type: 'error' })
     setBusy(null); router.refresh()
   }
@@ -219,6 +252,37 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
         })}
       </div>
       <div className="border-t p-5 sm:p-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}><span className="form-label">Add board</span><div className="flex flex-col gap-3 sm:flex-row"><input value={newBoardName} onChange={(e) => setNewBoardName(e.target.value)} className="form-control" placeholder="Board name" /><button onClick={addBoard} disabled={busy === 'board' || !newBoardName.trim()} className="btn btn-secondary flex-none">{busy === 'board' ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}Add board</button></div></div>
+    </section>
+
+    <section className="app-card">
+      <SectionHead icon={<Tag size={18} />} title="Quest categories" description="Group quests (Traffic, Backend, Chatting …). These also apply to tasks. Add, rename, or remove — deleting one just makes its quests uncategorized." />
+      <div>
+        {categories.map((category) => {
+          const renaming = renamingCategory === category.id
+          return (
+            <div key={category.id} className="settings-row">
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[8px]" style={{ background: 'var(--surface2)', color: 'var(--accent)' }}><Tag size={15} /></span>
+              {renaming ? (
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <input value={categoryRenameValue} onChange={(e) => setCategoryRenameValue(e.target.value)} className="form-control !min-h-8 !py-1 !text-sm" autoFocus onKeyDown={(e) => e.key === 'Enter' && renameCategory(category.id)} />
+                  <button onClick={() => renameCategory(category.id)} disabled={busy === `cat-rename-${category.id}` || !categoryRenameValue.trim()} className="btn btn-secondary !min-h-8 !px-3 !text-[12px]">{busy === `cat-rename-${category.id}` ? <Loader2 className="animate-spin" size={13} /> : 'Save'}</button>
+                  <button onClick={() => setRenamingCategory(null)} className="btn btn-secondary !min-h-8 !px-3 !text-[12px]">Cancel</button>
+                </div>
+              ) : (
+                <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{category.name}</strong></span>
+              )}
+              {!renaming && (
+                <>
+                  <button onClick={() => { setRenamingCategory(category.id); setCategoryRenameValue(category.name) }} className="icon-button !h-8 !w-8" aria-label={`Rename ${category.name}`} title="Rename category"><Pencil size={13} /></button>
+                  <button onClick={() => deleteCategory(category.id, category.name)} disabled={busy === `cat-${category.id}`} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" aria-label={`Delete ${category.name}`}>{busy === `cat-${category.id}` ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}</button>
+                </>
+              )}
+            </div>
+          )
+        })}
+        {categories.length === 0 && <p className="px-5 py-4 text-xs sm:px-6" style={{ color: 'var(--muted)' }}>No categories yet — add your first below.</p>}
+      </div>
+      <div className="border-t p-5 sm:p-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}><span className="form-label">Add category</span><div className="flex flex-col gap-3 sm:flex-row"><input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCategory()} className="form-control" placeholder="e.g. Traffic" /><button onClick={addCategory} disabled={busy === 'category' || !newCategory.trim()} className="btn btn-secondary flex-none">{busy === 'category' ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}Add category</button></div></div>
     </section>
 
     <section className="app-card"><SectionHead icon={<ExternalLink size={18} />} title="Defaults & links" description="Shared references are attached at task level in the current workspace model." /><div className="p-5 sm:p-6"><div className="rounded-[10px] border p-4 text-sm leading-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)', color: 'var(--text-secondary)' }}>Add Drive, brief, or SOP links when creating a task. This keeps each reference attached to the work it belongs to.</div></div></section>

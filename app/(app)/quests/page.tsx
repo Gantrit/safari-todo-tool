@@ -20,11 +20,17 @@ export default async function QuestsPage() {
     .select('*, profile:profiles(id, full_name, email)')
     .order('accepted_at', { ascending: true })
 
+  const { data: categories } = await supabase
+    .from('departments')
+    .select('id, name')
+    .order('position', { ascending: true })
+
   return (
     <div className="page-shell">
       <QuestBoard
         quests={(quests || []) as any}
         acceptances={(acceptances || []) as any}
+        categories={(categories || []) as any}
         isAdmin={role === 'admin'}
         userId={user!.id}
       />

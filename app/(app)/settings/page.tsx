@@ -46,6 +46,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   const { data: xpSettings } = await supabase.from('xp_settings').select('*').eq('id', true).maybeSingle()
 
+  const { data: categories } = await supabase.from('departments').select('id, name, slug, position').order('position', { ascending: true })
+
   return (
     <div className="page-shell !max-w-[1180px]">
       <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Settings'}</h1><p className="page-description">Your team, its boards, access and XP rules — all in one place.</p></div></header>
@@ -73,6 +75,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         members={members || []}
         boards={newWorkspace === '1' ? [] : boards || []}
         boardAccess={newWorkspace === '1' ? [] : boardAccess || []}
+        categories={newWorkspace === '1' ? [] : categories || []}
         currentUser={profile!}
       />
       {newWorkspace !== '1' && workspace && (

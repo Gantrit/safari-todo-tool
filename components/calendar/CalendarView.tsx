@@ -1,27 +1,52 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Task, getTaskDeadline } from '@/lib/types'
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek, subMonths } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, User } from 'lucide-react'
 import PriorityBadge from '../ui/PriorityBadge'
 
-export default function CalendarView({ tasks }: { tasks: Task[] }) {
+export default function CalendarView({ tasks, boards = [], userId }: { tasks: Task[]; boards?: { id: string; name: string }[]; userId?: string }) {
   const [current, setCurrent] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(new Date())
+  // Filter: 'focus' = my own to-dos, plus any selected board ids. Default: just Focus.
+  const [active, setActive] = useState<Set<string>>(new Set(['focus']))
+
+  const toggle = (key: string) => setActive((prev) => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    return next
+  })
+
+  const isMine = (task: Task) => Boolean(userId) && (task.assigned_to === userId || (task.assignee_ids || []).includes(userId!))
+
+  const filteredTasks = useMemo(() => tasks.filter((task) => {
+    if (active.has('focus') && isMine(task)) return true
+    if (task.board_id && active.has(task.board_id)) return true
+    return false
+  }), [tasks, active, userId])
+
   const monthStart = startOfMonth(current)
   const days = eachDayOfInterval({ start: startOfWeek(monthStart), end: endOfWeek(endOfMonth(current)) })
-  const tasksFor = (day: Date) => tasks.filter((task) => {
+  const tasksFor = (day: Date) => filteredTasks.filter((task) => {
     const deadline = getTaskDeadline(task)
     return deadline ? isSameDay(new Date(deadline), day) : false
   })
   const selectedTasks = tasksFor(selectedDay)
-  const monthlyCount = tasks.filter((task) => {
+  const monthlyCount = filteredTasks.filter((task) => {
     const deadline = getTaskDeadline(task)
     return deadline ? isSameMonth(new Date(deadline), current) : false
   }).length
 
-  return <div className="calendar-layout">
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[10.5px] font-bold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>Show</span>
+      <button onClick={() => toggle('focus')} className={`filter-chip ${active.has('focus') ? 'is-active' : ''}`}><User size={12} /> Focus (mine)</button>
+      {boards.map((board) => (
+        <button key={board.id} onClick={() => toggle(board.id)} className={`filter-chip ${active.has(board.id) ? 'is-active' : ''}`}>{board.name === 'Team Board' ? 'Workspace Board' : board.name}</button>
+      ))}
+    </div>
+    <div className="calendar-layout">
     <section className="app-card min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)' }}>
         <div><h2 className="text-lg font-extrabold tracking-[-.02em]">{format(current, 'MMMM yyyy')}</h2><p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>{monthlyCount} {monthlyCount === 1 ? 'deadline' : 'deadlines'} this month</p></div>
@@ -45,5 +70,6 @@ export default function CalendarView({ tasks }: { tasks: Task[] }) {
         return <article key={task.id} className="rounded-[10px] border p-4" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}><div className="mb-3 flex items-start justify-between gap-3"><h3 className="text-sm font-bold leading-5">{task.title}</h3><PriorityBadge priority={task.priority} /></div>{task.description && <p className="mb-3 line-clamp-2 text-xs leading-5" style={{ color: 'var(--text-secondary)' }}>{task.description}</p>}<div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--muted)' }}><span>{task.assigned_profile?.full_name?.split(' ')[0] || 'Unassigned'}</span><span>{format(new Date(deadline), 'HH:mm')}</span></div></article>
       })}</div> : <div className="flex min-h-[220px] items-center justify-center text-center"><div><CalendarDays className="mx-auto mb-3" size={24} style={{ color: 'var(--muted)' }} /><p className="text-sm font-semibold">No deadlines</p><p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>This day is clear.</p></div></div>}</div>
     </aside>
+    </div>
   </div>
 }

@@ -17,9 +17,38 @@ Edit `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-RESEND_API_KEY=your_resend_key (optional, for email)
 NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+
+# Email notifications (Resend) — see "Email notifications" below
+RESEND_API_KEY=your_resend_key
+EMAIL_WEBHOOK_SECRET=any_long_random_string
+EMAIL_FROM=Safari To-Dos <notify@yourdomain.com>
 ```
+
+### Email notifications (Resend)
+
+In-app notifications always work. To also send **email**, wire up Resend once
+(migration `021_email_notifications.sql` must be run first):
+
+1. Create a [resend.com](https://resend.com) account, verify a sending domain,
+   and create an API key.
+2. Set the three env vars above in Vercel (and `.env.local` for local):
+   - `RESEND_API_KEY` — from Resend.
+   - `EMAIL_WEBHOOK_SECRET` — any long random string you pick.
+   - `EMAIL_FROM` — a verified sender, e.g. `Safari To-Dos <notify@yourdomain.com>`.
+     (Before your own domain is verified you can use `onboarding@resend.dev`.)
+3. Tell the database where the app lives and give it the same secret — run once
+   in the Supabase SQL editor with your values:
+   ```sql
+   UPDATE email_webhook_config
+   SET app_url = 'https://safari-todo-tool.vercel.app',
+       webhook_secret = '<the same value as EMAIL_WEBHOOK_SECRET>';
+   ```
+   Until `app_url` is set the email trigger is a harmless no-op. If `pg_net`
+   isn't enabled, enable it under Dashboard → Database → Extensions → `pg_net`.
+
+Each user can turn email off under **Account settings → Notifications**; the
+send route respects that flag.
 
 ## 3. Create First Admin User
 

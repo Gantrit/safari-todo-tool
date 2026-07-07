@@ -24,7 +24,7 @@ export default async function AccountPage() {
         <span className="meta-pill !min-h-10 px-4"><UserCog size={13} /> Account</span>
       </header>
       <section className="app-card p-5 sm:p-6">
-        <AccountForm profile={profile!} preferences={preferences} />
+        <AccountForm profile={profile!} preferences={preferences} currentEmail={user!.email || profile?.email || ''} />
       </section>
     </div>
   )
