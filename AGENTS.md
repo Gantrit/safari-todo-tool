@@ -21,9 +21,10 @@ stay lean — not a heavy PM/KPI tool.
 
 ## Core model
 
-**Board** = matrix grid, one column per member, each column split into sections `IMMINENT`,
-`DAILY`, `WEEKLY`, `MONTHLY`. Board offers several views (member rows, table, focus, selection,
-columns). Plus Calendar, Archive, per-user Private todos.
+**Board** = matrix grid, one column per member, each column split into sections `DAILY`,
+`WEEKLY`, `MONTHLY` (IMMINENT was removed in migration 017). Board offers several views
+(member rows, table, selection, columns — the Focus view was removed 2026-07-07). Plus
+Calendar, Archive, per-user Private todos.
 
 **Status flow** (enforced by RLS trigger, migration 007):
 `ASSIGNED → NOTICED → IN_EDIT → DONE → APPROVED`, plus `REJECTED` and a `NEED_CLARIFICATION`
@@ -35,10 +36,12 @@ the task is archived and XP awarded.
 Per-board visibility via `board_access`. Deactivated users keep data but lose access.
 
 **XP / levels** — cumulative, never resets. **Only ever written server-side** via RPCs, never
-from the client:
-- `approve_task` (007): base by priority (LOW +5 / MEDIUM +10 / HIGH +20), +10 if IMMINENT,
-  +1/day early (max +10), streak +1/day (max +10); overdue penalty mirrors the base and is
-  applied on admin review.
+from the client. All XP amounts are **admin-configurable** in the single-row `xp_settings`
+table (migration 018, edited via Settings → XP Management) — never hardcode XP values:
+- `approve_task` (018): base = category value (Daily/Weekly/Monthly) + priority surcharge
+  (Low/Medium/High), plus a near-deadline bonus (completed within a configurable window before
+  the deadline), an early-completion bonus (per full day, capped) and a streak bonus (per day,
+  capped). Overdue penalty mirrors the full base and is applied on admin review.
 - `review_quest` (007): pays a quest's fixed bonus XP on approval.
 - `admin_adjust_xp` (012): admin-only manual correction with mandatory reason.
 
@@ -65,17 +68,17 @@ app/(app)/archive            approved tasks
 app/(app)/notifications
 app/(app)/guild              admin: XP management / roster (Guild Hall)
 app/(app)/audit              admin: audit log
-app/(app)/settings           admin: workspace, invites, members/roles, boards & access
+app/(app)/settings           admin: invites, members/roles, boards & access, XP management
 app/api/invite               invite endpoint (uses Supabase service-role key)
 
 components/board/   BoardView + view variants, MemberColumn, TaskSection, task rows
 components/task/    TaskModal, TaskForm, SubtaskList, CommentSection
-components/sidebar/ Sidebar, WorkspaceSwitcher
+components/sidebar/ Sidebar (the ORGANIZATION block / WorkspaceSwitcher was removed 2026-07-07)
 components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher, etc.
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`012`, run in
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`018`, run in
 order in the Supabase SQL editor. Env vars / deploy steps: [`SETUP.md`](SETUP.md).
 
 ## Working rules

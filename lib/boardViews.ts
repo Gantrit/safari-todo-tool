@@ -1,7 +1,14 @@
 import { Task, TaskStatus, Priority, getTaskDeadline } from './types'
 import { getUrgency, UrgencyLevel } from './utils'
 
-export type BoardViewMode = 'members' | 'table' | 'focus' | 'selection' | 'columns'
+export type BoardViewMode = 'members' | 'table' | 'selection' | 'columns'
+
+/** Persisted view states may predate the removal of the Focus view. */
+export function normalizeViewMode(view: string | undefined): BoardViewMode | null {
+  if (view === 'members' || view === 'table' || view === 'selection' || view === 'columns') return view
+  if (view === 'focus') return 'members'
+  return null
+}
 
 export interface BoardFilters {
   statuses: TaskStatus[]
@@ -76,7 +83,6 @@ export function sortTasks(tasks: Task[], key: TableSortKey, dir: SortDir, member
 
 export interface BoardViewState {
   view: BoardViewMode
-  focusMemberId: string | null
   selectedMemberIds: string[]
   filters: BoardFilters
 }

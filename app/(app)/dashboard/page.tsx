@@ -13,7 +13,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
     supabase.from('profiles').select('id, full_name, email, xp, level').order('xp', { ascending: false }).limit(10),
     supabase.from('tasks').select('*').eq('assigned_to', user!.id).is('deleted_at', null).neq('status', 'APPROVED').order('deadline_at', { ascending: true, nullsFirst: false }).limit(8),
-    supabase.from('tasks').select('id, title, status, priority, section, deadline_at, due_date, assigned_to').is('deleted_at', null).neq('status', 'APPROVED').limit(100),
+    supabase.from('tasks').select('id, title, status, priority, section, deadline_at, due_date, assigned_to, board_id').is('deleted_at', null).neq('status', 'APPROVED').limit(100),
     supabase.from('boards').select('*').eq('type', 'kanban').order('created_at', { ascending: true }),
     supabase.from('workspaces').select('id, name').order('created_at', { ascending: true }),
     supabase.from('notifications').select('*').eq('user_id', user!.id).eq('read', false).order('created_at', { ascending: false }).limit(5),
@@ -27,10 +27,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const selectedWorkspace = workspaces?.find((workspace) => workspace.id === requestedWorkspaceId) || workspaces?.[0]
   const board = boards?.find((candidate) => candidate.workspace_id === selectedWorkspace?.id) || boards?.[0]
 
+  // Admin clicking "Awaiting approval" should land on the submission whose
+  // deadline is nearest, regardless of assignee — sort DONE tasks by deadline.
+  const nextApproval = [...pendingApproval].sort((a: any, b: any) => {
+    const da = a.deadline_at || a.due_date
+    const db = b.deadline_at || b.due_date
+    return (da ? new Date(da).getTime() : Infinity) - (db ? new Date(db).getTime() : Infinity)
+  })[0] as any
+  const firstOverdue = overdueTasks[0] as any
+
   const metrics = [
-    { label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={14} />, tone: 'var(--text)', alert: false },
-    { label: 'Overdue', value: overdueTasks.length, detail: overdueTasks.length ? 'Needs attention today' : 'Everything is on track', icon: <AlertTriangle size={14} />, tone: overdueTasks.length ? 'var(--red)' : 'var(--green)', alert: overdueTasks.length > 0 },
-    { label: 'Awaiting approval', value: pendingApproval.length, detail: 'Completed and ready to review', icon: <CheckCircle2 size={14} />, tone: 'var(--text)', alert: false },
+    {
+      label: 'Open tasks', value: openTasks.length, detail: 'Across your team boards', icon: <ClipboardCheck size={14} />, tone: 'var(--text)', alert: false,
+      href: board ? `/board/${board.id}?member=me` : null,
+    },
+    {
+      label: 'Overdue', value: overdueTasks.length, detail: overdueTasks.length ? 'Needs attention today' : 'Everything is on track', icon: <AlertTriangle size={14} />, tone: overdueTasks.length ? 'var(--red)' : 'var(--green)', alert: overdueTasks.length > 0,
+      href: firstOverdue?.board_id ? `/board/${firstOverdue.board_id}?urgency=overdue` : board ? `/board/${board.id}?urgency=overdue` : null,
+    },
+    {
+      label: 'Awaiting approval', value: pendingApproval.length, detail: 'Completed and ready to review', icon: <CheckCircle2 size={14} />, tone: 'var(--text)', alert: false,
+      href: role === 'admin' && nextApproval?.board_id
+        ? `/board/${nextApproval.board_id}?task=${nextApproval.id}`
+        : board ? `/board/${board.id}?status=DONE` : null,
+    },
   ]
 
   return (
@@ -78,8 +98,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </section>
       )}
 
+      {/* Every KPI tile is a link into its detail view (progress → character,
+          open → own tasks on the board, overdue → overdue filter, approval →
+          the nearest-deadline submission). */}
       <section className="dashboard-metrics grid md:grid-cols-2 xl:grid-cols-4">
-        <article className="app-card dashboard-kpi xp-hero">
+        <Link href="/character" className="app-card dashboard-kpi xp-hero transition-colors hover:border-[var(--border-strong)]" aria-label="Open my character">
           <div className="flex items-center justify-between gap-2"><span className="metric-label">Your progress</span><Gauge size={16} style={{ color: 'var(--muted)' }} /></div>
           <div>
             <div className="mb-2 flex items-end justify-between gap-2.5">
@@ -92,23 +115,31 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <span style={{ color: 'var(--text-secondary)' }}>{Math.max(0, levelInfo.next.min - (profile?.xp || 0))} XP to Level {levelInfo.next.level}</span>
             </p>
           </div>
-        </article>
-        {metrics.map((metric) => (
-          <article
-            key={metric.label}
-            className="app-card dashboard-kpi"
-            style={metric.alert ? { borderColor: 'rgba(240,85,90,0.32)', background: 'radial-gradient(130% 130% at 100% 0%, rgba(240,85,90,0.10), transparent 55%), var(--surface)' } : undefined}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="metric-label" style={metric.alert ? { color: 'var(--red)' } : undefined}>{metric.label}</span>
-              <span className={`icon-chip ${metric.alert ? 'is-danger' : 'is-muted'}`} style={{ width: 28, height: 28 }}>{metric.icon}</span>
-            </div>
-            <div>
-              <strong className="metric-value" style={{ color: metric.tone }}>{metric.value}</strong>
-              <p className="metric-description mt-4">{metric.detail}</p>
-            </div>
-          </article>
-        ))}
+        </Link>
+        {metrics.map((metric) => {
+          const inner = (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span className="metric-label" style={metric.alert ? { color: 'var(--red)' } : undefined}>{metric.label}</span>
+                <span className={`icon-chip ${metric.alert ? 'is-danger' : 'is-muted'}`} style={{ width: 28, height: 28 }}>{metric.icon}</span>
+              </div>
+              <div>
+                <strong className="metric-value" style={{ color: metric.tone }}>{metric.value}</strong>
+                <p className="metric-description mt-4">{metric.detail}</p>
+              </div>
+            </>
+          )
+          const style = metric.alert ? { borderColor: 'rgba(240,85,90,0.32)', background: 'radial-gradient(130% 130% at 100% 0%, rgba(240,85,90,0.10), transparent 55%), var(--surface)' } : undefined
+          return metric.href ? (
+            <Link key={metric.label} href={metric.href} className="app-card dashboard-kpi transition-colors hover:border-[var(--border-strong)]" style={style} aria-label={`Open ${metric.label}`}>
+              {inner}
+            </Link>
+          ) : (
+            <article key={metric.label} className="app-card dashboard-kpi" style={style}>
+              {inner}
+            </article>
+          )
+        })}
       </section>
 
       <section className="dashboard-primary-grid grid items-stretch xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.75fr)]">

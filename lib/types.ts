@@ -230,22 +230,10 @@ export interface Archive {
   task?: Task
 }
 
-export const XP_VALUES: Record<Priority, number> = {
-  LOW: 5,
-  MEDIUM: 10,
-  HIGH: 20,
-}
-
-export const XP_PENALTY: Record<Priority, number> = {
-  LOW: -5,
-  MEDIUM: -10,
-  HIGH: -20,
-}
-
-export const NEAR_DEADLINE_XP_BONUS = 10
-export const NEAR_DEADLINE_WINDOW_HOURS = 24
-export const MAX_EARLY_COMPLETION_BONUS = 10
-export const MAX_STREAK_BONUS = 10
+// XP amounts are admin-configurable and live in the `xp_settings` table
+// (migration 018); `approve_task()` reads them server-side on every approval.
+// Do not hardcode XP values client-side — they would silently drift.
+export const NEAR_DEADLINE_WINDOW_HOURS = 24 // UI hint only (isNearDeadline); actual window comes from xp_settings
 
 export function getLevelInfo(xp: number) {
   const normalizedXp = Math.max(0, xp || 0)
@@ -307,18 +295,3 @@ export function getTaskDeadline(task: Pick<Task, 'deadline_at' | 'due_date'>) {
   return task.deadline_at || task.due_date || null
 }
 
-export function calculateApprovalXp(task: Pick<Task, 'priority' | 'section' | 'deadline_at' | 'due_date'>, completedAt = new Date()) {
-  const base = XP_VALUES[task.priority]
-  const deadline = getTaskDeadline(task)
-  let early = 0
-  let nearDeadline = 0
-  if (deadline) {
-    const diffMs = new Date(deadline).getTime() - completedAt.getTime()
-    if (diffMs >= 0) {
-      early = Math.max(0, Math.min(MAX_EARLY_COMPLETION_BONUS, Math.floor(diffMs / 86_400_000)))
-      // Completed within the last NEAR_DEADLINE_WINDOW_HOURS before the deadline (but not late).
-      if (diffMs <= NEAR_DEADLINE_WINDOW_HOURS * 3_600_000) nearDeadline = NEAR_DEADLINE_XP_BONUS
-    }
-  }
-  return base + nearDeadline + early
-}

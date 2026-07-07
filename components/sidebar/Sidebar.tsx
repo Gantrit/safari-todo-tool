@@ -6,7 +6,6 @@ import { useState, useTransition } from 'react'
 import { Profile, Board, Notification, getLevelInfo } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown, UserCog } from 'lucide-react'
-import WorkspaceSwitcher from './WorkspaceSwitcher'
 import XPBar from '../ui/XPBar'
 import { getInitials } from '@/lib/utils'
 
@@ -48,7 +47,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         href={href}
         onClick={() => setMobileOpen(false)}
         aria-current={active ? 'page' : undefined}
-        className={`nav-item mb-1.5 flex min-h-11 items-center gap-3 rounded-[9px] border border-transparent px-3.5 py-2.5 text-[13.5px] font-semibold ${active ? 'active' : ''}`}
+        className={`nav-item mb-0.5 flex min-h-9 items-center gap-2.5 rounded-[9px] border border-transparent px-3 py-1.5 text-[12.5px] font-semibold ${active ? 'active' : ''}`}
       >
         <span className="flex h-5 w-5 flex-none items-center justify-center" style={{ opacity: active ? 1 : 0.7, color: active ? 'var(--accent)' : undefined }}>{icon}</span>
         <span className="flex-1 truncate">{label}</span>
@@ -58,7 +57,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
   }
 
   const groupLabel = (label: string) => (
-    <p className="section-label mb-2.5 mt-6 px-3 first:mt-0">{label}</p>
+    <p className="section-label mb-1.5 mt-3.5 px-3 first:mt-0">{label}</p>
   )
 
   return (
@@ -74,7 +73,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
       {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/70 lg:hidden" onClick={() => setMobileOpen(false)} />}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[256px] flex-none flex-col border-r transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[228px] flex-none flex-col border-r transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
       >
         <div className="sidebar-brand-block flex items-center justify-between gap-3 border-b" style={{ borderColor: 'var(--border)' }}>
@@ -86,11 +85,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           <button className="icon-button !h-9 !w-9 flex-none lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
         </div>
 
-        <div className="px-4 pt-4">
-          <WorkspaceSwitcher workspaces={workspaces} boards={kanbanBoards} selectedWorkspaceId={selectedWorkspaceId} canManage={profile?.role === 'admin'} />
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-4 py-5">
+        <nav className="flex-1 overflow-y-auto px-3.5 py-3">
           {navItem('/dashboard', 'Overview', <Home size={16} />)}
 
           {groupLabel('Boards')}

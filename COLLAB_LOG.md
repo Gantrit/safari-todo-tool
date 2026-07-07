@@ -3,6 +3,44 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-07 - Claude (Fable 5) - Board polish batch, clickable dashboard KPIs, compact sidebar, admin XP Management
+
+Big user-feedback batch, all verified live in browser preview:
+
+- **TaskSection revert + compaction**: the empty-section "+ Section" chip experiment is GONE
+  (user explicitly reverted it — do not reintroduce). All three sections (Daily/Weekly/Monthly)
+  always render as compact header boxes with a collapse chevron; `manuallyOpened` state removed
+  entirely. Section surfaces/margins/header heights/quick-add tightened in `globals.css` so all
+  three fit a column without scrolling. Count badge is now high-contrast (gold pill w/ dark text
+  when > 0, muted when 0).
+- **Focus view removed** from the board (`BoardViewMode` is now
+  `members | table | selection | columns`); persisted `'focus'` states are normalized to
+  `'members'` via `normalizeViewMode()` in `lib/boardViews.ts`.
+- **Board page header compacted** to a single row (icon + title + department tabs + Dashboard
+  button) in `app/(app)/board/[boardId]/page.tsx`; board toolbar/canvas paddings reduced.
+- **Dashboard KPI tiles are links** (`app/(app)/dashboard/page.tsx`): Your progress →
+  `/character`; Open tasks → board `?member=me` (Selection view, self only); Overdue → board
+  `?urgency=overdue` (overdue filter); Awaiting approval → for admins a deep link
+  `?task=<id>` to the DONE task with the nearest deadline (opens its TaskModal), else board
+  `?status=DONE`. `BoardView` parses these query params on mount and they deliberately override
+  the persisted localStorage view state.
+- **Sidebar**: ORGANIZATION block + `WorkspaceSwitcher.tsx` deleted (file removed; single-org
+  model made it dead weight — user decision). Sidebar narrowed to 228px, nav items/labels
+  tightened so Boards/Progress/Tools are fully visible without scrolling at ~900px height.
+- **NEW migration `018_xp_settings.sql` — NOT YET RUN in Supabase as of this entry** (confirm
+  before assuming live): single-row `xp_settings` table (RLS: read authenticated, update
+  admin-only via `is_admin()`) + `approve_task()` redefined to read every XP number from it.
+  New XP model per user decision: **base = category (Daily 5 / Weekly 10 / Monthly 20) +
+  priority surcharge (Low 0 / Medium 5 / High 10)**, near-deadline bonus (10 XP / 24h window),
+  early bonus (1/day, max 10), streak (1/day, max 10), overdue penalty mirrors full base.
+  Admin UI: `app/(app)/settings/XpSettingsForm.tsx` (Settings → "XP Management" card).
+  Until the migration runs, the form renders defaults and saving errors (table missing).
+- **Settings page**: "Organization name" card removed (with the sidebar block); title now
+  "Settings". `saveName()` deleted from `SettingsForm.tsx`.
+- Client-side XP constants (`XP_VALUES`, `XP_PENALTY`, `calculateApprovalXp`, …) deleted from
+  `lib/types.ts` — they were unused and would drift from the DB config. Never hardcode XP
+  client-side.
+
 ## 2026-07-07 - Claude (Fable 5) - Remove unlayered CSS reset that zeroed all Tailwind spacing utilities
 
 User reported broken formatting on Character / Quests / Leaderboard / Guild Hall / Account /

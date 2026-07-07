@@ -66,30 +66,30 @@ export default async function BoardPage({ params }: Props) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex-shrink-0 border-b px-5 pb-6 pt-7 sm:px-8 sm:pb-7 sm:pt-9" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-        <div className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="mb-2.5 flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[.11em]" style={{ color: 'var(--accent)' }}><LayoutGrid size={13} /> {workspace?.name || 'Workspace'} board</div>
-            <h1 className="text-[28px] font-extrabold leading-tight tracking-[-.03em] sm:text-[32px]">{board.name === 'Team Board' && workspace?.name ? `${workspace.name} Board` : board.name}</h1>
-            <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>Deadline-first execution across every team member.</p>
+      {/* Compact single-row header — the vertical space belongs to the to-dos below. */}
+      <div className="flex-shrink-0 border-b px-5 py-3.5 sm:px-8" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-8 w-8 flex-none items-center justify-center rounded-[8px]" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}><LayoutGrid size={15} /></span>
+            <h1 className="truncate text-[19px] font-extrabold leading-tight tracking-[-.02em]">{board.name === 'Team Board' && workspace?.name ? `${workspace.name} Board` : board.name}</h1>
           </div>
-          <Link href="/dashboard" className="btn btn-secondary self-start sm:self-auto"><ArrowLeft size={16} /> Dashboard</Link>
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Department boards">
-          {(boards && boards.length > 0 ? boards : [board]).map((dept: any) => (
-            <Link
-              key={dept.id}
-              href={`/board/${dept.id}`}
-              className="inline-flex min-h-9 items-center whitespace-nowrap rounded-[var(--radius-sm)] border px-4 text-[13px] font-semibold transition-colors"
-              style={{
-                background: dept.id === board.id ? 'var(--accent-dim)' : 'transparent',
-                borderColor: dept.id === board.id ? 'var(--border-strong)' : 'var(--border)',
-                color: dept.id === board.id ? 'var(--accent)' : 'var(--muted)',
-              }}
-            >
-              {dept.name === 'Team Board' && workspace?.name ? 'Workspace Board' : dept.name}
-            </Link>
-          ))}
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto" aria-label="Department boards">
+            {(boards && boards.length > 0 ? boards : [board]).map((dept: any) => (
+              <Link
+                key={dept.id}
+                href={`/board/${dept.id}`}
+                className="inline-flex min-h-8 items-center whitespace-nowrap rounded-[var(--radius-sm)] border px-3.5 text-[12.5px] font-semibold transition-colors"
+                style={{
+                  background: dept.id === board.id ? 'var(--accent-dim)' : 'transparent',
+                  borderColor: dept.id === board.id ? 'var(--border-strong)' : 'var(--border)',
+                  color: dept.id === board.id ? 'var(--accent)' : 'var(--muted)',
+                }}
+              >
+                {dept.name === 'Team Board' && workspace?.name ? 'Workspace Board' : dept.name}
+              </Link>
+            ))}
+          </div>
+          <Link href="/dashboard" className="btn btn-secondary !min-h-9 flex-none !px-4 !text-[12.5px]"><ArrowLeft size={15} /> Dashboard</Link>
         </div>
       </div>
       <div className="flex-1 overflow-hidden">

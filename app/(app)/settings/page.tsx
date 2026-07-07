@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import SettingsForm from './SettingsForm'
+import XpSettingsForm from './XpSettingsForm'
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ newWorkspace?: string; workspace?: string }> }) {
   const { newWorkspace, workspace: requestedWorkspaceId } = await searchParams
@@ -43,9 +44,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     ? await supabase.from('board_access').select('board_id, user_id').in('board_id', boardIds)
     : { data: [] }
 
+  const { data: xpSettings } = await supabase.from('xp_settings').select('*').eq('id', true).maybeSingle()
+
   return (
     <div className="page-shell !max-w-[1180px]">
-      <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Organization & team'}</h1><p className="page-description">Your team, its boards, and who can access what — all in one place.</p></div></header>
+      <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Settings'}</h1><p className="page-description">Your team, its boards, access and XP rules — all in one place.</p></div></header>
       {newWorkspace !== '1' && allWorkspaces.length > 1 && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Workspace:</span>
@@ -72,6 +75,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         boardAccess={newWorkspace === '1' ? [] : boardAccess || []}
         currentUser={profile!}
       />
+      {newWorkspace !== '1' && workspace && (
+        <div className="mt-6">
+          <XpSettingsForm initial={xpSettings} currentUserId={user!.id} />
+        </div>
+      )}
     </div>
   )
 }

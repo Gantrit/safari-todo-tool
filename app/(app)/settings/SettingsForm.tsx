@@ -59,12 +59,6 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     if (error || !id) { setMessage({ text: error?.message || 'Workspace could not be created.', type: 'error' }); setBusy(null); return }
     router.push(`/dashboard?workspace=${id}`)
   }
-  async function saveName() {
-    if (!workspace?.id || !wsName.trim()) return
-    setBusy('workspace')
-    const { error } = await supabase.from('workspaces').update({ name: wsName.trim() }).eq('id', workspace.id)
-    setMessage({ text: error ? error.message : 'Workspace profile updated.', type: error ? 'error' : 'success' }); setBusy(null); router.refresh()
-  }
   async function invite() {
     if (!inviteEmail.trim()) return
     setBusy('invite'); setMessage(null)
@@ -135,11 +129,7 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
 
   return <div className="space-y-6">
     {message && <Notice {...message} />}
-    <div className="settings-grid">
-      <section className="app-card"><SectionHead icon={<Building2 size={18} />} title="Organization" description="Your team's name, shown across the app. Boards below are your departments." /><div className="p-5 sm:p-6"><label><span className="form-label">Organization name</span><div className="flex flex-col gap-3 sm:flex-row"><input value={wsName} onChange={(e) => setWsName(e.target.value)} className="form-control" /><button onClick={saveName} disabled={busy === 'workspace' || !wsName.trim()} className="btn btn-primary flex-none">{busy === 'workspace' && <Loader2 className="animate-spin" size={15} />}Save changes</button></div></label></div></section>
-
-      <section className="app-card"><SectionHead icon={<UserPlus size={18} />} title="Invite user" description="Add a teammate to this workspace by email." /><div className="p-5 sm:p-6"><label><span className="form-label">Email address</span><div className="flex flex-col gap-3 sm:flex-row"><input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="form-control" placeholder="teammate@safarixstudios.com" /><button onClick={invite} disabled={busy === 'invite' || !inviteEmail.trim()} className="btn btn-secondary flex-none">{busy === 'invite' && <Loader2 className="animate-spin" size={15} />}Send invite</button></div></label></div></section>
-    </div>
+    <section className="app-card"><SectionHead icon={<UserPlus size={18} />} title="Invite user" description="Add a teammate to this workspace by email." /><div className="p-5 sm:p-6"><label><span className="form-label">Email address</span><div className="flex flex-col gap-3 sm:flex-row"><input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="form-control" placeholder="teammate@safarixstudios.com" /><button onClick={invite} disabled={busy === 'invite' || !inviteEmail.trim()} className="btn btn-secondary flex-none">{busy === 'invite' && <Loader2 className="animate-spin" size={15} />}Send invite</button></div></label></div></section>
 
     <section className="app-card">
       <SectionHead icon={<Users size={18} />} title="Members & roles" description={`${members.length} ${members.length === 1 ? 'person' : 'people'} · set each member's role, deactivate, or remove.`} />

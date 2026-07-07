@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Task, TaskSection as TSectionType, Profile, canWriteTasks } from '@/lib/types'
 import { ChevronRight, Plus } from 'lucide-react'
 import TaskCard from './TaskCard'
@@ -26,15 +26,7 @@ const SECTION_LABELS: Record<TSectionType, { label: string; color: string }> = {
 
 export default function TaskSection({ section, tasks, onTaskClick, onAddTask, onQuickAdd, onDelete, currentUser, memberId }: TaskSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
-  const [manuallyOpened, setManuallyOpened] = useState(false)
   const [quickTitle, setQuickTitle] = useState('')
-
-  // Once real tasks land, the "manually opened" override has done its job —
-  // reset it so the section correctly collapses back to a chip if it empties
-  // out again later (e.g. the task gets approved/archived or deleted elsewhere).
-  useEffect(() => {
-    if (tasks.length > 0 && manuallyOpened) setManuallyOpened(false)
-  }, [tasks.length, manuallyOpened])
   const { label, color } = SECTION_LABELS[section]
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
   const canWrite = canWriteTasks(currentUser.role)
@@ -46,31 +38,13 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
     setQuickTitle('')
   }
 
-  // Days with nothing planned in a section are common — collapse it to a slim
-  // "+ Section" chip instead of an empty header/card-stack taking up space.
-  if (tasks.length === 0 && !manuallyOpened) {
-    if (!canWrite) return null
-    return (
-      <button
-        ref={setNodeRef}
-        type="button"
-        onClick={() => setManuallyOpened(true)}
-        className="mb-2 flex h-8 w-full items-center gap-2 rounded-[8px] border border-dashed px-2.5 text-left transition-colors hover:bg-[var(--surface3)] last:mb-0"
-        style={{ borderColor: isOver ? 'var(--accent)' : 'var(--border)', background: isOver ? 'var(--accent-dim)' : undefined }}
-        aria-label={`Add a ${label} task`}
-      >
-        <Plus size={12} style={{ color: 'var(--muted)' }} />
-        <span className="text-[10.5px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>{label}</span>
-      </button>
-    )
-  }
-
   return (
     <section className="task-section-surface last:mb-0">
       <div className="task-section-header">
         <button
-          onClick={() => (tasks.length === 0 ? setManuallyOpened(false) : setCollapsed(!collapsed))}
-          className="flex min-h-10 flex-1 items-center gap-2.5 rounded-[8px] px-2 text-left transition-colors hover:bg-[var(--surface3)]"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          className="flex min-h-8 flex-1 items-center gap-2.5 rounded-[8px] px-2 text-left transition-colors hover:bg-[var(--surface3)]"
         >
           <ChevronRight
             size={12}
@@ -79,11 +53,17 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
           <span className="text-[10.5px] font-extrabold uppercase tracking-[.11em]" style={{ color }}>
             {label}
           </span>
-          <span className="ml-auto min-w-6 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold" style={{ background: 'var(--surface2)', color: 'var(--muted)' }}>
+          <span
+            className="ml-auto min-w-6 rounded-full px-2 py-0.5 text-center text-[11px] font-extrabold"
+            style={tasks.length > 0
+              ? { background: 'var(--accent)', color: '#0b0d09' }
+              : { background: 'var(--surface2)', color: 'var(--muted)' }}
+            aria-label={`${tasks.length} tasks`}
+          >
             {tasks.length}
           </span>
         </button>
-        {canWrite && <button onClick={onAddTask} className="flex h-8 w-8 flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-white/5 hover:text-[var(--text)]" style={{ color: 'var(--muted)' }} aria-label={`Open full form for ${label}`} title="Create task with full form"><Plus size={14} /></button>}
+        {canWrite && <button onClick={onAddTask} className="flex h-7 w-7 flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-white/5 hover:text-[var(--text)]" style={{ color: 'var(--muted)' }} aria-label={`Open full form for ${label}`} title="Create task with full form"><Plus size={14} /></button>}
       </div>
 
       {!collapsed && (

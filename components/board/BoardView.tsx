@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Task, Profile, TaskSection, canWriteTasks } from '@/lib/types'
 import MemberColumn from './MemberColumn'
 import MemberRowsView from './MemberRowsView'
@@ -30,9 +31,10 @@ import {
   EMPTY_FILTERS,
   filterTasks,
   loadBoardViewState,
+  normalizeViewMode,
   saveBoardViewState,
 } from '@/lib/boardViews'
-import { AlertTriangle, LayoutGrid, Loader2, Plus, Trash2, UserRound, Users } from 'lucide-react'
+import { AlertTriangle, LayoutGrid, Loader2, Plus, Trash2, Users } from 'lucide-react'
 
 interface BoardViewProps {
   board: any
@@ -53,33 +55,59 @@ export default function BoardView({ board, members, tasks: initialTasks, current
 
   // View + filter state (persisted per board in localStorage)
   const [view, setView] = useState<BoardViewMode>('members')
-  const [focusMemberId, setFocusMemberId] = useState<string | null>(currentUser.id)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([currentUser.id])
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS)
   const [hydrated, setHydrated] = useState(false)
 
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   // Hydrate persisted view/filters after mount. Doing this in an effect (not a
   // lazy initializer) is deliberate: the component is SSR-rendered, so reading
   // localStorage during render would cause a hydration mismatch.
+  // Dashboard deep-link params (?task= / ?urgency= / ?status= / ?member=me)
+  // intentionally override the persisted state — the user clicked a tile with
+  // a specific destination in mind.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = loadBoardViewState(board.id)
     if (saved) {
-      if (saved.view) setView(saved.view)
-      if (saved.focusMemberId !== undefined) setFocusMemberId(saved.focusMemberId)
+      const savedView = normalizeViewMode(saved.view)
+      if (savedView) setView(savedView)
       if (saved.selectedMemberIds) setSelectedMemberIds(saved.selectedMemberIds)
       if (saved.filters) setFilters({ ...EMPTY_FILTERS, ...saved.filters })
     }
+
+    const taskParam = searchParams.get('task')
+    const urgencyParam = searchParams.get('urgency')
+    const statusParam = searchParams.get('status')
+    const memberParam = searchParams.get('member')
+    if (taskParam) {
+      const target = initialTasks.find((t) => t.id === taskParam)
+      if (target) setSelectedTask(target)
+    }
+    if (urgencyParam === 'overdue') {
+      setFilters({ ...EMPTY_FILTERS, urgencies: ['overdue'] })
+      setView('members')
+    }
+    if (statusParam === 'DONE') {
+      setFilters({ ...EMPTY_FILTERS, statuses: ['DONE'] })
+      setView('members')
+    }
+    if (memberParam === 'me') {
+      setView('selection')
+      setSelectedMemberIds([currentUser.id])
+    }
+
     setHydrated(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [board.id])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!hydrated) return
-    saveBoardViewState(board.id, { view, focusMemberId, selectedMemberIds, filters })
-  }, [hydrated, board.id, view, focusMemberId, selectedMemberIds, filters])
+    saveBoardViewState(board.id, { view, selectedMemberIds, filters })
+  }, [hydrated, board.id, view, selectedMemberIds, filters])
 
   const liveTasks = useMemo(() => tasks.filter((t) => !t.deleted_at), [tasks])
   const filteredTasks = useMemo(() => filterTasks(liveTasks, filters), [liveTasks, filters])
@@ -97,7 +125,6 @@ export default function BoardView({ board, members, tasks: initialTasks, current
       return (fromTask ?? { id, full_name: 'Unknown', email: '' }) as Profile
     })
   }, [members, liveTasks])
-  const focusMember = members.find((m) => m.id === focusMemberId) || members.find((m) => m.id === currentUser.id) || members[0] || null
   const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id))
 
   const toggleSelected = (id: string) =>
@@ -298,7 +325,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full flex-col overflow-hidden p-4 sm:p-7 lg:p-9">
+        <div className="flex h-full flex-col overflow-hidden p-3 sm:p-4 lg:p-5">
           <div className="board-surface">
           <div className="board-toolbar">
             <BoardViewSwitcher view={view} onChange={setView} />
@@ -311,17 +338,6 @@ export default function BoardView({ board, members, tasks: initialTasks, current
           {members.length > 0 ? (
             <>
               <div className="flex flex-none flex-col gap-3 border-b px-5 py-4 sm:px-6" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-                {view === 'focus' && (
-                  <div className="board-list-toolbar !mb-0">
-                    <span className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Focus on</span>
-                    {members.map((m) => (
-                      <button key={m.id} onClick={() => setFocusMemberId(m.id)} className={`filter-chip ${focusMember?.id === m.id ? 'is-active' : ''}`}>
-                        <span className="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-extrabold" style={{ background: 'var(--surface3)', color: 'var(--text)' }}>{getInitials(m.full_name || m.email)}</span>
-                        {m.full_name?.split(' ')[0] || m.email}
-                      </button>
-                    ))}
-                  </div>
-                )}
                 {view === 'selection' && (
                   <div className="board-list-toolbar !mb-0">
                     <span className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Members</span>
@@ -363,11 +379,6 @@ export default function BoardView({ board, members, tasks: initialTasks, current
                   {view === 'table' && (
                     <TableView tasks={filteredTasks} members={members} currentUser={currentUser} onTaskClick={setSelectedTask} onDelete={openDelete} />
                   )}
-                  {view === 'focus' && (focusMember ? (
-                    <MemberRowsView members={[focusMember]} tasks={filteredTasks} currentUser={currentUser} collapsible={false} initiallyExpanded onTaskClick={setSelectedTask} onAddTask={openFullForm} onQuickAdd={handleQuickAdd} onDelete={openDelete} />
-                  ) : (
-                    <div className="board-stack"><div className="app-card"><EmptyState tone="muted" icon={<UserRound size={22} />} title="No one to focus on" text="Add a team member to this board first." /></div></div>
-                  ))}
                   {view === 'selection' && (selectedMembers.length > 0 ? (
                     <MemberRowsView members={selectedMembers} tasks={filteredTasks} currentUser={currentUser} initiallyExpanded onTaskClick={setSelectedTask} onAddTask={openFullForm} onQuickAdd={handleQuickAdd} onDelete={openDelete} />
                   ) : (
