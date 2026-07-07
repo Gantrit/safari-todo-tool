@@ -3,6 +3,24 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-07 - Claude (Sonnet 5) - Actually fix empty-section collapse (previous fix was incomplete)
+
+User reported the bug from 2026-07-06 was still happening: their own column's Daily/Weekly/Monthly
+sections stayed expanded as empty header rows instead of the slim "+ Section" chip. Root cause the
+previous fix missed: `manuallyOpened` in `TaskSection.tsx` was only reset when the user clicked the
+header *themselves* while empty — but if the section's last task disappeared some other way (task
+approved/archived, deleted, moved to another section), `manuallyOpened` stayed `true` forever and
+the section never collapsed back to a chip on its own.
+
+- Added a `useEffect` that resets `manuallyOpened` to `false` as soon as the section has real tasks
+  again (`tasks.length > 0`). This makes the flag purely transient — it only exists to keep the
+  section open while the user is mid-typing their first task into a freshly-opened empty section;
+  once that task lands, the flag clears, so if the section empties out again later (by any means)
+  the `tasks.length === 0 && !manuallyOpened` chip check fires correctly.
+- Verified live in browser: opened Tan's empty Daily To-Dos chip, added a task (section stayed
+  open, as expected), then deleted that task via the task's trash icon — section collapsed back to
+  the "+ DAILY TO-DOS" chip immediately, no stale expanded empty box. `npm run build` clean.
+
 ## 2026-07-06 - Claude (Sonnet 5) - Empty-section collapse fix + personal Account settings
 
 Two follow-ups from user testing of the same session's board redesign:

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Task, TaskSection as TSectionType, Profile, canWriteTasks } from '@/lib/types'
 import { ChevronRight, Plus } from 'lucide-react'
 import TaskCard from './TaskCard'
@@ -28,6 +28,13 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
   const [collapsed, setCollapsed] = useState(false)
   const [manuallyOpened, setManuallyOpened] = useState(false)
   const [quickTitle, setQuickTitle] = useState('')
+
+  // Once real tasks land, the "manually opened" override has done its job —
+  // reset it so the section correctly collapses back to a chip if it empties
+  // out again later (e.g. the task gets approved/archived or deleted elsewhere).
+  useEffect(() => {
+    if (tasks.length > 0 && manuallyOpened) setManuallyOpened(false)
+  }, [tasks.length, manuallyOpened])
   const { label, color } = SECTION_LABELS[section]
   const { setNodeRef, isOver } = useDroppable({ id: `section:${memberId}:${section}` })
   const canWrite = canWriteTasks(currentUser.role)
