@@ -47,6 +47,7 @@ interface BoardViewProps {
 export default function BoardView({ board, members, tasks: initialTasks, currentUser }: BoardViewProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [addingFor, setAddingFor] = useState<{ memberId: string; section: TaskSection } | null>(null)
   const [deletingTask, setDeletingTask] = useState<Task | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -222,6 +223,12 @@ export default function BoardView({ board, members, tasks: initialTasks, current
   const handleTaskCreate = useCallback((newTask: Task) => {
     setTasks((prev) => [...prev, newTask])
     setAddingFor(null)
+  }, [])
+
+  const handleTaskEdited = useCallback((updatedTask: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? { ...t, ...updatedTask } : t)))
+    setEditingTask(null)
+    setSelectedTask(updatedTask)
   }, [])
 
   // Quick add — optimistic insert with sensible defaults (current section,
@@ -413,8 +420,31 @@ export default function BoardView({ board, members, tasks: initialTasks, current
           currentUser={currentUser}
           onClose={() => setSelectedTask(null)}
           onUpdate={handleTaskUpdate}
+          onEdit={(t) => { setSelectedTask(null); setEditingTask(t) }}
           members={members}
         />
+      )}
+
+      {editingTask && (
+        <Modal
+          open={true}
+          onClose={() => setEditingTask(null)}
+          title="Edit task"
+          subtitle="Update the details, ownership, and delivery cadence."
+          size="2xl"
+        >
+          <TaskForm
+            boardId={board.id}
+            memberId={editingTask.assigned_to || currentUser.id}
+            section={editingTask.section}
+            members={members}
+            currentUser={currentUser}
+            task={editingTask}
+            onCreated={handleTaskCreate}
+            onUpdated={handleTaskEdited}
+            onCancel={() => setEditingTask(null)}
+          />
+        </Modal>
       )}
 
       {addingFor && (

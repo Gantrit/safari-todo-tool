@@ -2,136 +2,238 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, ExternalLink, ListChecks, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { ClipboardList, ListChecks, Loader2, Pencil, Plus, Trash2, UserPlus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Priority, TaskSection } from '@/lib/types'
 import Modal from '@/components/ui/Modal'
 
+type TemplateItem = {
+  id: string
+  template_id?: string
+  title: string
+  description: string | null
+  section: TaskSection
+  priority: Priority
+  checklist: string[]
+  reference_url: string | null
+  position: number
+}
 type Template = {
   id: string
   title: string
   description: string | null
-  checklist: string[]
-  section: TaskSection
-  priority: Priority
-  reference_url: string | null
+  items: TemplateItem[]
 }
 type BoardOption = { id: string; name: string; workspace_id: string; workspaces?: { name: string } | null }
 type MemberOption = { workspace_id: string; profiles: { id: string; full_name: string; email: string } | null }
 
-const emptyForm = { title: '', description: '', checklist: '', section: 'DAILY' as TaskSection, priority: 'MEDIUM' as Priority, referenceUrl: '' }
+type DraftItem = { key: string; title: string; description: string; section: TaskSection; priority: Priority; checklist: string; referenceUrl: string }
+
+const SECTIONS: { value: TaskSection; label: string }[] = [
+  { value: 'DAILY', label: 'Daily to-dos' },
+  { value: 'WEEKLY', label: 'Weekly to-dos' },
+  { value: 'MONTHLY', label: 'Monthly to-dos' },
+]
+
+const newKey = () => Math.random().toString(36).slice(2)
+const emptyDraft = (section: TaskSection): DraftItem => ({ key: newKey(), title: '', description: '', section, priority: 'MEDIUM', checklist: '', referenceUrl: '' })
 
 export default function TemplateLibrary({ templates, boards, members, isAdmin, userId }: { templates: Template[]; boards: BoardOption[]; members: MemberOption[]; isAdmin: boolean; userId: string }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Template | null>(null)
-  const [form, setForm] = useState(emptyForm)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [items, setItems] = useState<DraftItem[]>([])
   const [saving, setSaving] = useState(false)
-  const [usingTemplate, setUsingTemplate] = useState<Template | null>(null)
-  const [useForm, setUseForm] = useState({ boardId: boards[0]?.id || '', assigneeId: '', deadline: '' })
+  const [assigning, setAssigning] = useState<Template | null>(null)
+  const [assignForm, setAssignForm] = useState({ boardId: boards[0]?.id || '', assigneeId: '' })
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
-  const startCreate = () => { setEditing(null); setForm(emptyForm); setError(null); setOpen(true) }
-  const startEdit = (template: Template) => {
-    setEditing(template)
-    setForm({ title: template.title, description: template.description || '', checklist: (template.checklist || []).join('\n'), section: template.section, priority: template.priority, referenceUrl: template.reference_url || '' })
-    setError(null)
-    setOpen(true)
+  const startCreate = () => {
+    setEditing(null); setName(''); setDescription('')
+    setItems([emptyDraft('DAILY')])
+    setError(null); setOpen(true)
   }
+  const startEdit = (template: Template) => {
+    setEditing(template); setName(template.title); setDescription(template.description || '')
+    setItems((template.items || []).slice().sort((a, b) => a.position - b.position).map((item) => ({
+      key: item.id, title: item.title, description: item.description || '', section: item.section, priority: item.priority,
+      checklist: (item.checklist || []).join('\n'), referenceUrl: item.reference_url || '',
+    })))
+    setError(null); setOpen(true)
+  }
+
+  const addItem = (section: TaskSection) => setItems((prev) => [...prev, emptyDraft(section)])
+  const updateItem = (key: string, patch: Partial<DraftItem>) => setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)))
+  const removeItem = (key: string) => setItems((prev) => prev.filter((it) => it.key !== key))
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    if (!form.title.trim()) return
-    setSaving(true)
-    setError(null)
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      checklist: form.checklist.split('\n').map((item) => item.trim()).filter(Boolean),
-      section: form.section,
-      priority: form.priority,
-      reference_url: form.referenceUrl.trim() || null,
-      created_by: userId,
-      updated_at: new Date().toISOString(),
+    const cleanItems = items.filter((it) => it.title.trim())
+    if (!name.trim() || cleanItems.length === 0) { setError('Give the template a name and at least one task.'); return }
+    setSaving(true); setError(null)
+
+    let templateId = editing?.id
+    if (editing) {
+      const { error: updErr } = await supabase.from('task_templates').update({ title: name.trim(), description: description.trim() || null, updated_at: new Date().toISOString() }).eq('id', editing.id)
+      if (updErr) { setError(updErr.message); setSaving(false); return }
+      await supabase.from('template_items').delete().eq('template_id', editing.id)
+    } else {
+      const { data, error: insErr } = await supabase.from('task_templates').insert({ title: name.trim(), description: description.trim() || null, created_by: userId }).select('id').single()
+      if (insErr || !data) { setError(insErr?.message || 'Template could not be created.'); setSaving(false); return }
+      templateId = data.id
     }
-    const result = editing
-      ? await supabase.from('task_templates').update(payload).eq('id', editing.id)
-      : await supabase.from('task_templates').insert(payload)
-    if (result.error) { setError(result.error.message); setSaving(false); return }
-    setOpen(false)
-    setSaving(false)
-    router.refresh()
+
+    const rows = cleanItems.map((it, index) => ({
+      template_id: templateId,
+      title: it.title.trim(),
+      description: it.description.trim() || null,
+      section: it.section,
+      priority: it.priority,
+      checklist: it.checklist.split('\n').map((l) => l.trim()).filter(Boolean),
+      reference_url: it.referenceUrl.trim() || null,
+      position: index,
+    }))
+    const { error: itemsErr } = await supabase.from('template_items').insert(rows)
+    if (itemsErr) { setError(itemsErr.message); setSaving(false); return }
+
+    setSaving(false); setOpen(false); router.refresh()
   }
 
   async function remove(template: Template) {
-    if (!confirm(`Delete “${template.title}”?`)) return
+    if (!confirm(`Delete “${template.title}”? Already-assigned tasks stay on the board.`)) return
     await supabase.from('task_templates').update({ deleted_at: new Date().toISOString() }).eq('id', template.id)
     router.refresh()
   }
 
-  const availableMembers = members.filter((member) => member.workspace_id === boards.find((board) => board.id === useForm.boardId)?.workspace_id && member.profiles)
-  const startUse = (template: Template) => {
+  const availableMembers = members.filter((m) => m.workspace_id === boards.find((b) => b.id === assignForm.boardId)?.workspace_id && m.profiles)
+  const startAssign = (template: Template) => {
     const boardId = boards[0]?.id || ''
-    const workspaceId = boards.find((board) => board.id === boardId)?.workspace_id
-    const assigneeId = members.find((member) => member.workspace_id === workspaceId)?.profiles?.id || ''
-    setUseForm({ boardId, assigneeId, deadline: '' }); setUsingTemplate(template); setError(null)
+    const workspaceId = boards.find((b) => b.id === boardId)?.workspace_id
+    setAssignForm({ boardId, assigneeId: members.find((m) => m.workspace_id === workspaceId)?.profiles?.id || '' })
+    setAssigning(template); setError(null)
   }
-  async function createFromTemplate(event: React.FormEvent) {
+  async function assignTemplate(event: React.FormEvent) {
     event.preventDefault()
-    if (!usingTemplate || !useForm.boardId || !useForm.assigneeId) return
+    if (!assigning || !assignForm.boardId || !assignForm.assigneeId) return
     setSaving(true); setError(null)
-    const { data: task, error: taskError } = await supabase.from('tasks').insert({ board_id: useForm.boardId, assigned_to: useForm.assigneeId, assignee_ids: [useForm.assigneeId], created_by: userId, creator_id: userId, title: usingTemplate.title, description: usingTemplate.description, priority: usingTemplate.priority, status: 'ASSIGNED', section: usingTemplate.section, due_date: useForm.deadline ? useForm.deadline.slice(0, 10) : null, deadline_at: useForm.deadline ? new Date(useForm.deadline).toISOString() : null, remind_3d: false, remind_24h: false, xp_awarded: false, position: 0, reference_url: usingTemplate.reference_url, google_drive_url: usingTemplate.reference_url }).select('id').single()
-    if (taskError || !task) { setError(taskError?.message || 'Task could not be created.'); setSaving(false); return }
-    if (usingTemplate.checklist?.length) {
-      const { error: checklistError } = await supabase.from('checklist_items').insert(usingTemplate.checklist.map((title, position) => ({ task_id: task.id, title, position, done: false })))
-      if (checklistError) setError(`Task created, but its checklist could not be saved: ${checklistError.message}`)
-    }
-    setSaving(false); setUsingTemplate(null); router.push(`/board/${useForm.boardId}`); router.refresh()
+    const { error: rpcErr } = await supabase.rpc('assign_template', { p_template_id: assigning.id, p_board_id: assignForm.boardId, p_assignee: assignForm.assigneeId })
+    if (rpcErr) { setError(rpcErr.message); setSaving(false); return }
+    setSaving(false); setAssigning(null)
+    router.push(`/board/${assignForm.boardId}`); router.refresh()
   }
+
+  const countBySection = (t: Template, section: TaskSection) => (t.items || []).filter((i) => i.section === section).length
 
   return (
     <>
       <header className="page-header">
-        <div><p className="page-eyebrow">Reusable task structure</p><h1 className="page-title">Templates</h1><p className="page-description">Standardize recurring work with ready-made priorities, sections, and checklists.</p></div>
+        <div><p className="page-eyebrow">Reusable task bundles</p><h1 className="page-title">Templates</h1><p className="page-description">Build a bundle of recurring daily / weekly / monthly to-dos once, then assign it to any member in one click.</p></div>
         {isAdmin && <button onClick={startCreate} className="btn btn-primary"><Plus size={16} /> Create template</button>}
       </header>
 
       {templates.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {templates.map((template) => (
-            <article key={template.id} className="app-card flex min-h-[270px] flex-col p-6">
-              <div className="mb-5 flex items-start gap-3">
-                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px]" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}><ClipboardList size={18} /></span>
-                <div className="min-w-0 flex-1"><h2 className="font-bold">{template.title}</h2><p className="mt-1.5 line-clamp-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{template.description || 'No description provided.'}</p></div>
-                {isAdmin && <div className="flex gap-1"><button onClick={() => startEdit(template)} className="icon-button !h-8 !w-8" aria-label={`Edit ${template.title}`}><Pencil size={13} /></button><button onClick={() => remove(template)} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" aria-label={`Delete ${template.title}`}><Trash2 size={13} /></button></div>}
-              </div>
-              <div className="mb-5 flex flex-wrap gap-2"><span className="meta-pill">{template.section}</span><span className="meta-pill">{template.priority}</span><span className="meta-pill"><ListChecks size={12} /> {template.checklist?.length || 0} items</span></div>
-              {template.checklist?.length > 0 && <div className="mb-5 space-y-2 border-t pt-4" style={{ borderColor: 'var(--border)' }}>{template.checklist.slice(0, 3).map((item) => <div key={item} className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}><span className="mt-1 h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />{item}</div>)}</div>}
-              <div className="mt-auto flex items-center justify-between gap-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}><button onClick={() => startUse(template)} disabled={!boards.length} className="btn btn-secondary !min-h-9 !px-3"><Play size={13} /> Use template</button>{template.reference_url && <a href={template.reference_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--accent)' }}>Reference <ExternalLink size={12} /></a>}</div>
-            </article>
-          ))}
+          {templates.map((template) => {
+            const total = (template.items || []).length
+            return (
+              <article key={template.id} className="app-card flex min-h-[270px] flex-col p-6">
+                <div className="mb-5 flex items-start gap-3">
+                  <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px]" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}><ClipboardList size={18} /></span>
+                  <div className="min-w-0 flex-1"><h2 className="font-bold">{template.title}</h2><p className="mt-1.5 line-clamp-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{template.description || 'No description provided.'}</p></div>
+                  {isAdmin && <div className="flex gap-1"><button onClick={() => startEdit(template)} className="icon-button !h-8 !w-8" aria-label={`Edit ${template.title}`}><Pencil size={13} /></button><button onClick={() => remove(template)} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" aria-label={`Delete ${template.title}`}><Trash2 size={13} /></button></div>}
+                </div>
+
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <span className="meta-pill"><ListChecks size={12} /> {total} task{total === 1 ? '' : 's'}</span>
+                  {SECTIONS.map((s) => countBySection(template, s.value) > 0 && <span key={s.value} className="meta-pill">{countBySection(template, s.value)} {s.value.toLowerCase()}</span>)}
+                </div>
+
+                {total > 0 && (
+                  <div className="mb-5 space-y-1.5 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                    {(template.items || []).slice(0, 4).map((item) => (
+                      <div key={item.id} className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />
+                        <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                        <span className="flex-none text-[10px] uppercase" style={{ color: 'var(--muted)' }}>{item.section}</span>
+                      </div>
+                    ))}
+                    {total > 4 && <p className="pl-3.5 text-[11px]" style={{ color: 'var(--muted)' }}>+{total - 4} more</p>}
+                  </div>
+                )}
+
+                <div className="mt-auto border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                  <button onClick={() => startAssign(template)} disabled={!boards.length || !isAdmin || total === 0} className="btn btn-primary w-full !min-h-10 disabled:opacity-50"><UserPlus size={14} /> Assign to member</button>
+                </div>
+              </article>
+            )
+          })}
         </div>
       ) : (
-        <div className="app-card card-empty min-h-[300px]"><div><ClipboardList className="mx-auto mb-4" size={28} style={{ color: 'var(--accent)' }} /><h2 className="font-bold">No templates yet</h2><p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{isAdmin ? 'Create the first reusable workflow for your team.' : 'Templates will appear here when an admin adds them.'}</p>{isAdmin && <button onClick={startCreate} className="btn btn-secondary mt-5"><Plus size={15} /> Create first template</button>}</div></div>
+        <div className="app-card card-empty min-h-[300px]"><div><ClipboardList className="mx-auto mb-4" size={28} style={{ color: 'var(--accent)' }} /><h2 className="font-bold">No templates yet</h2><p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{isAdmin ? 'Create the first reusable bundle for your team.' : 'Templates will appear here when an admin adds them.'}</p>{isAdmin && <button onClick={startCreate} className="btn btn-secondary mt-5"><Plus size={15} /> Create first template</button>}</div></div>
       )}
 
-      <Modal open={open} onClose={() => !saving && setOpen(false)} title={editing ? 'Edit template' : 'Create template'} size="lg">
+      {/* Create / edit template */}
+      <Modal open={open} onClose={() => !saving && setOpen(false)} title={editing ? 'Edit template' : 'Create template'} size="2xl">
         <form onSubmit={save}>
-          <div className="grid gap-5 p-6 sm:grid-cols-2">
-            <Field label="Template name" className="sm:col-span-2"><input autoFocus required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="form-control" placeholder="e.g. Weekly performance report" /></Field>
-            <Field label="Description" className="sm:col-span-2"><textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="form-control py-3" placeholder="Explain when and how this template should be used." /></Field>
-            <Field label="Default section"><select value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value as TaskSection })} className="form-control"><option value="DAILY">Daily</option><option value="WEEKLY">Weekly</option><option value="MONTHLY">Monthly</option></select></Field>
-            <Field label="Default priority"><select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as Priority })} className="form-control"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select></Field>
-            <Field label="Checklist items" className="sm:col-span-2"><textarea rows={5} value={form.checklist} onChange={(e) => setForm({ ...form, checklist: e.target.value })} className="form-control py-3" placeholder={'Collect source files\nPrepare first draft\nComplete final QA'} /><p className="form-hint">One item per line.</p></Field>
-            <Field label="Reference link" className="sm:col-span-2"><input type="url" value={form.referenceUrl} onChange={(e) => setForm({ ...form, referenceUrl: e.target.value })} className="form-control" placeholder="https://drive.google.com/..." /></Field>
-            {error && <p className="sm:col-span-2 text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+          <div className="space-y-6 p-6">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Template name" className="sm:col-span-2"><input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="form-control" placeholder="e.g. Chatter, Traffic, Manager" /></Field>
+              <Field label="Description" className="sm:col-span-2"><textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className="form-control py-3" placeholder="What role or workflow is this bundle for?" /></Field>
+            </div>
+
+            {SECTIONS.map((section) => {
+              const sectionItems = items.filter((it) => it.section === section.value)
+              return (
+                <div key={section.value} className="rounded-[12px] border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-[13px] font-bold">{section.label} <span className="ml-1 text-xs font-medium" style={{ color: 'var(--muted)' }}>· {sectionItems.length}</span></p>
+                    <button type="button" onClick={() => addItem(section.value)} className="btn btn-secondary !min-h-8 !px-3 !text-[11px]"><Plus size={12} /> Add task</button>
+                  </div>
+                  {sectionItems.length === 0 ? (
+                    <p className="rounded-[9px] border border-dashed px-3 py-4 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>No {section.value.toLowerCase()} tasks yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {sectionItems.map((item) => (
+                        <div key={item.key} className="rounded-[10px] border p-3.5" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+                          <div className="mb-2.5 flex items-start gap-2">
+                            <input value={item.title} onChange={(e) => updateItem(item.key, { title: e.target.value })} className="form-control flex-1 !min-h-10" placeholder="Task title" />
+                            <select value={item.priority} onChange={(e) => updateItem(item.key, { priority: e.target.value as Priority })} className="form-control !min-h-10 !w-auto"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select>
+                            <button type="button" onClick={() => removeItem(item.key)} className="icon-button !h-10 !w-10 hover:!text-[var(--red)]" aria-label="Remove task"><X size={14} /></button>
+                          </div>
+                          <textarea value={item.checklist} onChange={(e) => updateItem(item.key, { checklist: e.target.value })} rows={2} className="form-control py-2.5 text-[13px]" placeholder="Checklist — one item per line (optional)" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
           </div>
-          <div className="modal-actions"><button type="button" onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button><button disabled={saving || !form.title.trim()} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}{editing ? 'Save changes' : 'Create template'}</button></div>
+          <div className="modal-actions"><button type="button" onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button><button disabled={saving || !name.trim()} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}{editing ? 'Save changes' : 'Create template'}</button></div>
         </form>
       </Modal>
-      <Modal open={!!usingTemplate} onClose={() => !saving && setUsingTemplate(null)} title="Create task from template" size="md">
-        {usingTemplate && <form onSubmit={createFromTemplate}><div className="space-y-5 p-6"><div className="rounded-[10px] border p-4" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}><p className="text-sm font-bold">{usingTemplate.title}</p><p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>{usingTemplate.section} · {usingTemplate.priority} · {usingTemplate.checklist.length} checklist items</p></div><Field label="Board"><select required value={useForm.boardId} onChange={(e) => { const boardId = e.target.value; const workspaceId = boards.find((board) => board.id === boardId)?.workspace_id; setUseForm({ ...useForm, boardId, assigneeId: members.find((member) => member.workspace_id === workspaceId)?.profiles?.id || '' }) }} className="form-control"><option value="">Choose a board</option>{boards.map((board) => <option key={board.id} value={board.id}>{board.workspaces?.name ? `${board.workspaces.name} · ` : ''}{board.name === 'Team Board' ? 'Workspace Board' : board.name}</option>)}</select></Field><Field label="Assignee"><select required value={useForm.assigneeId} onChange={(e) => setUseForm({ ...useForm, assigneeId: e.target.value })} className="form-control"><option value="">Choose a teammate</option>{availableMembers.map((member) => member.profiles && <option key={member.profiles.id} value={member.profiles.id}>{member.profiles.full_name || member.profiles.email}</option>)}</select></Field><Field label="Deadline (optional)"><input type="datetime-local" value={useForm.deadline} onChange={(e) => setUseForm({ ...useForm, deadline: e.target.value })} className="form-control" /></Field>{error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}</div><div className="modal-actions"><button type="button" onClick={() => setUsingTemplate(null)} className="btn btn-secondary">Cancel</button><button disabled={saving || !useForm.boardId || !useForm.assigneeId} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}Create task</button></div></form>}
+
+      {/* Assign template to a member */}
+      <Modal open={!!assigning} onClose={() => !saving && setAssigning(null)} title="Assign template to member" size="md">
+        {assigning && (
+          <form onSubmit={assignTemplate}>
+            <div className="space-y-5 p-6">
+              <div className="rounded-[10px] border p-4" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
+                <p className="text-sm font-bold">{assigning.title}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>{(assigning.items || []).length} recurring task{(assigning.items || []).length === 1 ? '' : 's'} will be created for the member.</p>
+              </div>
+              <Field label="Board"><select required value={assignForm.boardId} onChange={(e) => { const boardId = e.target.value; const workspaceId = boards.find((b) => b.id === boardId)?.workspace_id; setAssignForm({ boardId, assigneeId: members.find((m) => m.workspace_id === workspaceId)?.profiles?.id || '' }) }} className="form-control"><option value="">Choose a board</option>{boards.map((board) => <option key={board.id} value={board.id}>{board.workspaces?.name ? `${board.workspaces.name} · ` : ''}{board.name === 'Team Board' ? 'Workspace Board' : board.name}</option>)}</select></Field>
+              <Field label="Member"><select required value={assignForm.assigneeId} onChange={(e) => setAssignForm({ ...assignForm, assigneeId: e.target.value })} className="form-control"><option value="">Choose a teammate</option>{availableMembers.map((m) => m.profiles && <option key={m.profiles.id} value={m.profiles.id}>{m.profiles.full_name || m.profiles.email}</option>)}</select></Field>
+              {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+            </div>
+            <div className="modal-actions"><button type="button" onClick={() => setAssigning(null)} className="btn btn-secondary">Cancel</button><button disabled={saving || !assignForm.boardId || !assignForm.assigneeId} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}<UserPlus size={15} /> Assign tasks</button></div>
+          </form>
+        )}
       </Modal>
     </>
   )

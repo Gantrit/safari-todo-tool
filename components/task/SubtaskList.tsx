@@ -46,13 +46,31 @@ export default function SubtaskList({ taskId, subtasks: initial, members, curren
   }
 
   async function toggleSubtask(id: string, done: boolean) {
+    // Guard: without a real id we can't target a single row (and `.eq('id', undefined)`
+    // would match nothing while `s.id === id` would flip every item). Skip safely.
+    if (!id) return
     const { error } = await supabase.from('checklist_items').update({ done: !done }).eq('id', id)
     if (error) await supabase.from('subtasks').update({ done: !done }).eq('id', id)
     setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, done: !done } : s)))
   }
 
+  const total = subtasks.length
+  const doneCount = subtasks.filter((s) => s.done).length
+  const pct = total ? Math.round((doneCount / total) * 100) : 0
+
   return (
     <div className="space-y-2.5">
+      {total > 0 && (
+        <div className="mb-3.5">
+          <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>
+            <span>{doneCount}/{total} done</span>
+            <span style={{ color: pct === 100 ? 'var(--green)' : 'var(--muted)' }}>{pct}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--green)' }} />
+          </div>
+        </div>
+      )}
       {subtasks.length === 0 && !adding && <div className="rounded-[10px] border border-dashed px-4 py-5 text-center text-xs leading-5" style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>No checklist items yet.</div>}
       {subtasks.map((s) => (
         <div key={s.id} className="flex min-h-11 items-center gap-3 rounded-[9px] border px-3.5" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>

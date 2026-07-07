@@ -8,7 +8,7 @@ import StatusBadge from '../ui/StatusBadge'
 import PriorityBadge from '../ui/PriorityBadge'
 import { deadlineLabel, formatDate, formatRelative, getInitials, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle, Bell, CalendarDays, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, MessageSquare, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
+import { AlertTriangle, Bell, CalendarDays, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, MessageSquare, Pencil, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
 import CommentSection from './CommentSection'
 import SubtaskList from './SubtaskList'
 
@@ -18,6 +18,7 @@ interface TaskModalProps {
   members: Profile[]
   onClose: () => void
   onUpdate: (task: Task) => void
+  onEdit?: (task: Task) => void
 }
 
 const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
@@ -29,7 +30,7 @@ const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
   REJECTED: 'IN_EDIT',
 }
 
-export default function TaskModal({ task, currentUser, members, onClose, onUpdate }: TaskModalProps) {
+export default function TaskModal({ task, currentUser, members, onClose, onUpdate, onEdit }: TaskModalProps) {
   const [updating, setUpdating] = useState(false)
   const [resultUrl, setResultUrl] = useState(task.result_url || '')
   const [showResultInput, setShowResultInput] = useState(false)
@@ -39,6 +40,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   const canManage = canManageTeam(currentUser.role)
   const isViewer = isViewerRole(currentUser.role)
   const canWrite = canWriteTasks(currentUser.role)
+  const canEdit = !isViewer && (canManage || task.created_by === currentUser.id)
   const assigneeIds = task.assignee_ids || [task.assigned_to].filter(Boolean) as string[]
   const isAssignee = assigneeIds.includes(currentUser.id)
   const canAdvanceStatus = () => {
@@ -199,6 +201,9 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             <div className="space-y-7 lg:sticky lg:top-0">
               <section>
                 <p className="mb-3.5 text-[10px] font-extrabold uppercase tracking-[.11em]" style={{ color: 'var(--muted)' }}>Task actions</p>
+          {canEdit && onEdit && (
+            <button onClick={() => onEdit(task)} disabled={updating} className="btn btn-secondary mb-2.5 min-h-11 w-full"><Pencil size={14} /> Edit task</button>
+          )}
           {canAdvanceStatus() && nextStatus && (
             <button
               onClick={advanceStatus}

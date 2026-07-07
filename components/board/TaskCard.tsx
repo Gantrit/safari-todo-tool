@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { Task, Profile } from '@/lib/types'
+import { useEffect, useState } from 'react'
+import { Task, Profile, Subtask, ChecklistItem } from '@/lib/types'
 import { getInitials, getUrgency, isNearDeadline, taskAccentColor, canDeleteTask } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import PriorityBadge from '../ui/PriorityBadge'
 import StatusBadge from '../ui/StatusBadge'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Bell, CheckSquare, ChevronRight, Link2, Maximize2, MessageSquare, Paperclip, Repeat, Trash2 } from 'lucide-react'
+import { Bell, Check, CheckSquare, ChevronDown, ChevronRight, Link2, Maximize2, MessageSquare, Paperclip, Repeat, Trash2 } from 'lucide-react'
 import { getTaskDeadline } from '@/lib/types'
 
 interface TaskCardProps {
@@ -21,7 +22,20 @@ interface TaskCardProps {
 
 export default function TaskCard({ task, onClick, currentUser, onDelete, showAssignee = false, draggable = true }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [checklistOpen, setChecklistOpen] = useState(false)
+  const [items, setItems] = useState<Array<Subtask | ChecklistItem>>(() => task.checklist_items || task.subtasks || [])
+  const supabase = createClient()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
+
+  // Reseed local checklist when the task object changes (e.g. after an edit refetch).
+  useEffect(() => { setItems(task.checklist_items || task.subtasks || []) }, [task.checklist_items, task.subtasks])
+
+  async function toggleItem(id: string, done: boolean) {
+    if (!id) return
+    setItems((prev) => prev.map((s) => (s.id === id ? { ...s, done: !done } : s)))
+    const { error } = await supabase.from('checklist_items').update({ done: !done }).eq('id', id)
+    if (error) await supabase.from('subtasks').update({ done: !done }).eq('id', id)
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -34,9 +48,9 @@ export default function TaskCard({ task, onClick, currentUser, onDelete, showAss
   const barColor = taskAccentColor(task.status, task.priority)
   const canDelete = canDeleteTask(task, currentUser)
 
-  const checklist = task.checklist_items || task.subtasks || []
-  const subtaskCount = checklist.length
-  const doneSubtasks = checklist.filter((s) => s.done).length
+  const subtaskCount = items.length
+  const doneSubtasks = items.filter((s) => s.done).length
+  const checklistPct = subtaskCount ? Math.round((doneSubtasks / subtaskCount) * 100) : 0
   const commentCount = task.comments?.length || 0
   const attachmentCount = task.attachments?.length || 0
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
@@ -125,12 +139,44 @@ export default function TaskCard({ task, onClick, currentUser, onDelete, showAss
 
             {subtaskCount > 0 && (
               <div className="mb-3">
-                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>
+                <button
+                  type="button"
+                  onClick={() => setChecklistOpen((v) => !v)}
+                  className="mb-1.5 flex w-full items-center gap-1.5 text-[11px] font-semibold transition-colors hover:text-[var(--text)]"
+                  style={{ color: 'var(--muted)' }}
+                  aria-expanded={checklistOpen}
+                >
                   <CheckSquare size={12} /> Checklist · {doneSubtasks}/{subtaskCount}
+                  <span className="ml-1 font-bold" style={{ color: checklistPct === 100 ? 'var(--green)' : 'var(--muted)' }}>{checklistPct}%</span>
+                  <ChevronDown size={12} className="ml-auto transition-transform" style={{ transform: checklistOpen ? 'rotate(180deg)' : 'none' }} />
+                </button>
+                <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${checklistPct}%`, background: 'var(--green)' }} />
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--surface3)' }}>
-                  <div className="h-full rounded-full" style={{ width: `${subtaskCount ? (doneSubtasks / subtaskCount) * 100 : 0}%`, background: 'var(--accent)' }} />
-                </div>
+                {checklistOpen && (
+                  <div className="mt-2.5 space-y-1.5">
+                    {items.map((item) => (
+                      <button
+                        key={item.id || item.title}
+                        type="button"
+                        onClick={() => toggleItem(item.id, item.done)}
+                        disabled={!item.id}
+                        className="flex w-full items-center gap-2.5 rounded-[8px] border px-2.5 py-2 text-left transition-colors hover:border-[var(--border-strong)] disabled:cursor-default"
+                        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
+                      >
+                        <span
+                          className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[4px]"
+                          style={{ background: item.done ? 'var(--green)' : 'transparent', border: `1px solid ${item.done ? 'var(--green)' : 'var(--border-strong)'}` }}
+                        >
+                          {item.done && <Check size={9} color="#071007" />}
+                        </span>
+                        <span className="flex-1 text-[12px] leading-4" style={{ color: 'var(--text)', textDecoration: item.done ? 'line-through' : 'none', opacity: item.done ? 0.55 : 1 }}>
+                          {item.title}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

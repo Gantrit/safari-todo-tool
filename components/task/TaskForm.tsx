@@ -14,23 +14,33 @@ interface TaskFormProps {
   currentUser: Profile
   onCreated: (task: Task) => void
   onCancel: () => void
+  task?: Task
+  onUpdated?: (task: Task) => void
 }
 
-export default function TaskForm({ boardId, memberId, section, members, currentUser, onCreated, onCancel }: TaskFormProps) {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [priority, setPriority] = useState<Priority>('MEDIUM')
-  const [assignedTo, setAssignedTo] = useState<string[]>([memberId])
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toISOString().slice(0, 16)
+}
+
+export default function TaskForm({ boardId, memberId, section, members, currentUser, onCreated, onCancel, task, onUpdated }: TaskFormProps) {
+  const isEditing = !!task
+  const [title, setTitle] = useState(task?.title || '')
+  const [description, setDescription] = useState(task?.description || '')
+  const [priority, setPriority] = useState<Priority>(task?.priority || 'MEDIUM')
+  const [assignedTo, setAssignedTo] = useState<string[]>(task ? (task.assignee_ids?.length ? task.assignee_ids : [task.assigned_to].filter(Boolean) as string[]) : [memberId])
   const [assigneesOpen, setAssigneesOpen] = useState(false)
-  const [category, setCategory] = useState<TaskSection>(section)
-  const [deadline, setDeadline] = useState(() => berlinDefaultDeadline(section).toISOString().slice(0, 16))
-  const [referenceUrl, setReferenceUrl] = useState('')
+  const [category, setCategory] = useState<TaskSection>(task?.section || section)
+  const [deadline, setDeadline] = useState(() => task ? toLocalInput(task.deadline_at || task.due_date) : berlinDefaultDeadline(section).toISOString().slice(0, 16))
+  const [referenceUrl, setReferenceUrl] = useState(task?.reference_url || task?.google_drive_url || '')
   const [checklist, setChecklist] = useState('')
-  const [recurringEnabled, setRecurringEnabled] = useState(false)
-  const [recurringFrequency, setRecurringFrequency] = useState('WEEKLY')
-  const [remind3d, setRemind3d] = useState(false)
-  const [remind24h, setRemind24h] = useState(false)
-  const [labels, setLabels] = useState('')
+  const [recurringEnabled, setRecurringEnabled] = useState(!!task?.recurring_enabled)
+  const [recurringFrequency, setRecurringFrequency] = useState<string>(task?.recurring_frequency || 'WEEKLY')
+  const [remind3d, setRemind3d] = useState(!!task?.remind_3d)
+  const [remind24h, setRemind24h] = useState(!!task?.remind_24h)
+  const [labels, setLabels] = useState((task?.labels || []).join(', '))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [supabase] = useState(() => createClient())
@@ -46,6 +56,38 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
     setError(null)
 
     const primaryAssignee = assignedTo[0]
+
+    if (isEditing && task) {
+      // Edit mode: update the task's fields in place. Checklist items are left untouched here —
+      // they're managed (add / toggle) directly in the task detail view so editing never wipes
+      // existing progress.
+      const { data, error: updateError } = await supabase.from('tasks').update({
+        assigned_to: primaryAssignee,
+        assignee_ids: assignedTo,
+        title: title.trim(),
+        description: description.trim() || null,
+        priority,
+        section: category,
+        due_date: deadline ? deadline.slice(0, 10) : null,
+        deadline_at: deadline ? new Date(deadline).toISOString() : null,
+        remind_3d: remind3d,
+        remind_24h: remind24h,
+        reference_url: referenceUrl.trim() || null,
+        google_drive_url: referenceUrl.trim() || null,
+        recurring_enabled: recurringEnabled,
+        recurring_frequency: recurringEnabled ? recurringFrequency : null,
+        labels: labels.split(',').map((label) => label.trim()).filter(Boolean),
+      }).eq('id', task.id).select('*, checklist_items(*), assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)').single()
+
+      if (updateError || !data) {
+        setError(updateError?.message || 'Task could not be updated.')
+        setLoading(false)
+        return
+      }
+      onUpdated?.({ ...(data as Task), assignee_ids: assignedTo })
+      return
+    }
+
     const { data, error: insertError } = await supabase.from('tasks').insert({
       board_id: boardId,
       assigned_to: primaryAssignee,
@@ -77,18 +119,29 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
     }
 
     const checklistItems = checklist.split('\n').map((item) => item.trim()).filter(Boolean).map((item, index) => ({ task_id: data.id, title: item, position: index, done: false }))
-    const writes = []
+    // Insert checklist with .select() so we get back the real DB-generated ids. Without them
+    // every optimistic item shares id === undefined, which made toggling one tick all of them.
+    let savedChecklist = checklistItems as any[]
+    const writes: PromiseLike<{ error: unknown }>[] = []
     if (assignedTo.length > 1) writes.push(supabase.from('task_assignees').insert(assignedTo.map((userId) => ({ task_id: data.id, user_id: userId }))))
-    if (checklistItems.length > 0) writes.push(supabase.from('checklist_items').insert(checklistItems))
     const results = await Promise.all(writes)
-    const relatedError = results.find((result) => result.error)?.error
+    if (checklistItems.length > 0) {
+      const { data: clData, error: clError } = await supabase.from('checklist_items').insert(checklistItems).select('*')
+      if (clError) {
+        setError(`Task created, but its checklist could not be saved: ${clError.message}`)
+        setLoading(false)
+        return
+      }
+      if (clData) savedChecklist = clData
+    }
+    const relatedError = results.find((result) => result.error)?.error as { message?: string } | undefined
     if (relatedError) {
       setError(`Task created, but related details could not be saved: ${relatedError.message}`)
       setLoading(false)
       return
     }
 
-    onCreated({ ...(data as Task), assignee_ids: assignedTo, checklist_items: checklistItems as any })
+    onCreated({ ...(data as Task), assignee_ids: assignedTo, checklist_items: savedChecklist as any })
   }
 
   const fieldClass = 'create-task-control'
@@ -112,11 +165,13 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Priority</label><select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className={fieldClass} style={fieldStyle}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select></div>
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Deadline · Berlin</label><input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={fieldClass} style={fieldStyle} /></div>
           </div>
-          <div className={groupClass}>
-            <label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><ListChecks size={13} /> Checklist</label>
-            <textarea value={checklist} onChange={(e) => setChecklist(e.target.value)} rows={5} className={fieldClass} style={fieldStyle} placeholder={'Collect source files\nSubmit first draft\nFinal QA'} />
-            <p className="mt-2.5 text-[11.5px] leading-5" style={{ color: 'var(--muted)' }}>One checklist item per line.</p>
-          </div>
+          {!isEditing && (
+            <div className={groupClass}>
+              <label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><ListChecks size={13} /> Checklist</label>
+              <textarea value={checklist} onChange={(e) => setChecklist(e.target.value)} rows={5} className={fieldClass} style={fieldStyle} placeholder={'Collect source files\nSubmit first draft\nFinal QA'} />
+              <p className="mt-2.5 text-[11.5px] leading-5" style={{ color: 'var(--muted)' }}>One checklist item per line.</p>
+            </div>
+          )}
           <div className="create-task-paired">
             <div className={groupClass}><label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><Link2 size={13} /> Reference link</label><input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="Drive, brief, or SOP URL" /></div>
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Labels</label><input value={labels} onChange={(e) => setLabels(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="design, review" /></div>
@@ -175,7 +230,7 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       {error && <div className="mx-5 mb-6 rounded-[10px] border px-4 py-3.5 text-sm sm:mx-10" style={{ background: 'var(--red-dim)', borderColor: 'rgba(255,98,98,.3)', color: 'var(--red)' }}>{error}</div>}
       <footer className="create-task-footer sticky bottom-0 z-10">
         <button type="button" onClick={onCancel} disabled={loading} className="btn btn-secondary sm:min-w-28">Cancel</button>
-        <button type="submit" disabled={loading || !title.trim() || assignedTo.length === 0} className="btn btn-primary sm:min-w-40">{loading ? <><Loader2 className="animate-spin" size={15} /> Creating task…</> : 'Create task'}</button>
+        <button type="submit" disabled={loading || !title.trim() || assignedTo.length === 0} className="btn btn-primary sm:min-w-40">{loading ? <><Loader2 className="animate-spin" size={15} /> {isEditing ? 'Saving…' : 'Creating task…'}</> : isEditing ? 'Save changes' : 'Create task'}</button>
       </footer>
     </form>
   )

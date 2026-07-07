@@ -38,19 +38,30 @@ Per-board visibility via `board_access`. Deactivated users keep data but lose ac
 **XP / levels** — cumulative, never resets. **Only ever written server-side** via RPCs, never
 from the client. All XP amounts are **admin-configurable** in the single-row `xp_settings`
 table (migration 018, edited via Settings → XP Management) — never hardcode XP values:
-- `approve_task` (018): base = category value (Daily/Weekly/Monthly) + priority surcharge
-  (Low/Medium/High), plus a near-deadline bonus (completed within a configurable window before
-  the deadline), an early-completion bonus (per full day, capped) and a streak bonus (per day,
-  capped). Overdue penalty mirrors the full base and is applied on admin review.
+- `approve_task` (018, redefined in 020 to also regenerate recurring tasks): base = category
+  value (Daily/Weekly/Monthly) + priority surcharge (Low/Medium/High), plus a near-deadline bonus
+  (completed within a configurable window before the deadline), an early-completion bonus (per full
+  day, capped) and a streak bonus (per day, capped). Overdue penalty mirrors the full base and is
+  applied on admin review.
 - `review_quest` (007): pays a quest's fixed bonus XP on approval.
 - `admin_adjust_xp` (012): admin-only manual correction with mandatory reason.
 
 100 XP/level. Ranks: 1–4 Rookie, 5–9 Reliable, 10–19 Executor, 20–34 High Performer, 35–49 Elite,
 50+ Safari Legend. Level/rank math: `getLevelInfo`/`getRankForLevel` in [`lib/types.ts`](lib/types.ts).
 
-**Other features:** comments, subtasks/checklists, per-task reference links, in-app + email
-notifications, quests, admin-editable templates, admin audit log with filters, soft delete
+**Other features:** comments, subtasks/checklists (tickable in the expanded board card and the
+task modal), in-app task editing (admin/manager/creator, via TaskForm's edit mode), per-task
+reference links, in-app + email notifications, quests, admin audit log with filters, soft delete
 (`deleted_at`, admin-recoverable).
+
+**Templates (migration 019):** a template is a NAMED BUNDLE of tasks grouped by Daily/Weekly/
+Monthly (`task_templates` = bundle, `template_items` = its tasks). `assign_template()` RPC
+instantiates every item as a real recurring task for one member. Editing a template is NOT
+retro-applied to already-assigned tasks.
+
+**Recurring tasks (migration 020):** `recurring_enabled` tasks auto-reset — on approval,
+`approve_task` spawns a fresh copy for the next period (DAILY +1d / WEEKLY +7d / MONTHLY +1mo)
+with an unchecked checklist copy. CUSTOM frequency does not recur.
 
 ## Structure
 
@@ -78,7 +89,7 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`018`, run in
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`020`, run in
 order in the Supabase SQL editor. Env vars / deploy steps: [`SETUP.md`](SETUP.md).
 
 ## Working rules

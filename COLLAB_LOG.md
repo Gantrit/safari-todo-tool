@@ -3,6 +3,48 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-07 - Claude (Opus 4.8) - Checklist fixes, task editing, recurring engine, template bundles
+
+User feedback batch. Bug fixes verified live in browser preview (against current DB); template
++ recurring features need migrations 019/020 run first.
+
+- **Checklist "tick one → all tick" bug FIXED at the root** in `components/task/TaskForm.tsx`:
+  new checklist items were inserted WITHOUT `.select()`, so `onCreated` got optimistic rows with
+  `id === undefined`. In `SubtaskList`/board state every item shared that undefined id, so
+  `s.id === id` matched all of them. Now we insert with `.select('*')` and pass the real DB rows
+  back. Also hardened `SubtaskList.toggleSubtask` to no-op on a missing id.
+- **Checklist now shown & tickable inside the expanded board card** (`components/board/TaskCard.tsx`):
+  collapsible "Checklist · x/y  z%" header (chevron), individual items directly checkable in the
+  card (optimistic + supabase write, falls back subtasks→checklist_items), green progress bar with
+  a % readout. Empty checklist stays hidden (unchanged). Progress bar is now `var(--green)`, taller.
+  Same green bar + % added to the modal's `SubtaskList`.
+- **Admin/creator can now EDIT existing tasks** — there was NO edit UI before (TaskForm was
+  create-only; TaskModal only did status/approve/comments). `TaskForm` gained an optional
+  `task` + `onUpdated` edit mode (prefills all fields, UPDATEs in place, hides the checklist
+  textarea so editing never wipes checklist progress — checklist is edited in the task view).
+  `TaskModal` shows an "Edit task" button (canManage || creator, not viewers) that fires `onEdit`;
+  `BoardView` holds `editingTask` and renders `TaskForm` in a modal, reopening the detail modal on
+  save. Verified: priority edit persisted across reload.
+- **Templates rebuilt into recurring bundles** (was one-task-per-template):
+  - **NEW migration `019_template_bundles.sql` — NOT YET RUN**: `template_items` child table
+    (RLS: read authenticated, write `can_manage()`); backfills each existing single-task template
+    into one item; `assign_template(template, board, assignee)` SECURITY DEFINER RPC that
+    instantiates every item as a real task (recurring_enabled=TRUE, freq=section) + its checklist.
+  - **NEW migration `020_recurring_regeneration.sql` — NOT YET RUN**: redefines `approve_task`
+    (built on 018) so approving a recurring task spawns a fresh copy for the next period
+    (DAILY +1d / WEEKLY +7d / MONTHLY +1mo, status ASSIGNED, unchecked checklist copy). This is
+    the "auto-reset after approval" model. CUSTOM freq does NOT recur.
+  - `app/(app)/templates/TemplateLibrary.tsx` fully rewritten: create/edit a named bundle with
+    tasks grouped under Daily/Weekly/Monthly (each: title, priority, checklist), plus an "Assign to
+    member" flow (board + member → `assign_template` RPC → redirect to board). Editing a template is
+    NOT retro-applied to already-assigned tasks (user decision).
+  - `app/(app)/templates/page.tsx` fetches `template_items` with a **legacy fallback** so the page
+    still works before 019 runs (synthesises a one-item bundle from the old columns).
+- **Migrations 018 → 019 → 020 have been run in Supabase (confirmed 2026-07-07).** User verified
+  live in their own browser: template creation (bundle with Daily/Weekly/Monthly items), "Assign
+  to member" (creates real recurring tasks on the board), and the recurring auto-reset after
+  approval all work end-to-end. Do not re-run these migrations.
+
 ## 2026-07-07 - Claude (Fable 5) - Board polish batch, clickable dashboard KPIs, compact sidebar, admin XP Management
 
 Big user-feedback batch, all verified live in browser preview:
