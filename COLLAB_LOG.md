@@ -3,6 +3,28 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-07 - Claude (Fable 5) - Remove unlayered CSS reset that zeroed all Tailwind spacing utilities
+
+User reported broken formatting on Character / Quests / Leaderboard / Guild Hall / Account /
+board pages: everything crammed together, first letters of card labels clipped by the rounded
+`overflow: hidden` card corners — while Dashboard / Calendar / Templates looked perfect.
+
+Root cause (single, global): `globals.css` had `* { box-sizing: border-box; margin: 0; padding: 0 }`
+**outside any `@layer`**. Tailwind v4 emits utilities inside `@layer utilities`, and unlayered CSS
+always beats layered CSS in the cascade regardless of specificity/order — so every `p-*`/`m-*`
+utility in the app computed to 0px. Pages styled via bespoke CSS classes (`.dashboard-kpi`,
+`.calendar-*`, `.page-shell` — which are also unlayered and therefore won) looked fine; pages
+relying on Tailwind spacing utilities collapsed. Verified live before the fix: element with
+class `p-6` computed `padding: 0px` while `gap-5` (not touched by the reset) worked.
+
+- Deleted the universal reset — Tailwind preflight (inside `@layer base`) already does the same
+  margin/padding/box-sizing reset, correctly layered so utilities can override it.
+- **Do not reintroduce an unlayered `* { margin/padding: 0 }` reset** (comment left in the file).
+- Verified: dev server with fresh `.next` computes `p-6` = 22.5px; production build clean; built
+  CSS contains no top-level star reset (only preflight's layered one).
+- Note for future sessions: Turbopack file-watching on this OneDrive path is unreliable — CSS
+  edits may silently not recompile. If a change doesn't show up, delete `.next` and restart.
+
 ## 2026-07-07 - Claude (Sonnet 5) - Actually fix empty-section collapse (previous fix was incomplete)
 
 User reported the bug from 2026-07-06 was still happening: their own column's Daily/Weekly/Monthly
