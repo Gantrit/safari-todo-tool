@@ -77,12 +77,18 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         style={{ background: 'var(--bg)', borderColor: 'var(--border)' }}
       >
         <div className="sidebar-brand-block flex items-center justify-between gap-3 border-b" style={{ borderColor: 'var(--border)' }}>
-          <Link href="/dashboard" className="min-w-0">
+          <Link href="/dashboard" className="min-w-0 flex-1">
             <span className="block truncate text-[17px] font-extrabold tracking-[-0.015em]">Safari To-Dos</span>
-            <span className="mt-1 block text-[10.5px] font-medium" style={{ color: 'var(--muted)' }}>Task Tracker · v0.2-workspace</span>
+            <span className="mt-1 block text-[10.5px] font-medium" style={{ color: 'var(--muted)' }}>Safari Studios · internal</span>
           </Link>
-          <button className="icon-button !h-9 !w-9 hidden flex-none lg:inline-flex" onClick={() => startRefresh(() => router.refresh())} aria-label="Refresh workspace data" title="Refresh workspace data"><RefreshCw className={refreshing ? 'animate-spin' : ''} size={15} /></button>
-          <button className="icon-button !h-9 !w-9 flex-none lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
+          {/* NB: `hidden`/`lg:hidden` display utilities lose against the unlayered
+              `.icon-button { display:inline-flex }` in globals.css, so visibility is
+              handled in JSX: the close button only exists while the mobile drawer is open. */}
+          {mobileOpen ? (
+            <button className="icon-button !h-9 !w-9 flex-none" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={16} /></button>
+          ) : (
+            <button className="icon-button !h-9 !w-9 flex-none" onClick={() => startRefresh(() => router.refresh())} aria-label="Refresh workspace data" title="Refresh workspace data"><RefreshCw className={refreshing ? 'animate-spin' : ''} size={15} /></button>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3.5 py-3">

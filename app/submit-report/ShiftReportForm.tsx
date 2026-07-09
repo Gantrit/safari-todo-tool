@@ -9,22 +9,44 @@ interface CreatorOption {
 }
 
 const MAX_FILES = 6
+const MAX_FILE_MB = 8
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf']
 
 export default function ShiftReportForm({ creators }: { creators: CreatorOption[] }) {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
 
   const today = new Date().toISOString().slice(0, 10)
 
   function addFiles(list: FileList | null) {
     if (!list) return
-    setFiles((prev) => [...prev, ...Array.from(list)].slice(0, MAX_FILES))
+    const incoming = Array.from(list)
+    const rejected: string[] = []
+    const ok = incoming.filter((f) => {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        rejected.push(`${f.name} — only PNG, JPG, WebP, GIF or PDF`)
+        return false
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        rejected.push(`${f.name} — larger than ${MAX_FILE_MB} MB`)
+        return false
+      }
+      return true
+    })
+    setFiles((prev) => {
+      const next = [...prev, ...ok]
+      if (next.length > MAX_FILES) rejected.push(`Only the first ${MAX_FILES} files are kept.`)
+      return next.slice(0, MAX_FILES)
+    })
+    setFileError(rejected.length > 0 ? rejected.join(' · ') : null)
   }
 
   function removeFile(idx: number) {
     setFiles((prev) => prev.filter((_, i) => i !== idx))
+    setFileError(null)
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -189,6 +211,10 @@ export default function ShiftReportForm({ creators }: { creators: CreatorOption[
             onChange={(e) => addFiles(e.target.files)}
           />
         </label>
+
+        {fileError && (
+          <p className="mt-2 text-[12px]" style={{ color: 'var(--red)' }}>{fileError}</p>
+        )}
 
         {files.length > 0 && (
           <ul className="mt-3 space-y-2">

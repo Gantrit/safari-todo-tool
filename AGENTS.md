@@ -54,6 +54,14 @@ task modal), in-app task editing (admin/manager/creator, via TaskForm's edit mod
 reference links, in-app + email notifications, quests, admin audit log with filters, soft delete
 (`deleted_at`, admin-recoverable).
 
+**Shift Reports (migration 023):** chatters (incl. external ones with NO account) submit
+end-of-shift reports at the PUBLIC `/submit-report` page → `/api/shift-report/submit` (service
+role, strict server-side validation, ≤6 files ≤8 MB into the private `shift-report-files`
+bucket). Admin/manager read them at `/reports` (signed URLs, filters, copy-link). Models for
+the form dropdown are managed in Settings → Creators / Models (`/api/shift-report/creators`,
+admin-only). `creator_name` is snapshotted at submit time; `chatter_name` is free text on
+purpose. v2 (Anthropic-API screenshot auto-verification) is deliberately NOT built yet.
+
 **Templates (migration 019):** a template is a NAMED BUNDLE of tasks grouped by Daily/Weekly/
 Monthly (`task_templates` = bundle, `template_items` = its tasks). `assign_template()` RPC
 instantiates every item as a real recurring task for one member. Editing a template is NOT
@@ -79,8 +87,14 @@ app/(app)/archive            approved tasks
 app/(app)/notifications
 app/(app)/guild              admin: XP management / roster (Guild Hall)
 app/(app)/audit              admin: audit log
-app/(app)/settings           admin: invites, members/roles, boards & access, XP management
-app/api/invite               invite endpoint (uses Supabase service-role key)
+app/(app)/settings           admin: invites, members/roles, boards & access, XP mgmt,
+                             quest categories, shift-report Creators / Models
+app/(app)/reports            admin/manager: submitted shift reports (signed URLs)
+app/submit-report            PUBLIC no-login shift-report form (middleware isPublicRoute)
+app/api/invite               invite endpoint (service role; requires authed admin)
+app/api/shift-report/submit  public submit endpoint (service role; strict validation)
+app/api/shift-report/creators  admin-only model CRUD (service role after admin gate)
+app/api/email/notify         called by DB trigger via pg_net (x-webhook-secret gate)
 
 components/board/   BoardView + view variants, MemberColumn, TaskSection, task rows
 components/task/    TaskModal, TaskForm, SubtaskList, CommentSection
@@ -89,8 +103,16 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`020`, run in
-order in the Supabase SQL editor. Env vars / deploy steps: [`SETUP.md`](SETUP.md).
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`023`, run in
+order in the Supabase SQL editor (all applied in prod as of 2026-07-09; next free number: 024).
+Env vars / deploy steps: [`SETUP.md`](SETUP.md). Compact live status: [`docs/current_status.md`](docs/current_status.md).
+
+API routes are NOT protected by the middleware — every route under `app/api` enforces its own
+auth (see each file). The auth pages use the **implicit** flow (`lib/supabase/client.ts`);
+don't switch back to PKCE — emailed invite/reset links break (2026-07-09 fix). The
+`/set-password`, `/callback` and `/submit-report` routes must stay in the middleware's
+`isPublicRoute` list, and the Supabase Redirect URL allowlist must contain
+`…/set-password` + `…/callback`.
 
 ## Working rules
 

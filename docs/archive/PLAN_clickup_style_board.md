@@ -1,6 +1,6 @@
 # Plan: ClickUp-style board cleanup + Create Task redesign
 
-Status: **draft, not implemented**. Handed off for implementation (Claude Code or Codex).
+Status: **IMPLEMENTED** (2026-07-06/07, see COLLAB_LOG archive) — kept for historical reference only.
 Do not commit/push until reviewed.
 
 ## Goals (from user feedback, 2026-07-06)

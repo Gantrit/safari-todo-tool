@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Safari To-Dos
 
-## Getting Started
+Internal gamified task & accountability tool for **Safari Studios**. Every team member has a
+board column; tasks move through an approval flow (`ASSIGNED → NOTICED → IN_EDIT → DONE →
+APPROVED`); approved work earns XP toward levels and ranks. Includes quests, templates,
+a leaderboard, an audit log, and a public shift-report form for chatters.
 
-First, run the development server:
+**Stack:** Next.js (App Router) + TypeScript + Tailwind · Supabase (Postgres / RLS / Auth /
+Storage) · Resend (optional email) · deployed on Vercel (`main` → `safari-todo-tool.vercel.app`).
+
+## Local development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # Windows: npm.cmd run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires `.env.local` with the Supabase project values — see [SETUP.md](SETUP.md).
+Note: routes that use the service role (`/reports`, `/api/shift-report/*`, `/api/invite`)
+only work fully where `SUPABASE_SERVICE_ROLE_KEY` is set (Vercel has it; local usually not).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build      # Windows: npm.cmd run build
+npm run lint
+```
 
-## Learn More
+## Deployment
 
-To learn more about Next.js, take a look at the following resources:
+Push to `main` → Vercel deploys automatically. New SQL migrations in
+[`supabase/migrations/`](supabase/migrations/) must be run manually in the Supabase SQL editor
+(in numeric order) — see [SETUP.md](SETUP.md).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [AGENTS.md](AGENTS.md) — operating brief for AI agents (read first)
+- [SETUP.md](SETUP.md) — environment, migrations, email & auth configuration
+- [COLLAB_LOG.md](COLLAB_LOG.md) — running changelog (newest first)
+- [docs/current_status.md](docs/current_status.md) — compact live-status summary

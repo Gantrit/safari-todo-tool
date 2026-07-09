@@ -1,11 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { ShiftReport, ShiftReportCreator } from '@/lib/types'
 import { Copy, Check, Link2, FileText, ExternalLink, Settings } from 'lucide-react'
 
 type RangeKey = 'all' | '7' | '30' | '90'
+
+// window.location.origin never changes during a page's life — nothing to subscribe to.
+const subscribeNoop = () => () => {}
 
 const RANGES: { key: RangeKey; label: string }[] = [
   { key: 'all', label: 'All time' },
@@ -28,7 +31,11 @@ export default function ReportsView({
   const [range, setRange] = useState<RangeKey>('all')
   const [copied, setCopied] = useState(false)
 
-  const submitUrl = typeof window !== 'undefined' ? `${window.location.origin}/submit-report` : '/submit-report'
+  // Hydration-safe origin: server snapshot renders '', the client value fills in
+  // after hydration. Reading window.location directly during render makes the
+  // server and client HTML disagree and React throws a hydration mismatch.
+  const origin = useSyncExternalStore(subscribeNoop, () => window.location.origin, () => '')
+  const submitUrl = `${origin}/submit-report`
 
   const filtered = useMemo(() => {
     let cutoff = 0
@@ -55,12 +62,13 @@ export default function ReportsView({
   }
 
   return (
-    <div className="mx-auto max-w-[980px] px-4 py-6 sm:px-6">
-      {/* Header */}
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+    <div className="page-shell !max-w-[1080px]">
+      {/* Header — same page-header pattern as every other in-app page */}
+      <header className="page-header">
         <div>
-          <h1 className="text-[22px] font-extrabold tracking-[-.02em]" style={{ color: 'var(--text)' }}>Shift Reports</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>Everything the chatters submit — sales, notes and screenshots, in one place.</p>
+          <p className="page-eyebrow">Tools</p>
+          <h1 className="page-title">Shift Reports</h1>
+          <p className="page-description">Everything the chatters submit — sales, notes and screenshots, in one place.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isAdmin && (
@@ -76,7 +84,7 @@ export default function ReportsView({
             {copied ? 'Copied!' : 'Copy submission link'}
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Submission link hint */}
       <div className="mb-5 flex items-center gap-2 rounded-[10px] border px-3.5 py-2.5 text-[12.5px]" style={{ borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--muted)' }}>

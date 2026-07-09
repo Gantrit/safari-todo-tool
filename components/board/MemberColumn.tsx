@@ -41,7 +41,7 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, on
             {member.full_name?.split(' ')[0] || 'User'}
           </p>
           <p className="mt-1 truncate text-[11px] font-medium" style={{ color: 'var(--muted)' }}>
-            {tasks.filter((task) => task.status !== 'APPROVED').length} open tasks
+            {(() => { const n = tasks.filter((task) => task.status !== 'APPROVED').length; return `${n} open ${n === 1 ? 'task' : 'tasks'}` })()}
           </p>
         </div>
         <button
