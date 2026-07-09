@@ -3,6 +3,48 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-09 — Claude (Opus 4.8) — Shift Reports v1 (native, public submission + in-app list)
+
+Pushed to `main`. **NEW migration `023_shift_reports.sql` — must be run in Supabase before it works.**
+
+- New "Shift Reports" module so chatters submit end-of-shift reports (sales, counts, notes,
+  screenshots) in-app instead of WhatsApp. Migration `023_shift_reports.sql` creates
+  `shift_report_creators`, `shift_reports`, `shift_report_files` + a PRIVATE storage bucket
+  `shift-report-files`, and seeds 7 models (Alanna, Juan, Dasha, Zoey, Millie, Luna, Davis).
+- `shift_reports.creator_name` is a name SNAPSHOT taken at submit time, so deleting a creator
+  never blanks old reports. `chatter_name` is free text (NOT a profiles FK) on purpose — external
+  emergency chatters have no profile.
+- Public no-login form at `/submit-report` (added to middleware `isPublicRoute`) → posts to
+  `/api/shift-report/submit` which runs on the SERVICE ROLE (validates, inserts the report, uploads
+  files to the private bucket, ≤6 files ≤8 MB each). Tables stay RLS-locked; only admin/manager get
+  direct read via policies.
+- In-app list `/reports` (admin/manager only, gated + sidebar entry under Tools) reads via service
+  role and mints 1h signed URLs for screenshots; model/chatter/date filters + "Copy submission link".
+- Creator management (add / activate-deactivate / DELETE) lives in **Settings → Creators / Models**
+  (`CreatorsSettings.tsx`), backed by `/api/shift-report/creators` (POST / PATCH / DELETE, admin-only).
+- Built deliberately WITHOUT the Claude/Anthropic screenshot auto-verification (that's v2 — needs a
+  separate Anthropic API key as a Supabase secret + its own migration for the `verification_*`
+  columns). User wants to judge real screenshot quality before paying for the auto-check.
+- NB: This is the FIRST file-upload feature in the app — there was no prior storage/upload code to
+  reuse (the old FEATURE spec's "reuse task-attachment upload" was wrong; `attachments` only stored
+  URLs). Needs `SUPABASE_SERVICE_ROLE_KEY` in the env (already set on Vercel; the invite route uses it).
+- Verified: `npm.cmd run build` green; `/submit-report` renders without login; Settings Creators
+  section + sidebar entry render. Full submit→list flow runs in prod after migration 023 is applied.
+
+## 2026-07-09 — Claude (Opus 4.8) — fix broken invite / password-reset links
+
+Pushed to `main` (`bdd0338`). No migration.
+
+- `lib/supabase/client.ts` now builds the browser client with `flowType: 'implicit'` (was PKCE by
+  default). `/set-password` and `/callback` were already written for the implicit hash flow (wait for
+  a session from the URL hash, never call `exchangeCodeForSession`), but the PKCE default meant links
+  opened in a fresh browser had no code_verifier to exchange the `?code=` → always "Link expired or
+  invalid". Also hardened `/set-password` to parse `#error_code`/`#error_description` and show the real
+  reason (clear `otp_expired` message) instead of the generic text.
+- Follow-up (NOT code, user's step): in Supabase → Authentication → URL Configuration, confirm
+  `${APP_URL}/set-password` and `${APP_URL}/callback` are in the Redirect URLs allowlist. Single-use
+  links can still be pre-consumed by email security scanners — now diagnosable via the surfaced error.
+
 ## 2026-07-07 - Claude (Opus 4.8) - Email wiring, account security, quest edit/categories, archive split, calendar filter
 
 User feedback batch. `npm run build` green. **TWO NEW MIGRATIONS — must be run in Supabase (021, 022).**
@@ -823,19 +865,3 @@ Entry template:
   ("Initial commit from Create Next App"), so nothing past scaffolding has been committed.
   No GitHub remote is configured yet either. Whoever sets up the remote/pushes first should
   note it here.
-
-## 2026-07-09 — Claude — fix broken invite / password-reset links
-- What changed: `lib/supabase/client.ts` now creates the browser client with `flowType: 'implicit'`
-  (was defaulting to PKCE). The invite/reset pages (`/set-password`, `/callback`) were already
-  written for the implicit hash flow (they just wait for a session from the URL hash and never call
-  `exchangeCodeForSession`), but the PKCE default meant links opened in a fresh browser had no
-  code_verifier to exchange the `?code=` against → always "Link expired or invalid". Also hardened
-  `/set-password` to parse `#error_code`/`#error_description` from the redirect hash and show the
-  real reason (esp. a clear `otp_expired` message) instead of the generic text.
-- Why: Newly invited users (e.g. Ada) consistently saw "Link expired or invalid" even after a fresh
-  invite. Verified locally: build passes; `/set-password#error_code=otp_expired` now renders the
-  actionable message.
-- Not undo / dashboard follow-up needed (NOT code): In Supabase → Authentication → URL Configuration,
-  confirm `${APP_URL}/set-password` and `${APP_URL}/callback` are in the Redirect URLs allowlist, and
-  consider raising invite/OTP expiry. Single-use links can still be pre-consumed by email security
-  scanners — that's now diagnosable via the surfaced error. Not pushed (waiting for Tan).

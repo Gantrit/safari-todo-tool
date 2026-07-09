@@ -33,7 +33,9 @@ export async function middleware(request: NextRequest) {
   // Routes that must be reachable without a session. /set-password and /callback
   // receive the auth token in the URL hash (client-only), so the server sees no
   // cookie yet — never bounce them to /login or the token would be lost.
-  const isPublicRoute = ['/login', '/set-password', '/callback'].some((p) => path.startsWith(p))
+  // /submit-report is the public shift-report form: chatters (incl. external
+  // emergency chatters with no account) must reach it without a session.
+  const isPublicRoute = ['/login', '/set-password', '/callback', '/submit-report'].some((p) => path.startsWith(p))
   const isApiRoute = path.startsWith('/api')
 
   if (!user && !isPublicRoute && !isApiRoute) {

@@ -295,3 +295,46 @@ export function getTaskDeadline(task: Pick<Task, 'deadline_at' | 'due_date'>) {
   return task.deadline_at || task.due_date || null
 }
 
+// ── Shift Reports ────────────────────────────────────────────
+export interface ShiftReportCreator {
+  id: string
+  name: string
+  active: boolean
+  created_at: string
+}
+
+export interface ShiftReportFile {
+  id: string
+  shift_report_id: string
+  path: string
+  file_name: string | null
+  file_type: string | null
+  created_at: string
+  /** Signed URL, generated server-side for display. Not stored in the DB. */
+  signed_url?: string | null
+}
+
+export interface ShiftReport {
+  id: string
+  creator_id: string | null
+  creator_name: string | null
+  chatter_name: string
+  shift_date: string
+  shift_label: string | null
+  time_range: string | null
+  gross_amount: number
+  net_amount: number
+  currency: string
+  new_subs: number
+  renew_subs: number
+  mass_message_replies: number
+  chat_engagements: number
+  mass_message_note: string | null
+  went_well: string | null
+  went_wrong: string | null
+  sub_behavior: string | null
+  created_at: string
+  creator?: ShiftReportCreator | null
+  files?: ShiftReportFile[]
+}
+

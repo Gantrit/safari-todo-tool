@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import SettingsForm from './SettingsForm'
 import XpSettingsForm from './XpSettingsForm'
+import CreatorsSettings from './CreatorsSettings'
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ newWorkspace?: string; workspace?: string }> }) {
   const { newWorkspace, workspace: requestedWorkspaceId } = await searchParams
@@ -48,6 +49,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   const { data: categories } = await supabase.from('departments').select('id, name, slug, position').order('position', { ascending: true })
 
+  const { data: shiftCreators } = await supabase.from('shift_report_creators').select('*').order('name', { ascending: true })
+
   return (
     <div className="page-shell !max-w-[1180px]">
       <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Settings'}</h1><p className="page-description">Your team, its boards, access and XP rules — all in one place.</p></div></header>
@@ -81,6 +84,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       {newWorkspace !== '1' && workspace && (
         <div className="mt-6">
           <XpSettingsForm initial={xpSettings} currentUserId={user!.id} />
+        </div>
+      )}
+      {newWorkspace !== '1' && (
+        <div className="mt-6">
+          <CreatorsSettings creators={shiftCreators || []} />
         </div>
       )}
     </div>
