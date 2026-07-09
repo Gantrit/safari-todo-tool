@@ -823,3 +823,19 @@ Entry template:
   ("Initial commit from Create Next App"), so nothing past scaffolding has been committed.
   No GitHub remote is configured yet either. Whoever sets up the remote/pushes first should
   note it here.
+
+## 2026-07-09 — Claude — fix broken invite / password-reset links
+- What changed: `lib/supabase/client.ts` now creates the browser client with `flowType: 'implicit'`
+  (was defaulting to PKCE). The invite/reset pages (`/set-password`, `/callback`) were already
+  written for the implicit hash flow (they just wait for a session from the URL hash and never call
+  `exchangeCodeForSession`), but the PKCE default meant links opened in a fresh browser had no
+  code_verifier to exchange the `?code=` against → always "Link expired or invalid". Also hardened
+  `/set-password` to parse `#error_code`/`#error_description` from the redirect hash and show the
+  real reason (esp. a clear `otp_expired` message) instead of the generic text.
+- Why: Newly invited users (e.g. Ada) consistently saw "Link expired or invalid" even after a fresh
+  invite. Verified locally: build passes; `/set-password#error_code=otp_expired` now renders the
+  actionable message.
+- Not undo / dashboard follow-up needed (NOT code): In Supabase → Authentication → URL Configuration,
+  confirm `${APP_URL}/set-password` and `${APP_URL}/callback` are in the Redirect URLs allowlist, and
+  consider raising invite/OTP expiry. Single-use links can still be pre-consumed by email security
+  scanners — that's now diagnosable via the surfaced error. Not pushed (waiting for Tan).

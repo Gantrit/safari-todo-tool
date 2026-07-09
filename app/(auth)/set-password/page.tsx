@@ -14,6 +14,7 @@ export default function SetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [invalidReason, setInvalidReason] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -22,6 +23,24 @@ export default function SetPasswordPage() {
   // wait for the resulting session before showing the form.
   useEffect(() => {
     let active = true
+
+    // Supabase redirects failed invite/reset links back with the reason encoded
+    // in the URL hash (#error=…&error_code=…&error_description=…). Surface it so a
+    // broken link is diagnosable instead of a generic "expired or invalid".
+    const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : ''
+    const hp = new URLSearchParams(hash)
+    const errCode = hp.get('error_code') || hp.get('error')
+    const errDesc = hp.get('error_description')
+    if (errCode || errDesc) {
+      const readable = errDesc ? decodeURIComponent(errDesc.replace(/\+/g, ' ')) : errCode
+      setInvalidReason(
+        errCode === 'otp_expired'
+          ? 'This link was already used or has expired. Invite/reset links are single-use — email security scanners can open them first. Ask an admin for a fresh invite and open it immediately.'
+          : readable
+      )
+      setPhase('invalid')
+      return
+    }
 
     const resolve = async () => {
       const { data } = await supabase.auth.getSession()
@@ -99,7 +118,7 @@ export default function SetPasswordPage() {
               <KeyRound className="mx-auto mb-4" size={28} style={{ color: 'var(--red)' }} />
               <h2 className="font-bold" style={{ color: 'var(--text)' }}>Link expired or invalid</h2>
               <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                This invite or reset link is no longer valid. Ask an admin to send a fresh invite, or request a new reset email from the login page.
+                {invalidReason ?? 'This invite or reset link is no longer valid. Ask an admin to send a fresh invite, or request a new reset email from the login page.'}
               </p>
               <button onClick={() => router.push('/login')} className="btn btn-secondary mt-5 min-h-11 w-full">Back to login</button>
             </div>
