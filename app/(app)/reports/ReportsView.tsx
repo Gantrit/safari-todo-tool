@@ -2,8 +2,10 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ShiftReport, ShiftReportCreator } from '@/lib/types'
-import { Copy, Check, Link2, FileText, ExternalLink, Settings } from 'lucide-react'
+import { blobToJpegDataUrl, downloadShiftReportsPdf, type PdfReportData } from '@/lib/shiftReportPdf'
+import { Copy, Check, Link2, FileText, ExternalLink, Settings, FileDown, Trash2, Loader2 } from 'lucide-react'
 
 type RangeKey = 'all' | '7' | '30' | '90'
 
@@ -17,6 +19,46 @@ const RANGES: { key: RangeKey; label: string }[] = [
   { key: '90', label: 'Last 90 days' },
 ]
 
+/** Build the PDF payload for one report: pull each image through a signed URL
+ *  and normalize to JPEG. PDFs and failed downloads are counted, not embedded. */
+async function toPdfData(r: ShiftReport): Promise<PdfReportData> {
+  const images: { name: string; dataUrl: string }[] = []
+  let skipped = 0
+  for (const f of r.files || []) {
+    const isPdf = (f.file_type || '').includes('pdf')
+    if (isPdf || !f.signed_url) { skipped += 1; continue }
+    try {
+      const res = await fetch(f.signed_url)
+      if (!res.ok) { skipped += 1; continue }
+      const dataUrl = await blobToJpegDataUrl(await res.blob())
+      if (dataUrl) images.push({ name: f.file_name || 'screenshot', dataUrl })
+      else skipped += 1
+    } catch {
+      skipped += 1
+    }
+  }
+  return {
+    modelName: r.creator_name || r.creator?.name || 'Unknown model',
+    chatterName: r.chatter_name,
+    shiftDate: r.shift_date,
+    shiftLabel: r.shift_label,
+    timeRange: r.time_range,
+    gross: r.gross_amount,
+    net: r.net_amount,
+    currency: r.currency,
+    newSubs: r.new_subs,
+    renewSubs: r.renew_subs,
+    massMessageReplies: r.mass_message_replies,
+    chatEngagements: r.chat_engagements,
+    massMessageNote: r.mass_message_note,
+    wentWell: r.went_well,
+    wentWrong: r.went_wrong,
+    subBehavior: r.sub_behavior,
+    images,
+    skippedAttachments: skipped,
+  }
+}
+
 export default function ReportsView({
   reports,
   creators,
@@ -26,10 +68,15 @@ export default function ReportsView({
   creators: ShiftReportCreator[]
   isAdmin: boolean
 }) {
+  const router = useRouter()
   const [creatorFilter, setCreatorFilter] = useState<string>('all')
   const [chatterQuery, setChatterQuery] = useState('')
   const [range, setRange] = useState<RangeKey>('all')
   const [copied, setCopied] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null) // report id or 'bulk'
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   // Hydration-safe origin: server snapshot renders '', the client value fills in
   // after hydration. Reading window.location directly during render makes the
@@ -60,6 +107,59 @@ export default function ReportsView({
       setTimeout(() => setCopied(false), 1800)
     } catch {}
   }
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function downloadPdf(items: ShiftReport[], busyKey: string) {
+    if (items.length === 0) return
+    setPdfBusy(busyKey)
+    setError(null)
+    try {
+      const data: PdfReportData[] = []
+      for (const r of items) data.push(await toPdfData(r))
+      const filename = items.length === 1
+        ? `shift-report-${items[0].shift_date}-${items[0].chatter_name.replace(/[^a-zA-Z0-9-]/g, '_') || 'chatter'}.pdf`
+        : `shift-reports-${new Date().toISOString().slice(0, 10)}-${items.length}.pdf`
+      await downloadShiftReportsPdf(data, filename)
+    } catch {
+      setError('PDF could not be generated. Please try again.')
+    } finally {
+      setPdfBusy(null)
+    }
+  }
+
+  async function deleteReport(r: ShiftReport) {
+    const label = `${r.creator_name || r.creator?.name || 'Unknown model'} · ${r.chatter_name} · ${r.shift_date}`
+    if (!confirm(`Delete this shift report permanently?\n\n${label}\n\nScreenshots are deleted too. This cannot be undone.`)) return
+    setDeleting(r.id)
+    setError(null)
+    const res = await fetch('/api/shift-report/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      setError(body?.error || 'Could not delete the report.')
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        next.delete(r.id)
+        return next
+      })
+      router.refresh()
+    }
+    setDeleting(null)
+  }
+
+  const selectedReports = filtered.filter((r) => selected.has(r.id))
 
   return (
     <div className="page-shell !max-w-[1080px]">
@@ -121,6 +221,26 @@ export default function ReportsView({
         <span className="ml-auto text-[12px]" style={{ color: 'var(--muted)' }}>{filtered.length} report{filtered.length === 1 ? '' : 's'}</span>
       </div>
 
+      {/* Bulk actions — appears once reports are ticked */}
+      {selected.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[10px] border px-3.5 py-2.5" style={{ borderColor: 'var(--border-strong)', background: 'var(--surface)' }}>
+          <span className="text-[12.5px] font-bold" style={{ color: 'var(--text-secondary)' }}>{selected.size} selected</span>
+          <button
+            onClick={() => downloadPdf(selectedReports, 'bulk')}
+            disabled={pdfBusy !== null}
+            className="btn btn-primary !min-h-9 !px-3 !text-[12.5px]"
+          >
+            {pdfBusy === 'bulk' ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
+            Download PDF ({selected.size})
+          </button>
+          <button onClick={() => setSelected(new Set())} className="btn btn-secondary !min-h-9 !px-3 !text-[12.5px]">Clear selection</button>
+        </div>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-[9px] border px-3.5 py-2.5 text-sm" style={{ background: 'var(--red-dim)', borderColor: 'rgba(239,68,68,.3)', color: 'var(--red)' }}>{error}</p>
+      )}
+
       {/* List */}
       {filtered.length === 0 ? (
         <div className="app-card p-10 text-center">
@@ -130,31 +250,80 @@ export default function ReportsView({
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((r) => <ReportCard key={r.id} report={r} />)}
+          {filtered.map((r) => (
+            <ReportCard
+              key={r.id}
+              report={r}
+              isAdmin={isAdmin}
+              checked={selected.has(r.id)}
+              onToggle={() => toggleSelected(r.id)}
+              onPdf={() => downloadPdf([r], r.id)}
+              pdfBusy={pdfBusy === r.id}
+              onDelete={() => deleteReport(r)}
+              deleting={deleting === r.id}
+            />
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-function ReportCard({ report: r }: { report: ShiftReport }) {
+function ReportCard({
+  report: r,
+  isAdmin,
+  checked,
+  onToggle,
+  onPdf,
+  pdfBusy,
+  onDelete,
+  deleting,
+}: {
+  report: ShiftReport
+  isAdmin: boolean
+  checked: boolean
+  onToggle: () => void
+  onPdf: () => void
+  pdfBusy: boolean
+  onDelete: () => void
+  deleting: boolean
+}) {
   const [open, setOpen] = useState(false)
   const money = (n: number) => `${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${r.currency}`
   const dateLabel = new Date(r.shift_date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
   const modelName = r.creator_name || r.creator?.name || 'Unknown model'
   const hasNotes = r.mass_message_note || r.went_well || r.went_wrong || r.sub_behavior
+  const edited = (r.edit_count ?? 0) > 0
 
   return (
-    <div className="app-card p-4 sm:p-5">
+    <div className="app-card p-4 sm:p-5" style={checked ? { borderColor: 'var(--accent)' } : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[15px] font-bold" style={{ color: 'var(--text)' }}>{modelName}</span>
-            <span className="text-[12.5px]" style={{ color: 'var(--muted)' }}>· {r.chatter_name}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggle}
+            className="h-4 w-4 flex-none accent-[var(--accent)]"
+            aria-label={`Select report from ${r.chatter_name} on ${dateLabel}`}
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[15px] font-bold" style={{ color: 'var(--text)' }}>{modelName}</span>
+              <span className="text-[12.5px]" style={{ color: 'var(--muted)' }}>· {r.chatter_name}</span>
+              {edited && (
+                <span
+                  className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+                  title={r.last_edited_at ? `Last edited ${new Date(r.last_edited_at).toLocaleString()}` : undefined}
+                >
+                  edited ×{r.edit_count}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-[12px]" style={{ color: 'var(--muted)' }}>
+              {dateLabel}{r.shift_label ? ` · ${r.shift_label}` : ''}{r.time_range ? ` · ${r.time_range}` : ''}
+            </p>
           </div>
-          <p className="mt-0.5 text-[12px]" style={{ color: 'var(--muted)' }}>
-            {dateLabel}{r.shift_label ? ` · ${r.shift_label}` : ''}{r.time_range ? ` · ${r.time_range}` : ''}
-          </p>
         </div>
         <div className="flex items-center gap-4 text-right">
           <div>
@@ -164,6 +333,16 @@ function ReportCard({ report: r }: { report: ShiftReport }) {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Net</p>
             <p className="text-[15px] font-extrabold" style={{ color: 'var(--accent)' }}>{money(r.net_amount)}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={onPdf} disabled={pdfBusy} className="icon-button !h-8 !w-8" title="Download as PDF" aria-label="Download as PDF">
+              {pdfBusy ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
+            </button>
+            {isAdmin && (
+              <button onClick={onDelete} disabled={deleting} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" title="Delete report" aria-label="Delete report">
+                {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+              </button>
+            )}
           </div>
         </div>
       </div>

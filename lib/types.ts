@@ -334,6 +334,10 @@ export interface ShiftReport {
   went_wrong: string | null
   sub_behavior: string | null
   created_at: string
+  // Self-service edits (migration 024): max 2 within 8h via a secret edit token.
+  // The token itself is never included in the reports list — only the submitter has it.
+  edit_count?: number
+  last_edited_at?: string | null
   creator?: ShiftReportCreator | null
   files?: ShiftReportFile[]
 }

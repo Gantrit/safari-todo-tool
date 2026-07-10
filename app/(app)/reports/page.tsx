@@ -26,14 +26,18 @@ export default async function ReportsPage() {
   ])
 
   const withSigned: ShiftReport[] = await Promise.all(
-    (reports || []).map(async (r: ShiftReport) => {
+    (reports || []).map(async (r: ShiftReport & { edit_token?: string }) => {
       const files = await Promise.all(
         (r.files || []).map(async (f) => {
           const { data } = await supabase.storage.from(BUCKET).createSignedUrl(f.path, 60 * 60)
           return { ...f, signed_url: data?.signedUrl ?? null }
         })
       )
-      return { ...r, files }
+      // Never ship the edit token to the browser — it is the submitter's
+      // credential for the public edit link, not something reviewers need.
+      const { edit_token: _omit, ...rest } = r
+      void _omit
+      return { ...rest, files }
     })
   )
 
