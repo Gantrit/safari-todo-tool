@@ -3,6 +3,54 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-10 — Claude (Fable 5) — Shift-report edits/PDF/delete, board reorder + view defaults, avatars, mobile pass
+
+**NEW migrations `024_shift_report_edits.sql`, `025_board_positions.sql`, `026_avatars.sql`** —
+Tan must run them in the Supabase SQL editor. The app is deploy-before-migration safe (edit token
+fetched best-effort, board order sorted in JS via `sortBoards()`, avatar upload just errors until
+the bucket exists) but the new features only work after they ran.
+
+- **Public form fixes:** `/submit-report` was UNSCROLLABLE (global `body { overflow:hidden }`,
+  page had no own scroll container) → submit button unreachable. Wrapper is now `h-dvh
+  overflow-y-auto`. Native date input replaced by `components/ui/DateField.tsx` (custom
+  month-by-month popover calendar, submits hidden `yyyy-mm-dd`).
+- **Shift-report self-service edits (024):** submit returns a secret `edit_token`; success screen
+  shows a copyable edit link → `/submit-report/edit/[token]` (public prefix already covered by
+  middleware) → `/api/shift-report/edit`. Policy (Tan's decision): **max 2 edits within 8h**,
+  enforced ONLY server-side. Every edit inserts in-app notifications (new type `shift_report`,
+  CHECK widened in 024) for all active admins/managers with an old → new field diff. Existing
+  files can be removed, new ones added (total ≤6). Shared validation extracted to
+  `lib/shiftReport.ts` — submit + edit routes both use it.
+- **Reports list:** admin-only hard delete (`/api/shift-report/delete`, removes storage files
+  too), per-report + multi-select-checkbox **PDF export** (`lib/shiftReportPdf.ts`, jspdf added
+  as dependency, images normalized to JPEG via canvas since jsPDF can't embed webp/gif), and an
+  "edited ×n" badge. The public form's success screen also offers a PDF download.
+  **`edit_token` is stripped server-side in `reports/page.tsx` — never send it to the list.**
+- **Sidebar brand block** now shows `APP_VERSION` from `lib/version.ts` (currently `v0.26`)
+  instead of "Safari Studios · internal". Convention: bump the minor to the latest migration.
+- **Board order (025):** `boards.position` + drag-to-reorder (dnd-kit) in Settings → Boards &
+  access. All board lists sort via `sortBoards()` in JS (deliberately NOT `.order('position')` —
+  see deploy-safety above). NB: `DndContext` there needs its stable `id="settings-board-order"`
+  or React logs a hydration mismatch.
+- **Board views:** default view is now **Columns**; switcher order Columns → Member rows → Table
+  → Selection (saved localStorage state still wins). Toolbar label fixed to "N open tasks" ("5
+  active" read like active members). Collapsed member lanes show a compact summary ("2 Daily ·
+  1 Weekly · next Fri 12 Jul"). **Empty WEEKLY/MONTHLY sections are now hidden** in member-rows
+  AND columns views until a task of that category exists (Tan's explicit 2026-07-10 decision —
+  supersedes the old "sections always render" note; DAILY always renders, creation happens via
+  the Create-task modal's category dropdown). Consequence: you can't drag a task INTO a hidden
+  empty section — change its category via task edit instead.
+- **Avatars (026):** public `avatars` bucket + own-folder storage policies
+  (`profiles.avatar_url` existed since 001). Upload/remove in Account settings (≤2 MB, unique
+  path per upload to dodge caching). New `components/ui/Avatar.tsx` (photo or initials fallback)
+  used in sidebar footer + leaderboard; member lanes/columns render the photo inline.
+- **Mobile pass:** dashboard attention banners wrap on phones (`flex-wrap` + `min-w-[200px]`
+  text). Dashboard/board/quests/submit-report verified at 375px in browser preview — usable.
+- Verified in browser preview (logged in as admin): scroll fix, date picker (month nav + pick),
+  view defaults/order, lane summaries, hidden empty sections, settings drag handles, account
+  avatar UI, sidebar v0.26. Edit/PDF/delete flows compile + build green but need prod
+  (service-role key + migrations) for end-to-end testing.
+
 ## 2026-07-09 — Claude (Fable 5) — Full security/QA/polish/docs pass (pre-production review)
 
 No migration. Committed to `main`, NOT pushed. Full-repo security audit + live browser QA

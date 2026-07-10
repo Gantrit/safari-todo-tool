@@ -7,7 +7,7 @@ export default async function LeaderboardPage() {
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, full_name, email, xp, deactivated_at')
+    .select('id, full_name, email, xp, avatar_url, deactivated_at')
     .is('deactivated_at', null)
     .order('xp', { ascending: false })
 

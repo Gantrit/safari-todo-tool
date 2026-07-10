@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import BoardView from '@/components/board/BoardView'
 import Link from 'next/link'
 import { ArrowLeft, LayoutGrid } from 'lucide-react'
+import { sortBoards } from '@/lib/utils'
 
 interface Props {
   params: Promise<{ boardId: string }>
@@ -37,6 +38,7 @@ export default async function BoardPage({ params }: Props) {
   ])
 
   const memberProfiles = (members || []).map((m: any) => m.profiles).filter(Boolean)
+  const orderedBoards = sortBoards(boards || [])
 
   const { data: legacyTasks } = richTasksError
     ? await supabase
@@ -74,7 +76,7 @@ export default async function BoardPage({ params }: Props) {
             <h1 className="truncate text-[19px] font-extrabold leading-tight tracking-[-.02em]">{board.name === 'Team Board' && workspace?.name ? `${workspace.name} Board` : board.name}</h1>
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto" aria-label="Department boards">
-            {(boards && boards.length > 0 ? boards : [board]).map((dept: any) => (
+            {(orderedBoards.length > 0 ? orderedBoards : [board]).map((dept: any) => (
               <Link
                 key={dept.id}
                 href={`/board/${dept.id}`}
@@ -96,7 +98,7 @@ export default async function BoardPage({ params }: Props) {
         <BoardView
           key={board.id}
           board={board}
-          departments={boards || []}
+          departments={orderedBoards}
           members={memberProfiles}
           tasks={tasks}
           currentUser={profile!}

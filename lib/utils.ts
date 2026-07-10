@@ -65,6 +65,21 @@ export function generateId() {
   return Math.random().toString(36).slice(2, 11)
 }
 
+/**
+ * Admin-defined board order (boards.position, migration 025) with created_at as
+ * tiebreaker. Sorted in JS instead of `.order('position')` so the app keeps
+ * working if a deploy lands before the migration ran (missing column in a
+ * PostgREST order/select would error the whole query).
+ */
+export function sortBoards<T extends { position?: number | null; created_at?: string | null }>(boards: T[]): T[] {
+  return [...boards].sort((a, b) => {
+    const pa = a.position ?? Number.MAX_SAFE_INTEGER
+    const pb = b.position ?? Number.MAX_SAFE_INTEGER
+    if (pa !== pb) return pa - pb
+    return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  })
+}
+
 export type UrgencyLevel = 'overdue' | 'soon' | 'near' | 'far' | 'none'
 
 export interface Urgency {

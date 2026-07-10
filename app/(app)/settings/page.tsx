@@ -4,6 +4,7 @@ import Link from 'next/link'
 import SettingsForm from './SettingsForm'
 import XpSettingsForm from './XpSettingsForm'
 import CreatorsSettings from './CreatorsSettings'
+import { sortBoards } from '@/lib/utils'
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ newWorkspace?: string; workspace?: string }> }) {
   const { newWorkspace, workspace: requestedWorkspaceId } = await searchParams
@@ -76,7 +77,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <SettingsForm
         workspace={newWorkspace === '1' ? null : workspace}
         members={members || []}
-        boards={newWorkspace === '1' ? [] : boards || []}
+        boards={newWorkspace === '1' ? [] : sortBoards(boards || [])}
         boardAccess={newWorkspace === '1' ? [] : boardAccess || []}
         categories={newWorkspace === '1' ? [] : categories || []}
         currentUser={profile!}

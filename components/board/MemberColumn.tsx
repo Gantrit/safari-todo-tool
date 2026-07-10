@@ -30,12 +30,17 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, on
         className="flex min-h-[68px] flex-shrink-0 items-center gap-3 border-b px-4 sm:px-5"
         style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}
       >
-        <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold"
-          style={{ background: isOwn ? 'var(--accent)' : 'var(--surface2)', color: isOwn ? '#0e0e0e' : 'var(--text)' }}
-        >
-          {getInitials(member.full_name || member.email)}
-        </div>
+        {member.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={member.avatar_url} alt="" className="h-10 w-10 flex-shrink-0 rounded-full object-cover" style={{ border: '1px solid var(--border-strong)' }} />
+        ) : (
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-xs font-extrabold"
+            style={{ background: isOwn ? 'var(--accent)' : 'var(--surface2)', color: isOwn ? '#0e0e0e' : 'var(--text)' }}
+          >
+            {getInitials(member.full_name || member.email)}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <p className="truncate text-[14px] font-bold" style={{ color: 'var(--text)' }}>
             {member.full_name?.split(' ')[0] || 'User'}
@@ -53,9 +58,11 @@ export default function MemberColumn({ member, tasks, onTaskClick, onAddTask, on
         </button>
       </div>
 
-      {/* Task sections */}
+      {/* Task sections — empty WEEKLY/MONTHLY stay hidden until a task of that
+          category exists (create one via the Create-task modal); DAILY always
+          renders so the column never looks dead and quick-add stays reachable. */}
       <div className="flex-1 overflow-y-auto p-3.5 sm:p-4">
-        {SECTIONS.map((section) => (
+        {SECTIONS.filter((section) => section === 'DAILY' || tasks.some((t) => t.section === section)).map((section) => (
           <TaskSectionComp
             key={section}
             section={section}

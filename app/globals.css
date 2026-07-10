@@ -1141,6 +1141,7 @@ textarea.create-task-control {
 .attention-banner {
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* phones: the copy keeps full width, the button wraps below */
   gap: 18px;
   margin-bottom: var(--space-6);
   padding: 18px 22px;

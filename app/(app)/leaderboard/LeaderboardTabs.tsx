@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelInfo } from '@/lib/types'
-import { getInitials } from '@/lib/utils'
+import Avatar from '@/components/ui/Avatar'
 import { CalendarDays, CalendarRange, Loader2, Trophy } from 'lucide-react'
 
-type ProfileRow = { id: string; full_name: string | null; email: string; xp: number }
+type ProfileRow = { id: string; full_name: string | null; email: string; xp: number; avatar_url?: string | null }
 type Range = 'all' | 'week' | 'month'
 
 const TABS: Array<{ key: Range; label: string; icon: React.ReactNode }> = [
@@ -114,7 +114,7 @@ export default function LeaderboardTabs({ profiles, currentUserId }: { profiles:
                   <article key={row.profile.id} className="app-card relative overflow-hidden p-5 text-center" style={index === 0 ? { borderColor: 'rgba(200,169,106,.45)' } : undefined}>
                     {index === 0 && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-20" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(200,169,106,.14), transparent)' }} />}
                     <p className="text-2xl">{medals[index]}</p>
-                    <span className="mx-auto mt-2 flex h-12 w-12 items-center justify-center rounded-full text-sm font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)' }}>{getInitials(row.profile.full_name || row.profile.email)}</span>
+                    <Avatar name={row.profile.full_name || row.profile.email} src={row.profile.avatar_url} size={48} accent={isMe} className="mx-auto mt-2" />
                     <p className="mt-3 truncate text-[14px] font-extrabold">{row.profile.full_name || row.profile.email}{isMe && <span className="ml-1.5 text-[10px] font-bold uppercase" style={{ color: 'var(--accent)' }}>You</span>}</p>
                     <p className="mt-1 text-[11.5px]" style={{ color: 'var(--muted)' }}>Lvl {info.current.level} · {info.current.title}</p>
                     <p className="mt-2.5 text-[17px] font-extrabold" style={{ color: 'var(--accent)' }}>{range === 'all' ? row.score.toLocaleString() : `+${row.score}`} XP</p>
@@ -132,7 +132,7 @@ export default function LeaderboardTabs({ profiles, currentUserId }: { profiles:
                 return (
                   <div key={row.profile.id} className="flex items-center gap-4 border-t px-5 py-3.5 first:border-t-0" style={{ borderColor: 'var(--border)', background: isMe ? 'var(--accent-dim)' : undefined }}>
                     <span className="w-8 text-center text-xs font-extrabold" style={{ color: 'var(--muted)' }}>#{index + 4}</span>
-                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-[11px] font-extrabold" style={{ background: isMe ? 'var(--accent)' : 'var(--surface3)', color: isMe ? '#0b0d09' : 'var(--text)' }}>{getInitials(row.profile.full_name || row.profile.email)}</span>
+                    <Avatar name={row.profile.full_name || row.profile.email} src={row.profile.avatar_url} size={36} accent={isMe} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13.5px] font-bold">{row.profile.full_name || row.profile.email}{isMe && <em className="ml-2 rounded px-1.5 py-0.5 text-[9px] not-italic font-bold uppercase tracking-wider" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>you</em>}</span>
                       <span className="mt-0.5 block text-[11px]" style={{ color: 'var(--muted)' }}>Lvl {info.current.level} · {info.current.title}</span>

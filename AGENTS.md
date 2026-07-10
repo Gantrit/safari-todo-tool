@@ -54,13 +54,21 @@ task modal), in-app task editing (admin/manager/creator, via TaskForm's edit mod
 reference links, in-app + email notifications, quests, admin audit log with filters, soft delete
 (`deleted_at`, admin-recoverable).
 
-**Shift Reports (migration 023):** chatters (incl. external ones with NO account) submit
+**Shift Reports (migrations 023 + 024):** chatters (incl. external ones with NO account) submit
 end-of-shift reports at the PUBLIC `/submit-report` page → `/api/shift-report/submit` (service
-role, strict server-side validation, ≤6 files ≤8 MB into the private `shift-report-files`
-bucket). Admin/manager read them at `/reports` (signed URLs, filters, copy-link). Models for
-the form dropdown are managed in Settings → Creators / Models (`/api/shift-report/creators`,
-admin-only). `creator_name` is snapshotted at submit time; `chatter_name` is free text on
-purpose. v2 (Anthropic-API screenshot auto-verification) is deliberately NOT built yet.
+role, strict server-side validation via `lib/shiftReport.ts`, ≤6 files ≤8 MB into the private
+`shift-report-files` bucket). After submitting the chatter gets a secret edit link
+(`/submit-report/edit/[token]` → `/api/shift-report/edit`): **max 2 edits within 8h**, both
+enforced server-side; every edit notifies active admins/managers in-app (notification type
+`shift_report`, old → new diff in the message). Admin/manager read reports at `/reports`
+(signed URLs, filters, copy-link, per-report + multi-select **PDF export** via jspdf in
+`lib/shiftReportPdf.ts`); admins can hard-delete a report incl. its files
+(`/api/shift-report/delete`). The public form also offers a PDF download after submitting.
+Models for the form dropdown are managed in Settings → Creators / Models
+(`/api/shift-report/creators`, admin-only). `creator_name` is snapshotted at submit time;
+`chatter_name` is free text on purpose. The `edit_token` must never be sent to the reports
+list — only the submitter gets it. v2 (Anthropic-API screenshot auto-verification) is
+deliberately NOT built yet.
 
 **Templates (migration 019):** a template is a NAMED BUNDLE of tasks grouped by Daily/Weekly/
 Monthly (`task_templates` = bundle, `template_items` = its tasks). `assign_template()` RPC
@@ -103,8 +111,10 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`023`, run in
-order in the Supabase SQL editor (all applied in prod as of 2026-07-09; next free number: 024).
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`026`, run in
+order in the Supabase SQL editor (001–023 applied in prod as of 2026-07-09; 024–026 pending;
+next free number: **027**). The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
+minor number to match the latest migration whenever a new one ships.
 Env vars / deploy steps: [`SETUP.md`](SETUP.md). Compact live status: [`docs/current_status.md`](docs/current_status.md).
 
 API routes are NOT protected by the middleware — every route under `app/api` enforces its own

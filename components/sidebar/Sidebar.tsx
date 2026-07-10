@@ -7,7 +7,8 @@ import { Profile, Board, Notification, getLevelInfo, canManageTeam } from '@/lib
 import { createClient } from '@/lib/supabase/client'
 import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown, UserCog, FileBarChart2 } from 'lucide-react'
 import XPBar from '../ui/XPBar'
-import { getInitials } from '@/lib/utils'
+import Avatar from '../ui/Avatar'
+import { APP_VERSION } from '@/lib/version'
 
 interface SidebarProps {
   profile: Profile | null
@@ -79,7 +80,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         <div className="sidebar-brand-block flex items-center justify-between gap-3 border-b" style={{ borderColor: 'var(--border)' }}>
           <Link href="/dashboard" className="min-w-0 flex-1">
             <span className="block truncate text-[17px] font-extrabold tracking-[-0.015em]">Safari To-Dos</span>
-            <span className="mt-1 block text-[10.5px] font-medium" style={{ color: 'var(--muted)' }}>Safari Studios · internal</span>
+            <span className="mt-1 block text-[10.5px] font-medium" style={{ color: 'var(--muted)' }}>{APP_VERSION}</span>
           </Link>
           {/* NB: `hidden`/`lg:hidden` display utilities lose against the unlayered
               `.icon-button { display:inline-flex }` in globals.css, so visibility is
@@ -121,7 +122,7 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
         {profile && (
           <div className="sidebar-footer flex-none border-t" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-xs font-extrabold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-strong)' }}>{getInitials(profile.full_name || profile.email)}</span>
+              <Avatar name={profile.full_name || profile.email} src={profile.avatar_url} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-bold">{profile.full_name || 'Safari teammate'}</span>
                 <span className="mt-0.5 block truncate text-[10.5px]" style={{ color: 'var(--muted)' }}>{profile.email}</span>

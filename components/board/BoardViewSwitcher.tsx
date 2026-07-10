@@ -3,11 +3,12 @@
 import { BoardViewMode } from '@/lib/boardViews'
 import { Columns3, LayoutList, Rows3, Table2 } from 'lucide-react'
 
+// Order = Tan's preferred priority (2026-07-10): Columns is the default view.
 const VIEWS: { mode: BoardViewMode; label: string; icon: React.ReactNode }[] = [
+  { mode: 'columns', label: 'Columns', icon: <Columns3 size={14} /> },
   { mode: 'members', label: 'Member rows', icon: <Rows3 size={14} /> },
   { mode: 'table', label: 'Table', icon: <Table2 size={14} /> },
   { mode: 'selection', label: 'Selection', icon: <LayoutList size={14} /> },
-  { mode: 'columns', label: 'Columns', icon: <Columns3 size={14} /> },
 ]
 
 export default function BoardViewSwitcher({ view, onChange }: { view: BoardViewMode; onChange: (v: BoardViewMode) => void }) {

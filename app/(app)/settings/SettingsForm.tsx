@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ExternalLink, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react'
+import { Building2, ExternalLink, GripVertical, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react'
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, Role } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
@@ -22,10 +25,12 @@ interface MemberRow {
 
 interface Category { id: string; name: string; slug: string; position: number }
 
+interface BoardRow { id: string; name: string; type: string; position?: number | null }
+
 interface SettingsFormProps {
   workspace: { id: string; name: string } | null
   members: MemberRow[]
-  boards: { id: string; name: string; type: string }[]
+  boards: BoardRow[]
   boardAccess: { board_id: string; user_id: string }[]
   categories: Category[]
   currentUser: Profile
@@ -52,6 +57,32 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
   useEffect(() => {
     setAccess(new Set(boardAccess.map((a) => `${a.board_id}:${a.user_id}`)))
   }, [boardAccess])
+
+  // Local board order for drag-to-reorder — optimistic, persisted to
+  // boards.position (migration 025). Same staleness caveat as `access` above.
+  const [boardList, setBoardList] = useState<BoardRow[]>(boards)
+  useEffect(() => { setBoardList(boards) }, [boards])
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  async function handleBoardDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = boardList.findIndex((b) => b.id === active.id)
+    const newIdx = boardList.findIndex((b) => b.id === over.id)
+    if (oldIdx < 0 || newIdx < 0) return
+    const next = arrayMove(boardList, oldIdx, newIdx)
+    setBoardList(next)
+    const results = await Promise.all(
+      next.map((b, i) => b.position === i ? null : supabase.from('boards').update({ position: i }).eq('id', b.id))
+    )
+    const failed = results.find((r) => r && r.error)
+    if (failed && failed.error) {
+      setBoardList(boardList) // revert
+      setMessage({ text: failed.error.message, type: 'error' })
+      return
+    }
+    router.refresh()
+  }
   const [renamingBoard, setRenamingBoard] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [newCategory, setNewCategory] = useState('')
@@ -82,7 +113,7 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
   async function addBoard() {
     if (!newBoardName.trim() || !workspace?.id) return
     setBusy('board'); setMessage(null)
-    const { error } = await supabase.from('boards').insert({ workspace_id: workspace.id, name: newBoardName.trim(), type: 'kanban' })
+    const { error } = await supabase.from('boards').insert({ workspace_id: workspace.id, name: newBoardName.trim(), type: 'kanban', position: boardList.length })
     if (error) setMessage({ text: error.message, type: 'error' }); else setNewBoardName('')
     setBusy(null); router.refresh()
   }
@@ -205,15 +236,29 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     </section>
 
     <section className="app-card">
-      <SectionHead icon={<LayoutGrid size={18} />} title="Boards & access" description="Create boards and control which members can see each one. Admins always have access." />
-      <div>
-        {boards.map((board) => {
+      <SectionHead icon={<LayoutGrid size={18} />} title="Boards & access" description="Create boards and control which members can see each one. Drag the handle to change the order — the sidebar follows it. Admins always have access." />
+      {/* Stable id: dnd-kit otherwise generates sequential a11y ids that differ
+          between server and client render → React hydration mismatch. */}
+      <DndContext id="settings-board-order" sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleBoardDragEnd}>
+        <SortableContext items={boardList.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+        <div>
+        {boardList.map((board) => {
           const open = openAccessBoard === board.id
           const renaming = renamingBoard === board.id
           const displayName = board.name === 'Team Board' ? `${workspace.name} Board` : board.name
           return (
-            <div key={board.id}>
+            <SortableBoardRow key={board.id} id={board.id}>
+              {(handleProps) => (<>
               <div className="settings-row">
+                <button
+                  type="button"
+                  className="icon-button !h-8 !w-6 flex-none cursor-grab active:cursor-grabbing"
+                  aria-label={`Reorder ${displayName}`}
+                  title="Drag to reorder"
+                  {...handleProps}
+                >
+                  <GripVertical size={14} />
+                </button>
                 <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[8px]" style={{ background: 'var(--surface2)', color: 'var(--text-secondary)' }}><LayoutGrid size={15} /></span>
                 {renaming ? (
                   <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -247,10 +292,13 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
                   })}
                 </div>
               )}
-            </div>
+              </>)}
+            </SortableBoardRow>
           )
         })}
-      </div>
+        </div>
+        </SortableContext>
+      </DndContext>
       <div className="border-t p-5 sm:p-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}><span className="form-label">Add board</span><div className="flex flex-col gap-3 sm:flex-row"><input value={newBoardName} onChange={(e) => setNewBoardName(e.target.value)} className="form-control" placeholder="Board name" /><button onClick={addBoard} disabled={busy === 'board' || !newBoardName.trim()} className="btn btn-secondary flex-none">{busy === 'board' ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}Add board</button></div></div>
     </section>
 
@@ -287,6 +335,20 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
 
     <section className="app-card"><SectionHead icon={<ExternalLink size={18} />} title="Defaults & links" description="Shared references are attached at task level in the current workspace model." /><div className="p-5 sm:p-6"><div className="rounded-[10px] border p-4 text-sm leading-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)', color: 'var(--text-secondary)' }}>Add Drive, brief, or SOP links when creating a task. This keeps each reference attached to the work it belongs to.</div></div></section>
   </div>
+}
+
+/** Sortable wrapper for one board row; drag activates only via the handle so the
+ *  row's buttons/inputs keep working. Render-prop passes the handle's listeners. */
+function SortableBoardRow({ id, children }: { id: string; children: (handleProps: Record<string, unknown>) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.7 : 1, position: 'relative', zIndex: isDragging ? 10 : undefined }}
+    >
+      {children({ ...attributes, ...listeners })}
+    </div>
+  )
 }
 
 function SectionHead({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) { return <div className="card-header"><div><h2 className="font-bold">{title}</h2><p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>{description}</p></div><span style={{ color: 'var(--accent)' }}>{icon}</span></div> }

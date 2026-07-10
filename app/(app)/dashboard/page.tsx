@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getLevelInfo, normalizeRole } from '@/lib/types'
-import { deadlineLabel, getInitials, isOverdue } from '@/lib/utils'
+import { deadlineLabel, getInitials, isOverdue, sortBoards } from '@/lib/utils'
 import { AlertTriangle, ArrowRight, Bell, CheckCircle2, ClipboardCheck, Gauge, LayoutGrid, Sparkles, Trophy } from 'lucide-react'
 import EmptyState from '@/components/ui/EmptyState'
 import Link from 'next/link'
@@ -25,7 +25,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const overdueTasks = openTasks.filter((task: any) => isOverdue(task.deadline_at || task.due_date))
   const pendingApproval = openTasks.filter((task: any) => task.status === 'DONE')
   const selectedWorkspace = workspaces?.find((workspace) => workspace.id === requestedWorkspaceId) || workspaces?.[0]
-  const board = boards?.find((candidate) => candidate.workspace_id === selectedWorkspace?.id) || boards?.[0]
+  const orderedBoards = sortBoards(boards || [])
+  const board = orderedBoards.find((candidate) => candidate.workspace_id === selectedWorkspace?.id) || orderedBoards[0]
 
   // Admin clicking "Awaiting approval" should land on the submission whose
   // deadline is nearest, regardless of assignee — sort DONE tasks by deadline.
@@ -69,7 +70,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {overdueTasks.length > 0 ? (
         <section className="attention-banner">
           <div className="icon-chip is-danger" style={{ width: 44, height: 44 }}><AlertTriangle size={20} /></div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[200px] flex-1">
             <p className="attention-title">{overdueTasks.length} {overdueTasks.length === 1 ? 'task is' : 'tasks are'} overdue</p>
             <p className="attention-sub">These have passed their deadline and need attention before anything else.</p>
           </div>
@@ -78,7 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       ) : pendingApproval.length > 0 && role === 'admin' ? (
         <section className="attention-banner is-review">
           <div className="icon-chip" style={{ width: 44, height: 44 }}><CheckCircle2 size={20} /></div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[200px] flex-1">
             <p className="attention-title">{pendingApproval.length} {pendingApproval.length === 1 ? 'submission is' : 'submissions are'} awaiting approval</p>
             <p className="attention-sub">Completed work is ready for your review and XP award.</p>
           </div>

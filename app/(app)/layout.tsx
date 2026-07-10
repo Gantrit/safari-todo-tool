@@ -4,6 +4,7 @@ import Sidebar from '@/components/sidebar/Sidebar'
 import LevelUpWatcher from '@/components/ui/LevelUpWatcher'
 import DeactivatedNotice from '@/components/ui/DeactivatedNotice'
 import { getLevelInfo } from '@/lib/types'
+import { sortBoards } from '@/lib/utils'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -26,7 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar
         profile={profile}
         workspaces={workspaces || []}
-        boards={boards || []}
+        boards={sortBoards(boards || [])}
         notifications={notifications || []}
       />
       <main className="min-w-0 flex-1 overflow-auto pt-16 lg:pt-0">

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Profile, NotificationPreferences } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Check, KeyRound, Loader2, Mail } from 'lucide-react'
+import { Bell, Check, ImagePlus, KeyRound, Loader2, Mail, Trash2 } from 'lucide-react'
+import Avatar from '@/components/ui/Avatar'
 
 interface AccountFormProps {
   profile: Profile
@@ -23,6 +24,9 @@ export default function AccountForm({ profile, preferences, currentEmail }: Acco
   const [error, setError] = useState<string | null>(null)
   const [supabase] = useState(() => createClient())
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+
   const [newEmail, setNewEmail] = useState('')
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailNotice, setEmailNotice] = useState<string | null>(null)
@@ -30,6 +34,37 @@ export default function AccountForm({ profile, preferences, currentEmail }: Acco
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordNotice, setPasswordNotice] = useState<string | null>(null)
+
+  async function uploadAvatar(file: File | null) {
+    if (!file || avatarBusy) return
+    if (!file.type.startsWith('image/')) { setError('Please choose an image file.'); return }
+    if (file.size > 2 * 1024 * 1024) { setError('Profile picture must be under 2 MB.'); return }
+    setAvatarBusy(true)
+    setError(null)
+    // Unique path per upload so browsers never show a stale cached picture.
+    const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+    const path = `${profile.id}/avatar-${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: false })
+    if (uploadError) { setError(uploadError.message); setAvatarBusy(false); return }
+    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+    const url = pub?.publicUrl || null
+    const { error: updateError } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', profile.id)
+    setAvatarBusy(false)
+    if (updateError) { setError(updateError.message); return }
+    setAvatarUrl(url)
+    router.refresh()
+  }
+
+  async function removeAvatar() {
+    if (avatarBusy) return
+    setAvatarBusy(true)
+    setError(null)
+    const { error: updateError } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', profile.id)
+    setAvatarBusy(false)
+    if (updateError) { setError(updateError.message); return }
+    setAvatarUrl(null)
+    router.refresh()
+  }
 
   async function changeEmail(e: React.FormEvent) {
     e.preventDefault()
@@ -90,7 +125,33 @@ export default function AccountForm({ profile, preferences, currentEmail }: Acco
 
   return (
     <div className="space-y-8">
-      <form onSubmit={saveName}>
+      <div>
+        <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Profile picture</label>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <Avatar name={profile.full_name || profile.email} src={avatarUrl} size={64} />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="btn btn-secondary !min-h-10 cursor-pointer !px-4">
+              {avatarBusy ? <Loader2 className="animate-spin" size={14} /> : <ImagePlus size={14} />}
+              {avatarUrl ? 'Change picture' : 'Upload picture'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => { uploadAvatar(e.target.files?.[0] ?? null); e.target.value = '' }}
+                disabled={avatarBusy}
+              />
+            </label>
+            {avatarUrl && (
+              <button type="button" onClick={removeAvatar} disabled={avatarBusy} className="btn btn-secondary !min-h-10 !px-4 hover:!text-[var(--red)]">
+                <Trash2 size={14} /> Remove
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>Shown on the leaderboard, boards, and next to your name. PNG/JPG/WebP, max 2 MB.</p>
+      </div>
+
+      <form onSubmit={saveName} className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
         <label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Display name</label>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <input

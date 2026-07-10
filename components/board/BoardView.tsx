@@ -54,8 +54,9 @@ export default function BoardView({ board, members, tasks: initialTasks, current
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
-  // View + filter state (persisted per board in localStorage)
-  const [view, setView] = useState<BoardViewMode>('members')
+  // View + filter state (persisted per board in localStorage).
+  // Columns is the default view (Tan, 2026-07-10) — a saved state still wins.
+  const [view, setView] = useState<BoardViewMode>('columns')
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([currentUser.id])
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS)
   const [hydrated, setHydrated] = useState(false)
@@ -337,7 +338,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
           <div className="board-toolbar">
             <BoardViewSwitcher view={view} onChange={setView} />
             <div className="flex items-center gap-3">
-              <span className="hidden text-[11px] font-semibold sm:inline" style={{ color: 'var(--muted)' }}>{members.length} {members.length === 1 ? 'member' : 'members'} · {liveTasks.filter((t) => t.status !== 'APPROVED').length} active</span>
+              <span className="hidden text-[11px] font-semibold sm:inline" style={{ color: 'var(--muted)' }}>{(() => { const n = liveTasks.filter((t) => t.status !== 'APPROVED').length; return `${members.length} ${members.length === 1 ? 'member' : 'members'} · ${n} open ${n === 1 ? 'task' : 'tasks'}` })()}</span>
               {canWriteTasks(currentUser.role) && <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>}
             </div>
           </div>
