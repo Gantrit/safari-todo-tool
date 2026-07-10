@@ -65,8 +65,13 @@ export default function DateField({ name, defaultValue, required }: { name: stri
 
       {open && (
         <div
-          className="absolute left-0 top-[calc(100%+6px)] z-30 w-[276px] rounded-[12px] border p-3"
-          style={{ background: 'var(--surface2)', borderColor: 'var(--border-strong)', boxShadow: 'var(--shadow-md)' }}
+          className="fixed inset-0 z-40 sm:absolute sm:inset-auto sm:left-0 sm:top-[calc(100%+6px)]"
+          style={{ background: 'transparent' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
+        >
+        <div
+          className="absolute left-1/2 top-1/2 w-[276px] -translate-x-1/2 -translate-y-1/2 rounded-[12px] border p-3 sm:left-0 sm:top-0 sm:translate-x-0 sm:translate-y-0"
+          style={{ background: 'var(--surface2)', borderColor: 'var(--border-strong)', boxShadow: 'var(--shadow-lg, var(--shadow-md))' }}
           role="dialog"
           aria-label="Choose a date"
         >
@@ -113,6 +118,7 @@ export default function DateField({ name, defaultValue, required }: { name: stri
           >
             Today
           </button>
+        </div>
         </div>
       )}
     </div>

@@ -274,11 +274,21 @@ export default function ShiftReportForm({
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="form-label">Shift</span>
-            <input name="shift_label" className="form-control" placeholder="1st shift" defaultValue={prefill?.shift_label || ''} />
+            <select name="shift_label" className="form-control" defaultValue={prefill?.shift_label || ''}>
+              <option value="">Select…</option>
+              <option value="1st shift">1st shift</option>
+              <option value="2nd shift">2nd shift</option>
+              <option value="3rd shift">3rd shift</option>
+            </select>
           </label>
           <label className="block">
             <span className="form-label">Time</span>
-            <input name="time_range" className="form-control" placeholder="6am–2pm" defaultValue={prefill?.time_range || ''} />
+            <select name="time_range" className="form-control" defaultValue={prefill?.time_range || ''}>
+              <option value="">Select…</option>
+              <option value="6am-2pm">6am-2pm</option>
+              <option value="2pm-10pm">2pm-10pm</option>
+              <option value="10pm-6am">10pm-6am</option>
+            </select>
           </label>
         </div>
       </div>
