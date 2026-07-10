@@ -31,6 +31,7 @@ export default async function EditReportPage({ params }: { params: Promise<{ tok
   const canEdit = !!report && editsUsed < MAX_EDITS && windowOpen
 
   let creators: { id: string; name: string }[] = []
+  let members: { id: string; name: string }[] = []
   if (canEdit) {
     const supabase = await createAdminClient()
     const { data } = await supabase
@@ -39,6 +40,12 @@ export default async function EditReportPage({ params }: { params: Promise<{ tok
       .eq('active', true)
       .order('name', { ascending: true })
     creators = data || []
+    const { data: memberRows } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .is('deactivated_at', null)
+      .order('full_name', { ascending: true })
+    members = (memberRows || []).filter((m) => (m.full_name || '').trim()).map((m) => ({ id: m.id, name: m.full_name as string }))
   }
 
   return (
@@ -55,6 +62,7 @@ export default async function EditReportPage({ params }: { params: Promise<{ tok
         {canEdit ? (
           <ShiftReportForm
             creators={creators}
+            members={members}
             mode="edit"
             editToken={token}
             editsLeft={MAX_EDITS - editsUsed}

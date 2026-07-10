@@ -16,6 +16,15 @@ export default async function SubmitReportPage() {
     .eq('active', true)
     .order('name', { ascending: true })
 
+  // Active members feed the chatter picker so internal chatters are matched by a
+  // stable id (no "Lloyd" vs "Loyd" filter splits). Read with the service role —
+  // the page is public and has no session.
+  const { data: members } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .is('deactivated_at', null)
+    .order('full_name', { ascending: true })
+
   return (
     // h-dvh + overflow-y-auto: the global stylesheet locks the <body> with
     // overflow:hidden (the app shell scrolls its own panes), so this public page
@@ -31,7 +40,10 @@ export default async function SubmitReportPage() {
           </p>
         </div>
 
-        <ShiftReportForm creators={creators || []} />
+        <ShiftReportForm
+          creators={creators || []}
+          members={(members || []).filter((m) => (m.full_name || '').trim()).map((m) => ({ id: m.id, name: m.full_name as string }))}
+        />
 
         <p className="mt-6 text-center text-[11px]" style={{ color: 'var(--muted)' }}>
           Safari To-Dos · shift reporting

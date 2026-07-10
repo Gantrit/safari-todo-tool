@@ -10,8 +10,14 @@ interface CreatorOption {
   name: string
 }
 
+interface MemberOption {
+  id: string
+  name: string
+}
+
 export interface ReportPrefill {
   creator_id: string | null
+  chatter_id?: string | null
   chatter_name: string
   shift_date: string
   shift_label: string | null
@@ -37,12 +43,15 @@ export interface ExistingFile {
 
 interface ShiftReportFormProps {
   creators: CreatorOption[]
+  members?: MemberOption[]
   mode?: 'create' | 'edit'
   prefill?: ReportPrefill
   existingFiles?: ExistingFile[]
   editToken?: string
   editsLeft?: number
 }
+
+const EXTERNAL = '__external__'
 
 const MAX_FILES = 6
 const MAX_FILE_MB = 8
@@ -58,6 +67,7 @@ interface Submitted {
 
 export default function ShiftReportForm({
   creators,
+  members = [],
   mode = 'create',
   prefill,
   existingFiles = [],
@@ -72,6 +82,18 @@ export default function ShiftReportForm({
   const [removedIds, setRemovedIds] = useState<string[]>([])
   const [pdfBusy, setPdfBusy] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+
+  // Chatter picker: a member id, EXTERNAL (type a name), or '' (not chosen yet).
+  const initialChatter =
+    prefill?.chatter_id && members.some((m) => m.id === prefill.chatter_id)
+      ? prefill.chatter_id
+      : prefill?.chatter_name
+        ? EXTERNAL
+        : members.length === 0
+          ? EXTERNAL
+          : ''
+  const [chatterChoice, setChatterChoice] = useState<string>(initialChatter)
+  const isExternalChatter = chatterChoice === EXTERNAL
 
   const isEdit = mode === 'edit'
   const keptExisting = existingFiles.filter((f) => !removedIds.includes(f.id))
@@ -265,7 +287,36 @@ export default function ShiftReportForm({
         </label>
         <label className="block">
           <span className="form-label">Your name (chatter) *</span>
-          <input name="chatter_name" required className="form-control" placeholder="e.g. JC" defaultValue={prefill?.chatter_name || ''} />
+          {members.length > 0 ? (
+            <>
+              <select
+                className="form-control"
+                value={chatterChoice}
+                onChange={(e) => setChatterChoice(e.target.value)}
+                required
+                aria-label="Select who you are"
+              >
+                <option value="" disabled>Select your name…</option>
+                {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                <option value={EXTERNAL}>External / other…</option>
+              </select>
+              {/* Submitted fields: id for members, free text for external. */}
+              <input type="hidden" name="chatter_id" value={isExternalChatter ? '' : chatterChoice} />
+              {isExternalChatter ? (
+                <input
+                  name="chatter_name"
+                  required
+                  className="form-control mt-2"
+                  placeholder="Type your name"
+                  defaultValue={prefill?.chatter_name || ''}
+                />
+              ) : (
+                <input type="hidden" name="chatter_name" value={members.find((m) => m.id === chatterChoice)?.name || ''} />
+              )}
+            </>
+          ) : (
+            <input name="chatter_name" required className="form-control" placeholder="e.g. JC" defaultValue={prefill?.chatter_name || ''} />
+          )}
         </label>
         <div className="block">
           <span className="form-label">Shift date *</span>

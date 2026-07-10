@@ -35,6 +35,7 @@ export function str(form: FormData, key: string, max = MAX_TEXT): string | null 
 export interface ShiftReportFields {
   creator_id: string | null
   creator_name: string | null
+  chatter_id: string | null
   chatter_name: string
   shift_date: string
   shift_label: string | null
@@ -56,7 +57,24 @@ export interface ShiftReportFields {
  *  chatter name is missing. Looks the creator up so we never store junk ids and
  *  always snapshot the name. */
 export async function parseReportFields(form: FormData, supabase: SupabaseClient): Promise<ShiftReportFields | null> {
-  const chatterName = str(form, 'chatter_name', 120)
+  // A chatter is EITHER a known member (chatter_id → name snapshotted from the
+  // profile, so filtering never breaks on a typo) OR an external person with no
+  // account (chatter_id null, free-text chatter_name). The member name is always
+  // taken from the DB, never trusted from the client.
+  const chatterIdRaw = str(form, 'chatter_id', 40)
+  let chatterId: string | null = null
+  let chatterName = str(form, 'chatter_name', 120)
+  if (chatterIdRaw) {
+    const { data: member } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('id', chatterIdRaw)
+      .maybeSingle()
+    if (member?.id) {
+      chatterId = member.id
+      chatterName = (member.full_name || '').trim().slice(0, 120) || chatterName
+    }
+  }
   if (!chatterName) return null
 
   const rawDate = str(form, 'shift_date', 10)
@@ -80,6 +98,7 @@ export async function parseReportFields(form: FormData, supabase: SupabaseClient
   return {
     creator_id: creatorId,
     creator_name: creatorName,
+    chatter_id: chatterId,
     chatter_name: chatterName,
     shift_date: shiftDate,
     shift_label: str(form, 'shift_label', 80),

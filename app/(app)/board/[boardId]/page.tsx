@@ -40,6 +40,30 @@ export default async function BoardPage({ params }: Props) {
   const memberProfiles = (members || []).map((m: any) => m.profiles).filter(Boolean)
   const orderedBoards = sortBoards(boards || [])
 
+  // The current user's still-open quests, surfaced as read-only to-dos in their
+  // own board column. RLS only exposes a user's own acceptances, so this is
+  // exactly the "my accepted quest shows up in my to-dos" case — quests keep
+  // their own accept/submit/approve flow on /quests.
+  const { data: questRows } = await supabase
+    .from('quest_acceptances')
+    .select('id, status, quest:quests(id, title, deadline_at, status, deleted_at)')
+    .eq('user_id', user!.id)
+    .in('status', ['ACCEPTED', 'DONE'])
+  const questTodos = (questRows || [])
+    .map((row: any) => {
+      const quest = Array.isArray(row.quest) ? row.quest[0] : row.quest
+      if (!quest || quest.deleted_at) return null
+      return {
+        acceptance_id: row.id,
+        quest_id: quest.id,
+        user_id: user!.id,
+        title: quest.title,
+        deadline_at: quest.deadline_at || null,
+        status: row.status,
+      }
+    })
+    .filter(Boolean)
+
   const { data: legacyTasks } = richTasksError
     ? await supabase
         .from('tasks')
@@ -101,6 +125,7 @@ export default async function BoardPage({ params }: Props) {
           departments={orderedBoards}
           members={memberProfiles}
           tasks={tasks}
+          questTodos={questTodos as any}
           currentUser={profile!}
         />
       </div>

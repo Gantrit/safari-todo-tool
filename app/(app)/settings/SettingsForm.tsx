@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ExternalLink, GripVertical, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users } from 'lucide-react'
+import { Building2, Check, ExternalLink, GripVertical, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -85,6 +85,8 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
   }
   const [renamingBoard, setRenamingBoard] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [renamingMember, setRenamingMember] = useState<string | null>(null)
+  const [memberNameValue, setMemberNameValue] = useState('')
   const [newCategory, setNewCategory] = useState('')
   const [renamingCategory, setRenamingCategory] = useState<string | null>(null)
   const [categoryRenameValue, setCategoryRenameValue] = useState('')
@@ -135,6 +137,14 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     setBusy(`role-${userId}`); setMessage(null)
     const { error } = await supabase.rpc('set_member_role', { p_user_id: userId, p_role: role })
     if (error) setMessage({ text: error.message, type: 'error' })
+    setBusy(null); router.refresh()
+  }
+  async function renameMember(userId: string) {
+    const next = memberNameValue.trim()
+    if (!next) return
+    setBusy(`name-${userId}`); setMessage(null)
+    const { error } = await supabase.rpc('set_member_name', { p_user_id: userId, p_name: next })
+    if (error) setMessage({ text: error.message, type: 'error' }); else setRenamingMember(null)
     setBusy(null); router.refresh()
   }
   async function toggleDeactivate(userId: string, name: string, currentlyDeactivated: boolean) {
@@ -207,8 +217,40 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
             <div key={uid} className="settings-row" style={deactivated ? { opacity: 0.6 } : undefined}>
               <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>{getInitials(name)}</span>
               <span className="min-w-0 flex-1">
-                <strong className="block truncate text-sm">{name}{isSelf && <span className="ml-2 text-[10px] uppercase tracking-wider" style={{ color: 'var(--accent)' }}>you</span>}{deactivated && <span className="ml-2 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>deactivated</span>}</strong>
-                <span className="block truncate text-xs" style={{ color: 'var(--muted)' }}>{member.profiles?.email}</span>
+                {renamingMember === uid ? (
+                  <span className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      value={memberNameValue}
+                      onChange={(e) => setMemberNameValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') renameMember(uid); if (e.key === 'Escape') setRenamingMember(null) }}
+                      className="form-control !min-h-8 !py-0 !text-[13px]"
+                      placeholder="Display name"
+                      aria-label={`New name for ${name}`}
+                    />
+                    <button onClick={() => renameMember(uid)} disabled={busy === `name-${uid}`} className="icon-button !h-8 !w-8" title="Save name" aria-label="Save name">
+                      {busy === `name-${uid}` ? <Loader2 className="animate-spin" size={13} /> : <Check size={14} />}
+                    </button>
+                    <button onClick={() => setRenamingMember(null)} className="icon-button !h-8 !w-8" title="Cancel" aria-label="Cancel rename"><X size={14} /></button>
+                  </span>
+                ) : (
+                  <>
+                    <strong className="block truncate text-sm">
+                      {name}
+                      <button
+                        onClick={() => { setRenamingMember(uid); setMemberNameValue(member.profiles?.full_name || '') }}
+                        className="ml-1.5 inline-flex align-middle opacity-60 hover:opacity-100"
+                        title={`Rename ${name}`}
+                        aria-label={`Rename ${name}`}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      {isSelf && <span className="ml-2 text-[10px] uppercase tracking-wider" style={{ color: 'var(--accent)' }}>you</span>}
+                      {deactivated && <span className="ml-2 rounded px-1.5 py-0.5 text-[9px] uppercase tracking-wider" style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>deactivated</span>}
+                    </strong>
+                    <span className="block truncate text-xs" style={{ color: 'var(--muted)' }}>{member.profiles?.email}</span>
+                  </>
+                )}
               </span>
               <select
                 value={memberRole(member)}

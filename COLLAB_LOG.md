@@ -3,6 +3,33 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-10 — Claude (Opus 4.8) — Date-picker icon, chatter↔member link, admin rename, quests on board
+
+**NEW migration `027_chatter_link_and_member_rename.sql`** — Tan must run it in the Supabase SQL
+editor. Deploy-before-migration safe (chatter_id insert only happens when a member is picked, and
+locally/without the column it just won't match; rename & member dropdown degrade gracefully).
+
+- **Date picker (`components/ui/DateField.tsx`):** the popup is no longer clipped by the
+  `.app-card` `overflow:hidden` (moved into its own overlay layer — desktop dropdown, mobile
+  centered modal). Added a SEPARATE, clearly visible **"Open calendar" icon button** next to the
+  date text (Tan repeatedly couldn't find the trigger). Both open the same picker.
+- **Shift/Time are fixed dropdowns now** (not free text): Shift = 1st/2nd/3rd shift, Time =
+  6am-2pm / 2pm-10pm / 10pm-6am.
+- **Chatter ↔ member link (027 part 1):** `shift_reports.chatter_id` (nullable FK to profiles).
+  The public form shows a **member dropdown + "External / other" free-text** fallback (external
+  chatters with no account still work). For members the name is snapshotted server-side from the
+  profile in `lib/shiftReport.ts` (never trusted from the client) → `/reports` filtering no longer
+  splits on typos ("Lloyd" vs "Loyd"). Public + edit pages read active members via service role.
+- **Admin can rename members (027 part 2):** `set_member_name(p_user_id, p_name)` SECURITY DEFINER
+  RPC (admin-only, 1–80 chars). Inline pencil-edit in Settings → Members & roles.
+- **Quests surfaced on the board (light):** a member's own accepted/submitted quests
+  (`quest_acceptances` RLS only exposes own rows anyway) now render as a **read-only "Quests"
+  section at the top of their MemberColumn** (columns view) with deadline + urgency colour,
+  linking to `/quests`. NO duplicate task rows, NO XP change — quests keep their own flow. Only
+  wired into the `columns` view for now; MemberRowsView/TableView not yet. NOTE: these are visual
+  to-dos only — real reminder *notifications* for quests are NOT built yet.
+- Sidebar version → **v0.27**.
+
 ## 2026-07-10 — Claude (Fable 5) — Shift-report edits/PDF/delete, board reorder + view defaults, avatars, mobile pass
 
 **NEW migrations `024_shift_report_edits.sql`, `025_board_positions.sql`, `026_avatars.sql`** —

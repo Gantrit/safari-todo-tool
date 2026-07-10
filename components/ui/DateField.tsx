@@ -49,19 +49,32 @@ export default function DateField({ name, defaultValue, required }: { name: stri
   const label = selected.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
   const monthLabel = firstOfMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 
+  const openPicker = () => { setViewYear(selected.getFullYear()); setViewMonth(selected.getMonth()); setOpen((o) => !o) }
+
   return (
     <div className="relative" ref={wrapRef}>
       <input type="hidden" name={name} value={value} required={required} />
-      <button
-        type="button"
-        onClick={() => { setViewYear(selected.getFullYear()); setViewMonth(selected.getMonth()); setOpen((o) => !o) }}
-        className="form-control flex w-full items-center justify-between gap-2 text-left"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <span>{label}</span>
-        <CalendarDays size={15} className="flex-none" style={{ color: 'var(--accent)' }} />
-      </button>
+      <div className="flex items-stretch gap-2">
+        <button
+          type="button"
+          onClick={openPicker}
+          className="form-control flex flex-1 items-center text-left"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <span>{label}</span>
+        </button>
+        <button
+          type="button"
+          onClick={openPicker}
+          className="flex flex-none items-center justify-center rounded-[10px] border px-3 transition-colors hover:bg-white/5"
+          style={{ borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--accent)' }}
+          aria-label="Open calendar"
+          title="Pick a date"
+        >
+          <CalendarDays size={17} />
+        </button>
+      </div>
 
       {open && (
         <div

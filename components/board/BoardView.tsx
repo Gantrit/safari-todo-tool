@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Task, Profile, TaskSection, canWriteTasks } from '@/lib/types'
+import { Task, Profile, TaskSection, QuestTodo, canWriteTasks } from '@/lib/types'
 import MemberColumn from './MemberColumn'
 import MemberRowsView from './MemberRowsView'
 import TableView from './TableView'
@@ -41,10 +41,11 @@ interface BoardViewProps {
   departments?: any[]
   members: Profile[]
   tasks: Task[]
+  questTodos?: QuestTodo[]
   currentUser: Profile
 }
 
-export default function BoardView({ board, members, tasks: initialTasks, currentUser }: BoardViewProps) {
+export default function BoardView({ board, members, tasks: initialTasks, questTodos = [], currentUser }: BoardViewProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -371,6 +372,7 @@ export default function BoardView({ board, members, tasks: initialTasks, current
                       key={member.id}
                       member={member}
                       tasks={filteredTasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id))}
+                      questTodos={questTodos.filter((q) => q.user_id === member.id)}
                       onTaskClick={setSelectedTask}
                       onAddTask={openFullForm}
                       onQuickAdd={handleQuickAdd}

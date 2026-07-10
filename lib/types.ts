@@ -202,6 +202,17 @@ export interface Quest {
   updated_at: string
 }
 
+/** An accepted quest surfaced as a to-do on the member's board column.
+ *  Read-only — quests keep their own accept/submit/approve flow on /quests. */
+export interface QuestTodo {
+  acceptance_id: string
+  quest_id: string
+  user_id: string
+  title: string
+  deadline_at: string | null
+  status: QuestStatus
+}
+
 export interface AuditLog {
   id: string
   actor_id: string | null

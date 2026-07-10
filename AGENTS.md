@@ -111,9 +111,9 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`026`, run in
-order in the Supabase SQL editor (001–023 applied in prod as of 2026-07-09; 024–026 pending;
-next free number: **027**). The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`027`, run in
+order in the Supabase SQL editor (001–023 applied in prod as of 2026-07-09; 024–027 pending;
+next free number: **028**). The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
 minor number to match the latest migration whenever a new one ships.
 Env vars / deploy steps: [`SETUP.md`](SETUP.md). Compact live status: [`docs/current_status.md`](docs/current_status.md).
 
