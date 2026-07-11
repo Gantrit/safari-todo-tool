@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Task, TaskSection, Profile, QuestTodo } from '@/lib/types'
 import { getInitials, getUrgency } from '@/lib/utils'
 import TaskSectionComp from './TaskSection'
-import { Plus, Sparkles } from 'lucide-react'
+import { GripVertical, Plus, Sparkles } from 'lucide-react'
 
 const SECTIONS: TaskSection[] = ['DAILY', 'WEEKLY', 'MONTHLY']
 
@@ -17,14 +17,15 @@ interface MemberColumnProps {
   onQuickAdd: (memberId: string, section: TaskSection, title: string) => void
   onDelete: (task: Task) => void
   currentUser: Profile
+  dragHandleProps?: Record<string, unknown>
 }
 
-export default function MemberColumn({ member, tasks, questTodos = [], onTaskClick, onAddTask, onQuickAdd, onDelete, currentUser }: MemberColumnProps) {
+export default function MemberColumn({ member, tasks, questTodos = [], onTaskClick, onAddTask, onQuickAdd, onDelete, currentUser, dragHandleProps }: MemberColumnProps) {
   const isOwn = member.id === currentUser.id
 
   return (
     <div
-      className="member-column flex min-w-0 max-h-full flex-col overflow-hidden rounded-[15px]"
+      className="member-column flex h-full min-w-0 max-h-full flex-col overflow-hidden rounded-[15px]"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
       {/* Column header */}
@@ -32,6 +33,17 @@ export default function MemberColumn({ member, tasks, questTodos = [], onTaskCli
         className="flex min-h-[68px] flex-shrink-0 items-center gap-3 border-b px-4 sm:px-5"
         style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}
       >
+        {dragHandleProps && (
+          <button
+            type="button"
+            {...dragHandleProps}
+            className="-ml-1 flex h-7 w-5 flex-none cursor-grab items-center justify-center rounded-[6px] text-[var(--muted)] hover:text-[var(--text)] active:cursor-grabbing"
+            title="Drag to reorder your columns"
+            aria-label={`Reorder ${member.full_name || 'member'} column`}
+          >
+            <GripVertical size={15} />
+          </button>
+        )}
         {member.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={member.avatar_url} alt="" className="h-10 w-10 flex-shrink-0 rounded-full object-cover" style={{ border: '1px solid var(--border-strong)' }} />

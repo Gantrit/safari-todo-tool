@@ -25,7 +25,7 @@ export default async function TemplatesPage() {
       .order('created_at', { ascending: false })
     templates = (legacy || []).map((t: any) => ({
       ...t,
-      items: [{ id: t.id, template_id: t.id, title: t.title, description: t.description, section: ['DAILY', 'WEEKLY', 'MONTHLY'].includes(t.section) ? t.section : 'DAILY', priority: t.priority, checklist: t.checklist || [], reference_url: t.reference_url, position: 0 }],
+      items: [{ id: t.id, template_id: t.id, title: t.title, description: t.description, section: ['DAILY', 'WEEKLY', 'MONTHLY'].includes(t.section) ? t.section : 'DAILY', priority: t.priority, checklist: t.checklist || [], reference_url: t.reference_url, due_time: null, position: 0 }],
     })) as any
   }
 

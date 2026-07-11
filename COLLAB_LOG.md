@@ -3,6 +3,46 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-11 — Claude (Opus 4.8) — Board columns = board_access members; per-user column drag
+
+**NEW migration `030_board_members_fn.sql`** — deploy-safe (the board page falls back to the old
+all-workspace-members query if the RPC is missing), but run it to actually get the filtering.
+
+- **Board columns were showing everyone.** Regression from 028: the board page listed all
+  `workspace_members`, and since 028 auto-enrolls every account, all 8 appeared as columns on every
+  board regardless of `board_access`. Migration 030 adds `board_members(board_id)` (SECURITY
+  DEFINER, gated to admins / members-with-access) returning only the profiles that have
+  `board_access` for that board — needed because RLS (010) only lets a non-admin read their own
+  board_access row, so a plain client query would collapse the roster to just themselves. The
+  board page now calls this RPC, with a graceful fallback to the pre-030 query if it isn't there.
+- **Per-user column reordering (columns view).** Each user can drag their columns via a grip handle
+  in the column header (`MemberColumn` `dragHandleProps`). Order is personal, stored in
+  localStorage keyed by user+board (`loadColumnOrder`/`saveColumnOrder` in `lib/boardViews.ts`) —
+  NOT shared. Default order = your own column first, then everyone else A→Z; new members fall in at
+  their default slot. A custom `boardCollisionDetection` keeps task-dragging and column-dragging
+  from interfering (task drags never see the full-height column droppables and vice-versa).
+- Bump APP_VERSION to v0.30.
+
+## 2026-07-11 — Claude (Opus 4.8) — Time-of-day target on template tasks
+
+**NEW migration `029_template_due_time.sql`** — ⚠️ **NOT deploy-safe: run 029 BEFORE deploying**
+this code. The template save now sends a `due_time` column; if the deploy lands before the
+migration, template creation errors with "column due_time does not exist".
+
+- **Optional per-task time-of-day on templates** (`template_items.due_time TIME`, nullable). Some
+  to-dos have a hard daily cutoff (e.g. "first login done by 06:05"). In the Create/Edit template
+  modal each task now has a "Due by" time input (optional).
+- **`assign_template` builds the first deadline at that wall-clock time in Europe/Berlin** (the
+  app's canonical tz, same as the streak logic in 020): DAILY → next occurrence of the time (today
+  if still future, else tomorrow, so it's never born overdue); WEEKLY → today+7d at the time;
+  MONTHLY → today+1mo at the time. `due_time` NULL keeps the old NOW()+period behaviour.
+- The recurring regeneration in `approve_task` (020) already carries deadline_at forward by one
+  period, so the clock time propagates to every future copy automatically — 020 untouched.
+- Because `deadline_at` now has a real cutoff, the near-deadline XP bonus / overdue penalty apply
+  to it: finishing after the set time counts as overdue. Intended (user wants a hard target); the
+  "5-min buffer" is just entering 06:05 instead of 06:00.
+- Bump APP_VERSION to v0.29. Not yet pushed at time of writing — deploy only after 029 is run.
+
 ## 2026-07-11 — Claude (Opus 4.8) — Auto-enroll members, member-visibility fix, onboarding card by role
 
 **NEW migration `028_auto_enroll_workspace_members.sql`** — Tan must run it in the Supabase SQL

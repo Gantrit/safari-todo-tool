@@ -107,3 +107,31 @@ export function saveBoardViewState(boardId: string, state: BoardViewState): void
     /* ignore quota / private mode */
   }
 }
+
+// ---- Per-user column order (columns view) ----------------------------------
+// Personalised, not shared: each user arranges their own columns. Keyed by
+// user + board so shared devices don't collide. Default order is computed
+// elsewhere (own column first, then alphabetical); this only stores an
+// explicit drag arrangement as a list of member ids.
+
+const colKey = (userId: string, boardId: string) => `safari:boardcols:${userId}:${boardId}`
+
+export function loadColumnOrder(userId: string, boardId: string): string[] | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(colKey(userId, boardId))
+    const parsed = raw ? JSON.parse(raw) : null
+    return Array.isArray(parsed) ? (parsed as string[]) : null
+  } catch {
+    return null
+  }
+}
+
+export function saveColumnOrder(userId: string, boardId: string, order: string[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(colKey(userId, boardId), JSON.stringify(order))
+  } catch {
+    /* ignore quota / private mode */
+  }
+}

@@ -22,9 +22,10 @@ export default async function BoardPage({ params }: Props) {
 
   if (!board) notFound()
 
-  const [{ data: profile }, { data: members }, { data: boards }, { data: richTasks, error: richTasksError }] = await Promise.all([
+  const [{ data: profile }, boardMembersRes, { data: boards }, { data: richTasks, error: richTasksError }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
-    supabase.from('workspace_members').select('profiles(*)').eq('workspace_id', board.workspace_id),
+    // Columns are the members with access to THIS board (SECURITY DEFINER fn, migration 030).
+    supabase.rpc('board_members', { p_board_id: boardId }),
     supabase.from('boards').select('*').eq('workspace_id', board.workspace_id).eq('type', 'kanban').order('created_at', { ascending: true }),
     supabase.from('tasks').select(`
       *,
@@ -37,7 +38,18 @@ export default async function BoardPage({ params }: Props) {
     `).eq('board_id', boardId).is('deleted_at', null).order('position', { ascending: true }),
   ])
 
-  const memberProfiles = (members || []).map((m: any) => m.profiles).filter(Boolean)
+  // Fallback keeps the board working if migration 030 hasn't run yet (RPC missing):
+  // fall back to every workspace member (the old, pre-030 behaviour).
+  let memberProfiles: any[]
+  if (boardMembersRes.error) {
+    const { data: legacyMembers } = await supabase
+      .from('workspace_members')
+      .select('profiles(*)')
+      .eq('workspace_id', board.workspace_id)
+    memberProfiles = (legacyMembers || []).map((m: any) => m.profiles).filter(Boolean)
+  } else {
+    memberProfiles = (boardMembersRes.data as any[]) || []
+  }
   const orderedBoards = sortBoards(boards || [])
 
   // The current user's still-open quests, surfaced as read-only to-dos in their

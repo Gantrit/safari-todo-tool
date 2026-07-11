@@ -16,6 +16,7 @@ type TemplateItem = {
   priority: Priority
   checklist: string[]
   reference_url: string | null
+  due_time: string | null
   position: number
 }
 type Template = {
@@ -27,7 +28,7 @@ type Template = {
 type BoardOption = { id: string; name: string; workspace_id: string; workspaces?: { name: string } | null }
 type MemberOption = { workspace_id: string; profiles: { id: string; full_name: string; email: string } | null }
 
-type DraftItem = { key: string; title: string; description: string; section: TaskSection; priority: Priority; checklist: string; referenceUrl: string }
+type DraftItem = { key: string; title: string; description: string; section: TaskSection; priority: Priority; checklist: string; referenceUrl: string; dueTime: string }
 
 const SECTIONS: { value: TaskSection; label: string }[] = [
   { value: 'DAILY', label: 'Daily to-dos' },
@@ -36,7 +37,7 @@ const SECTIONS: { value: TaskSection; label: string }[] = [
 ]
 
 const newKey = () => Math.random().toString(36).slice(2)
-const emptyDraft = (section: TaskSection): DraftItem => ({ key: newKey(), title: '', description: '', section, priority: 'MEDIUM', checklist: '', referenceUrl: '' })
+const emptyDraft = (section: TaskSection): DraftItem => ({ key: newKey(), title: '', description: '', section, priority: 'MEDIUM', checklist: '', referenceUrl: '', dueTime: '' })
 
 export default function TemplateLibrary({ templates, boards, members, isAdmin, userId }: { templates: Template[]; boards: BoardOption[]; members: MemberOption[]; isAdmin: boolean; userId: string }) {
   const [open, setOpen] = useState(false)
@@ -60,7 +61,7 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, u
     setEditing(template); setName(template.title); setDescription(template.description || '')
     setItems((template.items || []).slice().sort((a, b) => a.position - b.position).map((item) => ({
       key: item.id, title: item.title, description: item.description || '', section: item.section, priority: item.priority,
-      checklist: (item.checklist || []).join('\n'), referenceUrl: item.reference_url || '',
+      checklist: (item.checklist || []).join('\n'), referenceUrl: item.reference_url || '', dueTime: (item.due_time || '').slice(0, 5),
     })))
     setError(null); setOpen(true)
   }
@@ -94,6 +95,7 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, u
       priority: it.priority,
       checklist: it.checklist.split('\n').map((l) => l.trim()).filter(Boolean),
       reference_url: it.referenceUrl.trim() || null,
+      due_time: it.dueTime || null,
       position: index,
     }))
     const { error: itemsErr } = await supabase.from('template_items').insert(rows)
@@ -157,6 +159,7 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, u
                       <div key={item.id} className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                         <span className="mt-1 h-1.5 w-1.5 flex-none rounded-full" style={{ background: 'var(--accent)' }} />
                         <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                        {item.due_time && <span className="flex-none text-[10px] font-semibold" style={{ color: 'var(--accent)' }}>{item.due_time.slice(0, 5)}</span>}
                         <span className="flex-none text-[10px] uppercase" style={{ color: 'var(--muted)' }}>{item.section}</span>
                       </div>
                     ))}
@@ -202,6 +205,12 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, u
                             <input value={item.title} onChange={(e) => updateItem(item.key, { title: e.target.value })} className="form-control flex-1 !min-h-10" placeholder="Task title" />
                             <select value={item.priority} onChange={(e) => updateItem(item.key, { priority: e.target.value as Priority })} className="form-control !min-h-10 !w-auto"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select>
                             <button type="button" onClick={() => removeItem(item.key)} className="icon-button !h-10 !w-10 hover:!text-[var(--red)]" aria-label="Remove task"><X size={14} /></button>
+                          </div>
+                          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[.06em]" style={{ color: 'var(--muted)' }}>Due by</span>
+                            <input type="time" value={item.dueTime} onChange={(e) => updateItem(item.key, { dueTime: e.target.value })} className="form-control !min-h-9 !w-auto !py-1 !text-[13px]" />
+                            {item.dueTime && <button type="button" onClick={() => updateItem(item.key, { dueTime: '' })} className="text-[11px] underline" style={{ color: 'var(--muted)' }}>clear</button>}
+                            <span className="text-[11px]" style={{ color: 'var(--muted)' }}>optional · Berlin time · {item.section === 'DAILY' ? 'each day' : item.section === 'WEEKLY' ? 'on the weekly deadline' : 'on the monthly deadline'}</span>
                           </div>
                           <textarea value={item.checklist} onChange={(e) => updateItem(item.key, { checklist: e.target.value })} rows={2} className="form-control py-2.5 text-[13px]" placeholder="Checklist — one item per line (optional)" />
                         </div>

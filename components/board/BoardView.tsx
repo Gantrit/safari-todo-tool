@@ -21,8 +21,10 @@ import {
   useSensors,
   closestCorners,
   DragOverlay,
+  CollisionDetection,
 } from '@dnd-kit/core'
-import { arrayMove } from '@dnd-kit/sortable'
+import { arrayMove, SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { berlinDefaultDeadline, getInitials } from '@/lib/utils'
 import {
@@ -33,6 +35,8 @@ import {
   loadBoardViewState,
   normalizeViewMode,
   saveBoardViewState,
+  loadColumnOrder,
+  saveColumnOrder,
 } from '@/lib/boardViews'
 import { AlertTriangle, LayoutGrid, Loader2, Plus, Trash2, Users } from 'lucide-react'
 
@@ -43,6 +47,19 @@ interface BoardViewProps {
   tasks: Task[]
   questTodos?: QuestTodo[]
   currentUser: Profile
+}
+
+// Keep column reordering and task dragging from interfering: a task drag only
+// sees task/section droppables; a column drag only sees other columns. Without
+// this the full-height column droppable would swallow task drops.
+const boardCollisionDetection: CollisionDetection = (args) => {
+  const isColumn = String(args.active.id).startsWith('column:')
+  return closestCorners({
+    ...args,
+    droppableContainers: args.droppableContainers.filter((c) =>
+      isColumn ? String(c.id).startsWith('column:') : !String(c.id).startsWith('column:')
+    ),
+  })
 }
 
 export default function BoardView({ board, members, tasks: initialTasks, questTodos = [], currentUser }: BoardViewProps) {
@@ -61,6 +78,9 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([currentUser.id])
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS)
   const [hydrated, setHydrated] = useState(false)
+  // Personalised column arrangement (own column first, then alphabetical by
+  // default; a saved drag order wins). Per user + board, localStorage only.
+  const [columnOrder, setColumnOrder] = useState<string[] | null>(null)
 
   const supabase = createClient()
   const searchParams = useSearchParams()
@@ -80,6 +100,7 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
       if (saved.selectedMemberIds) setSelectedMemberIds(saved.selectedMemberIds)
       if (saved.filters) setFilters({ ...EMPTY_FILTERS, ...saved.filters })
     }
+    setColumnOrder(loadColumnOrder(currentUser.id, board.id))
 
     const taskParam = searchParams.get('task')
     const urgencyParam = searchParams.get('urgency')
@@ -130,6 +151,37 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
   }, [members, liveTasks])
   const selectedMembers = members.filter((m) => selectedMemberIds.includes(m.id))
 
+  // Default column order: your own column first, then everyone else A→Z. A saved
+  // personal drag arrangement overrides it; members not yet in the saved order
+  // (e.g. someone just granted access) fall in at their default position.
+  const orderedMembers = useMemo(() => {
+    const own = members.filter((m) => m.id === currentUser.id)
+    const others = members
+      .filter((m) => m.id !== currentUser.id)
+      .sort((a, b) => (a.full_name || a.email || '').localeCompare(b.full_name || b.email || ''))
+    const fallback = [...own, ...others]
+    if (!columnOrder || columnOrder.length === 0) return fallback
+    const byId = new Map(members.map((m) => [m.id, m]))
+    const seen = new Set<string>()
+    const ordered: Profile[] = []
+    for (const id of columnOrder) {
+      const m = byId.get(id)
+      if (m && !seen.has(id)) { ordered.push(m); seen.add(id) }
+    }
+    for (const m of fallback) if (!seen.has(m.id)) ordered.push(m)
+    return ordered
+  }, [members, columnOrder, currentUser.id])
+
+  const reorderColumns = (activeMemberId: string, overMemberId: string) => {
+    const ids = orderedMembers.map((m) => m.id)
+    const from = ids.indexOf(activeMemberId)
+    const to = ids.indexOf(overMemberId)
+    if (from === -1 || to === -1 || from === to) return
+    const next = arrayMove(ids, from, to)
+    setColumnOrder(next)
+    saveColumnOrder(currentUser.id, board.id, next)
+  }
+
   const toggleSelected = (id: string) =>
     setSelectedMemberIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
 
@@ -148,6 +200,14 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
     const { active, over } = event
     setActiveId(null)
     if (!over || active.id === over.id) return
+
+    // Column reorder (personalised): the active/over ids are prefixed "column:".
+    if (String(active.id).startsWith('column:')) {
+      if (String(over.id).startsWith('column:')) {
+        reorderColumns(String(active.id).slice(7), String(over.id).slice(7))
+      }
+      return
+    }
 
     const activeTask = tasks.find((t) => t.id === active.id)
     if (!activeTask) return
@@ -330,7 +390,7 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={boardCollisionDetection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -366,20 +426,26 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
               </div>
 
               {view === 'columns' ? (
-                <div className={`board-columns board-canvas ${members.length === 1 ? 'is-single' : ''}`}>
-                  {members.map((member) => (
-                    <MemberColumn
-                      key={member.id}
-                      member={member}
-                      tasks={filteredTasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id))}
-                      questTodos={questTodos.filter((q) => q.user_id === member.id)}
-                      onTaskClick={setSelectedTask}
-                      onAddTask={openFullForm}
-                      onQuickAdd={handleQuickAdd}
-                      onDelete={openDelete}
-                      currentUser={currentUser}
-                    />
-                  ))}
+                <div className={`board-columns board-canvas ${orderedMembers.length === 1 ? 'is-single' : ''}`}>
+                  <SortableContext items={orderedMembers.map((m) => `column:${m.id}`)} strategy={horizontalListSortingStrategy}>
+                    {orderedMembers.map((member) => (
+                      <SortableColumn key={member.id} memberId={member.id}>
+                        {(handleProps) => (
+                          <MemberColumn
+                            member={member}
+                            tasks={filteredTasks.filter((t) => (t.assignee_ids || [t.assigned_to]).filter(Boolean).includes(member.id))}
+                            questTodos={questTodos.filter((q) => q.user_id === member.id)}
+                            onTaskClick={setSelectedTask}
+                            onAddTask={openFullForm}
+                            onQuickAdd={handleQuickAdd}
+                            onDelete={openDelete}
+                            currentUser={currentUser}
+                            dragHandleProps={orderedMembers.length > 1 ? handleProps : undefined}
+                          />
+                        )}
+                      </SortableColumn>
+                    ))}
+                  </SortableContext>
                 </div>
               ) : (
                 <div className="board-scroll">
@@ -494,5 +560,21 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
         </Modal>
       )}
     </>
+  )
+}
+
+/** Sortable wrapper for one board column; drag activates only via the header
+ *  handle so tasks inside stay independently draggable. Render-prop passes the
+ *  handle's listeners into the column header. */
+function SortableColumn({ memberId, children }: { memberId: string; children: (handleProps: Record<string, unknown>) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `column:${memberId}` })
+  return (
+    <div
+      ref={setNodeRef}
+      className="min-w-0 h-full"
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1, zIndex: isDragging ? 20 : undefined }}
+    >
+      {children({ ...attributes, ...listeners })}
+    </div>
   )
 }
