@@ -87,7 +87,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </section>
       ) : null}
 
-      {!board && (
+      {!board && (role === 'admin' ? (
         <section className="app-card onboarding-card">
           <div className="onboarding-icon"><Sparkles size={21} /></div>
           <div className="min-w-0 flex-1">
@@ -97,7 +97,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </div>
           <Link href="/settings" className="btn btn-primary flex-none"><LayoutGrid size={17} /> Create workspace <ArrowRight size={15} /></Link>
         </section>
-      )}
+      ) : (
+        <section className="app-card onboarding-card">
+          <div className="onboarding-icon"><Sparkles size={21} /></div>
+          <div className="min-w-0 flex-1">
+            <p className="page-eyebrow">Getting started</p>
+            <h2 className="text-[21px] font-extrabold tracking-[-.03em]">Waiting for board access</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 muted-text">You’re all set up — no board has been shared with you yet. An admin or manager needs to add you to a board. Once they do, your tasks and progress show up right here.</p>
+          </div>
+        </section>
+      ))}
 
       {/* Every KPI tile is a link into its detail view (progress → character,
           open → own tasks on the board, overdue → overdue filter, approval →

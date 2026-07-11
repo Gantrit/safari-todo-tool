@@ -3,6 +3,29 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-11 — Claude (Opus 4.8) — Auto-enroll members, member-visibility fix, onboarding card by role
+
+**NEW migration `028_auto_enroll_workspace_members.sql`** — Tan must run it in the Supabase SQL
+editor after 027. Backfill + trigger update, idempotent, no deploy ordering constraints.
+
+- **Members invisible in Settings — root cause + fix.** `handle_new_user` only ever inserted a
+  `profiles` row; the `workspace_members` row was written solely by `/api/invite` AFTER a
+  successful invite email. With no custom SMTP the mailer failed, so the route returned before the
+  insert → auth user + profile existed but no `workspace_members` row → invisible in Settings
+  (which lists `workspace_members`, not `profiles`). Migration 028 (a) backfills every orphaned
+  profile into the canonical/oldest workspace and (b) makes `handle_new_user` enroll future
+  signups automatically. This removes the whole bug class — members appear regardless of whether
+  the invite email went out. `/api/invite`'s own upsert is now redundant but harmless (kept).
+- **Dashboard onboarding card is role-aware** (`app/(app)/dashboard/page.tsx`): admins still see
+  "Set up your workspace" → Create workspace. Everyone else (manager/employee/guest) with no
+  accessible board now sees a "Waiting for board access" card telling them an admin or manager
+  must add them — no misleading Create-workspace button.
+- **Removed the "Defaults & links" section** from Settings (`SettingsForm.tsx`) — it was a static
+  info blurb with no controls. Dropped the now-unused `ExternalLink` import.
+- **Ops note (no code):** custom SMTP (Resend, sender `onboarding@resend.dev` until
+  `safarixstudios.com` is verified in Resend — GoDaddy DNS still pending) was enabled in Supabase
+  Auth to fix invite/reset emails. See `docs/current_status.md`.
+
 ## 2026-07-10 — Claude (Opus 4.8) — Date-picker icon, chatter↔member link, admin rename, quests on board
 
 **NEW migration `027_chatter_link_and_member_rename.sql`** — Tan must run it in the Supabase SQL

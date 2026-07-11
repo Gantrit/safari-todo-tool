@@ -24,9 +24,16 @@ if they disagree._
 
 ## Known open items / manual steps for Tan
 
-- **Resend email domain** (`safarixstudios.com`): needs GoDaddy DNS access (currently
-  unavailable). Email notifications fall back to `onboarding@resend.dev` until then.
-  Does NOT block anything else.
+- **Custom SMTP enabled in Supabase Auth** (2026-07-11) via Resend (`smtp.resend.com:587`,
+  user `resend`, password = Resend API key) so invite / password-reset emails actually send.
+  Sender is `onboarding@resend.dev` for now.
+- **Resend email domain** (`safarixstudios.com`): still **Not Started** in Resend — needs GoDaddy
+  DNS access (SPF/DKIM records) which is currently unavailable. Until verified, both the Supabase
+  Auth sender AND `EMAIL_FROM` must stay `onboarding@resend.dev`. Once verified, switch both to
+  `info@safarixstudios.com` (or `notify@…`). Does NOT block anything else.
+- **Members now auto-enroll** (migration 028): new accounts get a `workspace_members` row via the
+  `handle_new_user` trigger, so they appear in Settings even if the invite email fails. Run 028 to
+  backfill accounts invited before this fix.
 - Supabase → Auth → URL Configuration: confirm `…/set-password` and `…/callback` are in the
   Redirect URLs allowlist (part of the 2026-07-09 invite fix).
 - Old test data still in prod: approved task "XP-Flow-Test (Claude, wird gelöscht)" (archive)

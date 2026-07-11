@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Check, ExternalLink, GripVertical, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users, X } from 'lucide-react'
+import { Building2, Check, GripVertical, LayoutGrid, Loader2, Pencil, Plus, ShieldOff, ShieldCheck, Tag, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -374,8 +374,6 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
       </div>
       <div className="border-t p-5 sm:p-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}><span className="form-label">Add category</span><div className="flex flex-col gap-3 sm:flex-row"><input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCategory()} className="form-control" placeholder="e.g. Traffic" /><button onClick={addCategory} disabled={busy === 'category' || !newCategory.trim()} className="btn btn-secondary flex-none">{busy === 'category' ? <Loader2 className="animate-spin" size={15} /> : <Plus size={15} />}Add category</button></div></div>
     </section>
-
-    <section className="app-card"><SectionHead icon={<ExternalLink size={18} />} title="Defaults & links" description="Shared references are attached at task level in the current workspace model." /><div className="p-5 sm:p-6"><div className="rounded-[10px] border p-4 text-sm leading-6" style={{ borderColor: 'var(--border)', background: 'var(--surface2)', color: 'var(--text-secondary)' }}>Add Drive, brief, or SOP links when creating a task. This keeps each reference attached to the work it belongs to.</div></div></section>
   </div>
 }
 
