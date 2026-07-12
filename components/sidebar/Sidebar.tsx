@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { Profile, Board, Notification, getLevelInfo, canManageTeam } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown, UserCog, FileBarChart2 } from 'lucide-react'
+import { Bell, Archive, Calendar, Settings, Lock, LayoutGrid, Trophy, ClipboardList, ShieldCheck, Menu, X, Home, RefreshCw, Swords, Medal, Crown, UserCog, FileBarChart2, FilePlus2 } from 'lucide-react'
 import XPBar from '../ui/XPBar'
 import Avatar from '../ui/Avatar'
 import { APP_VERSION } from '@/lib/version'
@@ -106,6 +106,9 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
 
           {groupLabel('Tools')}
           {navItem('/templates', 'Templates', <ClipboardList size={16} />)}
+          {/* Everyone can file a shift report — the form is the public /submit-report page,
+              not gated on board access. Admins/managers additionally get the review list below. */}
+          {navItem('/submit-report', 'Submit report', <FilePlus2 size={16} />)}
           {canManageTeam(profile?.role) && navItem('/reports', 'Shift Reports', <FileBarChart2 size={16} />)}
           {navItem('/private', 'My private tasks', <Lock size={16} />)}
 

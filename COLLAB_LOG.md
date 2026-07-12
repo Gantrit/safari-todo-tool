@@ -3,6 +3,27 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-12 — Claude (Fable 5) — Security hardening (migration 034)
+
+**NEW migration `034_security_hardening.sql`** — ⚠️ **NOT yet applied. Run it in Supabase.**
+Pure DB/RLS change (only `lib/version.ts` bumped to v0.34 client-side). Fixes three holes from
+a full RLS/API security review:
+1. **profiles privilege escalation (was CRITICAL):** `profiles_update` had `USING (auth.uid() =
+   id)` with no `WITH CHECK` and no column guard, so any member could
+   `update({ role: 'admin', xp: 99999, deactivated_at: null })` on their own row via the client
+   SDK. Added `WITH CHECK` + a `protect_profile_columns` BEFORE UPDATE trigger that freezes
+   role/xp/level/streak_days/deactivated_at against direct client writes (detected via
+   `current_user = 'authenticated'`; the SECURITY DEFINER admin RPCs run as `postgres` and pass
+   through). full_name/avatar_url stay client-editable (Account page still works).
+2. **subtasks IDOR:** insert/update/delete were `USING (true)` — any user could write/delete any
+   subtask on any task by id. Scoped to task access (creator/assignee/can_manage), mirroring
+   checklist_items. SELECT stays broad.
+3. **audit_logs forging:** client insert was `WITH CHECK (true)`; restricted to
+   `actor_id = auth.uid()`. Real inserts are SECURITY DEFINER triggers (bypass RLS), so unaffected.
+Verified before writing: Settings/Guild change roles/XP/deactivation ONLY via RPCs (never direct
+profile writes); AccountForm only writes full_name/avatar_url; audit trigger is SECURITY DEFINER;
+no client inserts into audit_logs. So the trigger + tightened policies break no legit path.
+
 ## 2026-07-12 — Claude (Sonnet 5) — Status flow simplified, task file uploads, shift-report review, labels removed, manager template-assign
 
 **NEW migrations `031_simplify_status_flow.sql`, `032_task_file_attachments.sql`,

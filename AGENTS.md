@@ -118,9 +118,13 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`033`, run in
-order in the Supabase SQL editor (001–030 applied in prod as of 2026-07-11; **031–033 written
-2026-07-12, NOT yet applied** — next free number: **034**). The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`034`, run in
+order in the Supabase SQL editor (001–033 applied in prod as of 2026-07-12; **034 written
+2026-07-12 as a security-hardening pass, NOT yet applied** — next free number: **035**).
+Migration 034 locks down `profiles` (role/xp/level/streak/deactivation are frozen against direct
+client writes via the `protect_profile_columns` trigger — only the SECURITY DEFINER admin RPCs may
+change them), scopes `subtasks` writes to task access (was `USING (true)`), and restricts
+`audit_logs` client inserts to `actor_id = auth.uid()`. Do NOT re-open these. The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
 minor number to match the latest migration whenever a new one ships.
 Env vars / deploy steps: [`SETUP.md`](SETUP.md). Compact live status: [`docs/current_status.md`](docs/current_status.md).
 
