@@ -3,11 +3,20 @@
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ShiftReport, ShiftReportCreator } from '@/lib/types'
+import { ShiftReport, ShiftReportCreator, ShiftReportReviewStatus } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 import { blobToJpegDataUrl, downloadShiftReportsPdf, type PdfReportData } from '@/lib/shiftReportPdf'
-import { Copy, Check, Link2, FileText, ExternalLink, Settings, FileDown, Trash2, Loader2 } from 'lucide-react'
+import { Copy, Check, Link2, FileText, ExternalLink, Settings, FileDown, Trash2, Loader2, X } from 'lucide-react'
 
 type RangeKey = 'all' | '7' | '30' | '90'
+type ReviewFilter = 'all' | ShiftReportReviewStatus
+
+const REVIEW_FILTERS: { key: ReviewFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'PENDING', label: 'Pending' },
+  { key: 'APPROVED', label: 'Approved' },
+  { key: 'REJECTED', label: 'Rejected' },
+]
 
 // window.location.origin never changes during a page's life — nothing to subscribe to.
 const subscribeNoop = () => () => {}
@@ -63,20 +72,50 @@ export default function ReportsView({
   reports,
   creators,
   isAdmin,
+  userId,
 }: {
   reports: ShiftReport[]
   creators: ShiftReportCreator[]
   isAdmin: boolean
+  userId: string
 }) {
   const router = useRouter()
+  const [supabase] = useState(() => createClient())
   const [creatorFilter, setCreatorFilter] = useState<string>('all')
   const [chatterQuery, setChatterQuery] = useState('')
   const [range, setRange] = useState<RangeKey>('all')
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all')
+  // Optimistic review states, so approving doesn't need a full page refresh.
+  const [reviewOverrides, setReviewOverrides] = useState<Record<string, ShiftReportReviewStatus>>({})
+  const [reviewBusy, setReviewBusy] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [pdfBusy, setPdfBusy] = useState<string | null>(null) // report id or 'bulk'
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const reviewOf = (r: ShiftReport): ShiftReportReviewStatus => reviewOverrides[r.id] ?? r.review_status ?? 'PENDING'
+
+  // Clicking the already-active decision resets the report back to Pending.
+  async function setReview(r: ShiftReport, decision: 'APPROVED' | 'REJECTED') {
+    const target: ShiftReportReviewStatus = reviewOf(r) === decision ? 'PENDING' : decision
+    setReviewBusy(r.id)
+    setError(null)
+    const { error: updErr } = await supabase
+      .from('shift_reports')
+      .update({
+        review_status: target,
+        reviewed_by: target === 'PENDING' ? null : userId,
+        reviewed_at: target === 'PENDING' ? null : new Date().toISOString(),
+      })
+      .eq('id', r.id)
+    if (updErr) {
+      setError(updErr.message.includes('review_status') ? 'Migration 033 is required for report reviews — run it in the Supabase SQL editor.' : updErr.message)
+    } else {
+      setReviewOverrides((prev) => ({ ...prev, [r.id]: target }))
+    }
+    setReviewBusy(null)
+  }
 
   // Hydration-safe origin: server snapshot renders '', the client value fills in
   // after hydration. Reading window.location directly during render makes the
@@ -96,9 +135,10 @@ export default function ReportsView({
       if (creatorFilter !== 'all' && r.creator_id !== creatorFilter) return false
       if (q && !r.chatter_name.toLowerCase().includes(q)) return false
       if (cutoff && new Date(r.shift_date).getTime() < cutoff) return false
+      if (reviewFilter !== 'all' && (reviewOverrides[r.id] ?? r.review_status ?? 'PENDING') !== reviewFilter) return false
       return true
     })
-  }, [reports, creatorFilter, chatterQuery, range])
+  }, [reports, creatorFilter, chatterQuery, range, reviewFilter, reviewOverrides])
 
   async function copyLink() {
     try {
@@ -218,6 +258,24 @@ export default function ReportsView({
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-1">
+          {REVIEW_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setReviewFilter(f.key)}
+              className="rounded-full px-3 py-1.5 text-[11.5px] font-bold"
+              style={reviewFilter === f.key
+                ? f.key === 'APPROVED'
+                  ? { background: 'var(--green)', color: '#071007' }
+                  : f.key === 'REJECTED'
+                    ? { background: 'var(--red)', color: '#fff' }
+                    : { background: 'var(--accent)', color: '#0b0d09' }
+                : { background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <span className="ml-auto text-[12px]" style={{ color: 'var(--muted)' }}>{filtered.length} report{filtered.length === 1 ? '' : 's'}</span>
       </div>
 
@@ -261,6 +319,9 @@ export default function ReportsView({
               pdfBusy={pdfBusy === r.id}
               onDelete={() => deleteReport(r)}
               deleting={deleting === r.id}
+              review={reviewOf(r)}
+              onReview={(decision) => setReview(r, decision)}
+              reviewBusy={reviewBusy === r.id}
             />
           ))}
         </div>
@@ -278,6 +339,9 @@ function ReportCard({
   pdfBusy,
   onDelete,
   deleting,
+  review,
+  onReview,
+  reviewBusy,
 }: {
   report: ShiftReport
   isAdmin: boolean
@@ -287,6 +351,9 @@ function ReportCard({
   pdfBusy: boolean
   onDelete: () => void
   deleting: boolean
+  review: ShiftReportReviewStatus
+  onReview: (decision: 'APPROVED' | 'REJECTED') => void
+  reviewBusy: boolean
 }) {
   const [open, setOpen] = useState(false)
   const money = (n: number) => `${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${r.currency}`
@@ -319,6 +386,16 @@ function ReportCard({
                   edited ×{r.edit_count}
                 </span>
               )}
+              {review !== 'PENDING' && (
+                <span
+                  className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                  style={review === 'APPROVED'
+                    ? { background: 'rgba(74,222,128,.14)', color: 'var(--green)' }
+                    : { background: 'var(--red-dim)', color: 'var(--red)' }}
+                >
+                  {review === 'APPROVED' ? 'Approved' : 'Rejected'}
+                </span>
+              )}
             </div>
             <p className="mt-0.5 text-[12px]" style={{ color: 'var(--muted)' }}>
               {dateLabel}{r.shift_label ? ` · ${r.shift_label}` : ''}{r.time_range ? ` · ${r.time_range}` : ''}
@@ -334,15 +411,43 @@ function ReportCard({
             <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Net</p>
             <p className="text-[15px] font-extrabold" style={{ color: 'var(--accent)' }}>{money(r.net_amount)}</p>
           </div>
-          <div className="flex items-center gap-1">
-            <button onClick={onPdf} disabled={pdfBusy} className="icon-button !h-8 !w-8" title="Download as PDF" aria-label="Download as PDF">
-              {pdfBusy ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
-            </button>
-            {isAdmin && (
-              <button onClick={onDelete} disabled={deleting} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" title="Delete report" aria-label="Delete report">
-                {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-1">
+              <button onClick={onPdf} disabled={pdfBusy} className="icon-button !h-8 !w-8" title="Download as PDF" aria-label="Download as PDF">
+                {pdfBusy ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
               </button>
-            )}
+              {isAdmin && (
+                <button onClick={onDelete} disabled={deleting} className="icon-button !h-8 !w-8 hover:!text-[var(--red)]" title="Delete report" aria-label="Delete report">
+                  {deleting ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onReview('APPROVED')}
+                disabled={reviewBusy}
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] border transition-colors disabled:opacity-50"
+                style={review === 'APPROVED'
+                  ? { background: 'var(--green)', borderColor: 'var(--green)', color: '#071007' }
+                  : { background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--green)' }}
+                title={review === 'APPROVED' ? 'Approved — click to undo' : 'Approve report'}
+                aria-label={review === 'APPROVED' ? 'Approved — click to undo' : 'Approve report'}
+              >
+                {reviewBusy ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+              </button>
+              <button
+                onClick={() => onReview('REJECTED')}
+                disabled={reviewBusy}
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] border transition-colors disabled:opacity-50"
+                style={review === 'REJECTED'
+                  ? { background: 'var(--red)', borderColor: 'var(--red)', color: '#fff' }
+                  : { background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--red)' }}
+                title={review === 'REJECTED' ? 'Rejected — click to undo' : 'Reject report'}
+                aria-label={review === 'REJECTED' ? 'Rejected — click to undo' : 'Reject report'}
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

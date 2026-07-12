@@ -39,7 +39,9 @@ const SECTIONS: { value: TaskSection; label: string }[] = [
 const newKey = () => Math.random().toString(36).slice(2)
 const emptyDraft = (section: TaskSection): DraftItem => ({ key: newKey(), title: '', description: '', section, priority: 'MEDIUM', checklist: '', referenceUrl: '', dueTime: '' })
 
-export default function TemplateLibrary({ templates, boards, members, isAdmin, userId }: { templates: Template[]; boards: BoardOption[]; members: MemberOption[]; isAdmin: boolean; userId: string }) {
+// isAdmin gates create/edit/delete (RLS on task_templates is admin-only);
+// canManage (admin OR manager) gates assigning — matching the assign_template RPC.
+export default function TemplateLibrary({ templates, boards, members, isAdmin, canManage, userId }: { templates: Template[]; boards: BoardOption[]; members: MemberOption[]; isAdmin: boolean; canManage: boolean; userId: string }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Template | null>(null)
   const [name, setName] = useState('')
@@ -168,7 +170,7 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, u
                 )}
 
                 <div className="mt-auto border-t pt-4" style={{ borderColor: 'var(--border)' }}>
-                  <button onClick={() => startAssign(template)} disabled={!boards.length || !isAdmin || total === 0} className="btn btn-primary w-full !min-h-10 disabled:opacity-50"><UserPlus size={14} /> Assign to member</button>
+                  <button onClick={() => startAssign(template)} disabled={!boards.length || !canManage || total === 0} className="btn btn-primary w-full !min-h-10 disabled:opacity-50"><UserPlus size={14} /> Assign to member</button>
                 </div>
               </article>
             )

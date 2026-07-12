@@ -3,6 +3,38 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-12 — Claude (Sonnet 5) — Status flow simplified, task file uploads, shift-report review, labels removed, manager template-assign
+
+**NEW migrations `031_simplify_status_flow.sql`, `032_task_file_attachments.sql`,
+`033_shift_report_review.sql`** — ⚠️ run all three BEFORE (or right after) deploying:
+- Without 031, members can't advance ASSIGNED → IN_EDIT (old trigger only allows → NOTICED);
+  admins/managers are unaffected (may do any transition).
+- Without 032, task file uploads fail with a visible error ("bucket not found").
+- Without 033, the approve/reject buttons on /reports show a graceful "migration 033 required" hint.
+
+Changes:
+- **NOTICED removed** (user decision): flow is now `ASSIGNED → IN_EDIT → DONE → APPROVED`.
+  031 migrates NOTICED rows to IN_EDIT, tightens the CHECK, and redefines
+  `enforce_task_status_transitions` — including NEW back-steps for assignees
+  (`IN_EDIT → ASSIGNED`, `DONE → IN_EDIT`) surfaced as a "Back to …" button in TaskModal.
+  `noticed_at` (12h SLA) is stamped server-side on the first move into IN_EDIT. Do NOT
+  reintroduce the NOTICED literal in TS — it's gone from the `TaskStatus` union.
+- **Real file uploads on tasks**: private `task-files` bucket, `attachments.storage_path`
+  (+`file_type`, `url` now nullable), helper `lib/taskFiles.ts` (upload/sign/delete, 15 MB cap).
+  Upload UI in TaskForm (create+edit, files upload after save) and in TaskModal's
+  "References & files" (instant upload, per-file delete for uploader/admin/manager).
+- **Labels removed from all UI** (TaskForm field, TaskModal header chips, TaskCard chips).
+  DB column stays; inserts write `labels: []`.
+- **Shift-report review**: green ✓ / red ✗ per report on /reports (admin+manager, direct
+  RLS-gated update), Pending/Approved/Rejected filter pills, optimistic state, click-again-to-undo.
+- **Template assign for managers**: the Templates page passed `isAdmin` only, so managers
+  (e.g. Marian) saw the assign button disabled even though the `assign_template` RPC allows
+  `can_manage()`. New `canManage` prop gates assign; create/edit/delete stays admin-only (RLS).
+- Private todos now toggle ASSIGNED ↔ DONE (previously NOTICED-based).
+- APP_VERSION → v0.33. Build green; live-verified on the dev server (create task without labels +
+  with Files field, ASSIGNED → IN EDIT → back to ASSIGNED as admin, reports filter pills render;
+  /reports data itself can't load locally — `.env.local` has a placeholder service-role key).
+
 ## 2026-07-11 — Claude (Opus 4.8) — Board columns = board_access members; per-user column drag
 
 **NEW migration `030_board_members_fn.sql`** — deploy-safe (the board page falls back to the old

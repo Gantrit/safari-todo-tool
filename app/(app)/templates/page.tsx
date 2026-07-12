@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { normalizeRole } from '@/lib/types'
+import { canManageTeam, normalizeRole } from '@/lib/types'
 import TemplateLibrary from './TemplateLibrary'
 
 export default async function TemplatesPage() {
@@ -34,5 +34,5 @@ export default async function TemplatesPage() {
     supabase.from('workspace_members').select('workspace_id, profiles(id, full_name, email)').order('workspace_id'),
   ])
 
-  return <div className="page-shell"><TemplateLibrary templates={(templates || []) as any} boards={(boards || []) as any} members={(workspaceMembers || []) as any} isAdmin={role === 'admin'} userId={user!.id} /></div>
+  return <div className="page-shell"><TemplateLibrary templates={(templates || []) as any} boards={(boards || []) as any} members={(workspaceMembers || []) as any} isAdmin={role === 'admin'} canManage={canManageTeam(role)} userId={user!.id} /></div>
 }

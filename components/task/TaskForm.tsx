@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Task, Priority, TaskSection, Profile } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { TASK_FILE_ACCEPT, uploadTaskFiles } from '@/lib/taskFiles'
 import { berlinDefaultDeadline, getInitials } from '@/lib/utils'
-import { Bell, Check, ChevronDown, Link2, ListChecks, Loader2, Repeat2 } from 'lucide-react'
+import { Bell, Check, ChevronDown, Link2, ListChecks, Loader2, Paperclip, Repeat2, X } from 'lucide-react'
 
 interface TaskFormProps {
   boardId: string
@@ -40,10 +41,18 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
   const [recurringFrequency, setRecurringFrequency] = useState<string>(task?.recurring_frequency || 'WEEKLY')
   const [remind3d, setRemind3d] = useState(!!task?.remind_3d)
   const [remind24h, setRemind24h] = useState(!!task?.remind_24h)
-  const [labels, setLabels] = useState((task?.labels || []).join(', '))
+  const [files, setFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [supabase] = useState(() => createClient())
+
+  const addFiles = (list: FileList | null) => {
+    if (!list?.length) return
+    setFiles((prev) => [...prev, ...Array.from(list)])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index))
 
   const toggleAssignee = (id: string) => {
     setAssignedTo((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
@@ -76,15 +85,25 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
         google_drive_url: referenceUrl.trim() || null,
         recurring_enabled: recurringEnabled,
         recurring_frequency: recurringEnabled ? recurringFrequency : null,
-        labels: labels.split(',').map((label) => label.trim()).filter(Boolean),
-      }).eq('id', task.id).select('*, checklist_items(*), assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)').single()
+      }).eq('id', task.id).select('*, checklist_items(*), attachments(*), assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)').single()
 
       if (updateError || !data) {
         setError(updateError?.message || 'Task could not be updated.')
         setLoading(false)
         return
       }
-      onUpdated?.({ ...(data as Task), assignee_ids: assignedTo })
+      let updatedAttachments = (data as Task).attachments || []
+      if (files.length > 0) {
+        try {
+          const created = await uploadTaskFiles(supabase, task.id, files, currentUser.id)
+          updatedAttachments = [...updatedAttachments, ...created]
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'A file could not be uploaded.')
+          setLoading(false)
+          return
+        }
+      }
+      onUpdated?.({ ...(data as Task), assignee_ids: assignedTo, attachments: updatedAttachments })
       return
     }
 
@@ -109,7 +128,7 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       google_drive_url: referenceUrl.trim() || null,
       recurring_enabled: recurringEnabled,
       recurring_frequency: recurringEnabled ? recurringFrequency : null,
-      labels: labels.split(',').map((label) => label.trim()).filter(Boolean),
+      labels: [],
     }).select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)').single()
 
     if (insertError || !data) {
@@ -141,7 +160,18 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
       return
     }
 
-    onCreated({ ...(data as Task), assignee_ids: assignedTo, checklist_items: savedChecklist as any })
+    let createdAttachments: Task['attachments'] = []
+    if (files.length > 0) {
+      try {
+        createdAttachments = await uploadTaskFiles(supabase, data.id, files, currentUser.id)
+      } catch (err) {
+        setError(`Task created, but a file could not be uploaded: ${err instanceof Error ? err.message : 'unknown error'}`)
+        setLoading(false)
+        return
+      }
+    }
+
+    onCreated({ ...(data as Task), assignee_ids: assignedTo, checklist_items: savedChecklist as any, attachments: createdAttachments })
   }
 
   const fieldClass = 'create-task-control'
@@ -172,9 +202,26 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
               <p className="mt-2.5 text-[11.5px] leading-5" style={{ color: 'var(--muted)' }}>One checklist item per line.</p>
             </div>
           )}
-          <div className="create-task-paired">
-            <div className={groupClass}><label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><Link2 size={13} /> Reference link</label><input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="Drive, brief, or SOP URL" /></div>
-            <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Labels</label><input value={labels} onChange={(e) => setLabels(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="design, review" /></div>
+          <div className={groupClass}><label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><Link2 size={13} /> Reference link</label><input value={referenceUrl} onChange={(e) => setReferenceUrl(e.target.value)} className={fieldClass} style={fieldStyle} placeholder="Drive, brief, or SOP URL" /></div>
+          <div className={groupClass}>
+            <label className={`${labelClass} flex items-center gap-2`} style={{ color: 'var(--text-secondary)' }}><Paperclip size={13} /> Files</label>
+            <input ref={fileInputRef} type="file" multiple accept={TASK_FILE_ACCEPT} className="hidden" onChange={(e) => addFiles(e.target.files)} />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex min-h-11 w-full items-center gap-2.5 rounded-[10px] border border-dashed px-3.5 text-left text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--muted)' }}>
+              <Paperclip size={13} /> Attach files — screenshots, PDFs, docs…
+            </button>
+            {files.length > 0 && (
+              <div className="mt-2.5 space-y-1.5">
+                {files.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-[8px] border px-3 py-1.5 text-[11.5px] font-semibold" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                    <Paperclip size={11} className="flex-none" style={{ color: 'var(--accent)' }} />
+                    <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                    <span className="flex-none text-[10px]" style={{ color: 'var(--muted)' }}>{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                    <button type="button" onClick={() => removeFile(index)} className="flex-none opacity-60 hover:opacity-100" style={{ color: 'var(--red)' }} aria-label={`Remove ${file.name}`}><X size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-2 text-[11.5px] leading-5" style={{ color: 'var(--muted)' }}>Uploaded when the task is saved. Max 15 MB per file.</p>
           </div>
         </div>
 

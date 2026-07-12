@@ -1,16 +1,11 @@
 import { TaskStatus } from '@/lib/types'
-import { AlertTriangle, Check, Circle, Eye, XCircle, Zap } from 'lucide-react'
+import { AlertTriangle, Check, Circle, XCircle, Zap } from 'lucide-react'
 
 const STATUS_CONFIG: Record<TaskStatus, { icon: React.ReactNode; color: string; label: string; pulse?: boolean }> = {
   ASSIGNED: {
     icon: <Circle size={10} />,
     color: 'var(--muted)',
     label: 'ASSIGNED',
-  },
-  NOTICED: {
-    icon: <Eye size={10} />,
-    color: 'var(--amber)',
-    label: 'NOTICED',
   },
   IN_EDIT: {
     icon: <Zap size={10} />,
@@ -36,7 +31,8 @@ const STATUS_CONFIG: Record<TaskStatus, { icon: React.ReactNode; color: string; 
 }
 
 export default function StatusBadge({ status }: { status: TaskStatus }) {
-  const { icon, color, label, pulse } = STATUS_CONFIG[status]
+  // Fallback covers any stale status value (e.g. a cached NOTICED task pre-migration 031).
+  const { icon, color, label, pulse } = STATUS_CONFIG[status] || STATUS_CONFIG.IN_EDIT
   return (
     <span
       className={`inline-flex min-h-6 items-center gap-1.5 rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[.055em] ${pulse ? 'pulse-blue' : ''}`}

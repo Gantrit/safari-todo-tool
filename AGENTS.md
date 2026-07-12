@@ -26,9 +26,11 @@ stay lean — not a heavy PM/KPI tool.
 (member rows, table, selection, columns — the Focus view was removed 2026-07-07). Plus
 Calendar, Archive, per-user Private todos.
 
-**Status flow** (enforced by RLS trigger, migration 007):
-`ASSIGNED → NOTICED → IN_EDIT → DONE → APPROVED`, plus `REJECTED` and a `NEED_CLARIFICATION`
-flag. Assignee drives up to `DONE`; only admin/manager can `APPROVE`/`REJECT`/reopen. On approval
+**Status flow** (enforced by DB trigger; simplified in migration 031 — NOTICED was removed):
+`ASSIGNED → IN_EDIT → DONE → APPROVED`, plus `REJECTED` and a `NEED_CLARIFICATION` flag.
+Assignees may also step BACK one status (`IN_EDIT → ASSIGNED`, `DONE → IN_EDIT`) to undo an
+accidental click. The first move into `IN_EDIT` stamps `noticed_at` (12h notice SLA unchanged).
+Assignee drives up to `DONE`; only admin/manager can `APPROVE`/`REJECT`/reopen. On approval
 the task is archived and XP awarded.
 
 **Roles:** `admin` (full control), `manager` (task approval + most admin task rights), `employee`
@@ -51,8 +53,11 @@ table (migration 018, edited via Settings → XP Management) — never hardcode 
 
 **Other features:** comments, subtasks/checklists (tickable in the expanded board card and the
 task modal), in-app task editing (admin/manager/creator, via TaskForm's edit mode), per-task
-reference links, in-app + email notifications, quests, admin audit log with filters, soft delete
-(`deleted_at`, admin-recoverable).
+reference links, real file uploads on tasks (migration 032: private `task-files` bucket,
+`attachments.storage_path`, signed URLs minted client-side; helper `lib/taskFiles.ts`), in-app +
+email notifications, quests, admin audit log with filters, soft delete (`deleted_at`,
+admin-recoverable). The old `labels` field still exists in the DB but was removed from the UI
+(2026-07-12). Templates: admins create/edit (RLS), admins AND managers assign.
 
 **Shift Reports (migrations 023 + 024):** chatters (incl. external ones with NO account) submit
 end-of-shift reports at the PUBLIC `/submit-report` page → `/api/shift-report/submit` (service
@@ -62,7 +67,9 @@ role, strict server-side validation via `lib/shiftReport.ts`, ≤6 files ≤8 MB
 enforced server-side; every edit notifies active admins/managers in-app (notification type
 `shift_report`, old → new diff in the message). Admin/manager read reports at `/reports`
 (signed URLs, filters, copy-link, per-report + multi-select **PDF export** via jspdf in
-`lib/shiftReportPdf.ts`); admins can hard-delete a report incl. its files
+`lib/shiftReportPdf.ts`); admin/manager can **approve/reject** each report (migration 033:
+`review_status` PENDING/APPROVED/REJECTED + reviewer/timestamp, filter pills on /reports,
+clicking the active decision resets to Pending); admins can hard-delete a report incl. its files
 (`/api/shift-report/delete`). The public form also offers a PDF download after submitting.
 Models for the form dropdown are managed in Settings → Creators / Models
 (`/api/shift-report/creators`, admin-only). `creator_name` is snapshotted at submit time;
@@ -111,9 +118,9 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`027`, run in
-order in the Supabase SQL editor (001–030 applied in prod as of 2026-07-11; next free
-number: **031**). The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`033`, run in
+order in the Supabase SQL editor (001–030 applied in prod as of 2026-07-11; **031–033 written
+2026-07-12, NOT yet applied** — next free number: **034**). The sidebar shows `APP_VERSION` from `lib/version.ts` — bump its
 minor number to match the latest migration whenever a new one ships.
 Env vars / deploy steps: [`SETUP.md`](SETUP.md). Compact live status: [`docs/current_status.md`](docs/current_status.md).
 

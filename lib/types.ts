@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'manager' | 'employee' | 'guest'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
-export type TaskStatus = 'ASSIGNED' | 'NOTICED' | 'IN_EDIT' | 'DONE' | 'APPROVED' | 'REJECTED'
+export type TaskStatus = 'ASSIGNED' | 'IN_EDIT' | 'DONE' | 'APPROVED' | 'REJECTED'
 export type TaskSection = 'DAILY' | 'WEEKLY' | 'MONTHLY'
 export type BoardType = 'kanban' | 'calendar'
 export type NotificationType =
@@ -147,8 +147,12 @@ export interface Reaction {
 export interface Attachment {
   id: string
   task_id: string
-  url: string
+  /** External link attachments. NULL for uploaded files (see storage_path). */
+  url: string | null
   label: string
+  /** Object path inside the private `task-files` bucket for uploaded files. */
+  storage_path?: string | null
+  file_type?: string | null
   created_by: string
   created_at: string
 }
@@ -325,6 +329,8 @@ export interface ShiftReportFile {
   signed_url?: string | null
 }
 
+export type ShiftReportReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
 export interface ShiftReport {
   id: string
   creator_id: string | null
@@ -349,6 +355,10 @@ export interface ShiftReport {
   // The token itself is never included in the reports list — only the submitter has it.
   edit_count?: number
   last_edited_at?: string | null
+  // Manager review (migration 033)
+  review_status?: ShiftReportReviewStatus
+  reviewed_by?: string | null
+  reviewed_at?: string | null
   creator?: ShiftReportCreator | null
   files?: ShiftReportFile[]
 }

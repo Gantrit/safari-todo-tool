@@ -33,7 +33,7 @@ export default function PrivateTodos({ tasks: initial, profile }: PrivateTodosPr
         created_by: profile.id,
         title: title.trim(),
         priority,
-        status: 'NOTICED',
+        status: 'ASSIGNED',
         section: 'DAILY',
         due_date: dueDate || null,
         xp_awarded: false,
@@ -53,7 +53,7 @@ export default function PrivateTodos({ tasks: initial, profile }: PrivateTodosPr
   }
 
   async function toggleDone(task: Task) {
-    const next = task.status === 'DONE' ? 'NOTICED' : 'DONE'
+    const next = task.status === 'DONE' ? 'ASSIGNED' : 'DONE'
     if (next === 'DONE') playSound('done')
     await supabase.from('tasks').update({ status: next }).eq('id', task.id)
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: next } : t)))

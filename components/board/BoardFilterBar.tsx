@@ -9,7 +9,6 @@ import { SlidersHorizontal, X } from 'lucide-react'
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
   { value: 'ASSIGNED', label: 'Assigned' },
-  { value: 'NOTICED', label: 'Noticed' },
   { value: 'IN_EDIT', label: 'In edit' },
   { value: 'DONE', label: 'Approval' },
   { value: 'APPROVED', label: 'Approved' },

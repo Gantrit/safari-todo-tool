@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { Task, TaskStatus, Profile, canManageTeam, isViewerRole, canWriteTasks } from '@/lib/types'
+import { useEffect, useRef, useState } from 'react'
+import { Task, TaskStatus, Attachment, Profile, canManageTeam, isViewerRole, canWriteTasks } from '@/lib/types'
+import { TASK_FILE_ACCEPT, deleteAttachment, signAttachmentUrl, uploadTaskFiles } from '@/lib/taskFiles'
 import { celebrateApproval, celebrateTaskDone, feedbackReject, playSound } from '@/lib/gamification'
 import Modal from '../ui/Modal'
 import StatusBadge from '../ui/StatusBadge'
 import PriorityBadge from '../ui/PriorityBadge'
 import { deadlineLabel, formatDate, formatRelative, getInitials, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle, Bell, CalendarDays, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, MessageSquare, Pencil, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
+import { AlertTriangle, Bell, CalendarDays, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, MessageSquare, Paperclip, Pencil, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
 import CommentSection from './CommentSection'
 import SubtaskList from './SubtaskList'
 
@@ -22,12 +23,18 @@ interface TaskModalProps {
 }
 
 const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
-  ASSIGNED: 'NOTICED',
-  NOTICED: 'IN_EDIT',
+  ASSIGNED: 'IN_EDIT',
   IN_EDIT: 'DONE',
   DONE: null,
   APPROVED: null,
   REJECTED: 'IN_EDIT',
+}
+
+// One step back, for accidental clicks. The DB trigger (migration 031) allows
+// exactly these two for assignees/creators.
+const STATUS_BACK: Partial<Record<TaskStatus, TaskStatus>> = {
+  IN_EDIT: 'ASSIGNED',
+  DONE: 'IN_EDIT',
 }
 
 export default function TaskModal({ task, currentUser, members, onClose, onUpdate, onEdit }: TaskModalProps) {
@@ -35,7 +42,55 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   const [resultUrl, setResultUrl] = useState(task.result_url || '')
   const [showResultInput, setShowResultInput] = useState(false)
   const [clarificationNote, setClarificationNote] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>(task.attachments || [])
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
+  const [uploading, setUploading] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+
+  // Uploaded files live in a private bucket — mint a signed URL per attachment.
+  useEffect(() => {
+    let cancelled = false
+    const pending = attachments.filter((a) => a.storage_path && !signedUrls[a.id])
+    if (pending.length === 0) return
+    ;(async () => {
+      const entries = await Promise.all(pending.map(async (a) => [a.id, await signAttachmentUrl(supabase, a)] as const))
+      const resolved = entries.filter((entry): entry is [string, string] => !!entry[1])
+      if (!cancelled) setSignedUrls((prev) => ({ ...prev, ...Object.fromEntries(resolved) }))
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments])
+
+  async function handleFilesChosen(list: FileList | null) {
+    if (!list?.length) return
+    setUploading(true)
+    setFileError(null)
+    try {
+      const created = await uploadTaskFiles(supabase, task.id, Array.from(list), currentUser.id)
+      const next = [...attachments, ...created]
+      setAttachments(next)
+      onUpdate({ ...task, attachments: next })
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : 'Upload failed.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function removeAttachment(attachment: Attachment) {
+    if (!confirm(`Remove "${attachment.label || 'this file'}"?`)) return
+    try {
+      await deleteAttachment(supabase, attachment)
+      const next = attachments.filter((a) => a.id !== attachment.id)
+      setAttachments(next)
+      onUpdate({ ...task, attachments: next })
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : 'Could not remove the file.')
+    }
+  }
 
   const canManage = canManageTeam(currentUser.role)
   const isViewer = isViewerRole(currentUser.role)
@@ -55,7 +110,9 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
     setUpdating(true)
 
     const patch: Record<string, unknown> = { status: next }
-    if (next === 'NOTICED') patch.noticed_at = new Date().toISOString()
+    // First move into IN_EDIT counts as "noticed" for the 12h SLA (the DB
+    // trigger stamps it too — this keeps the optimistic UI consistent).
+    if (next === 'IN_EDIT' && task.status === 'ASSIGNED' && !task.noticed_at) patch.noticed_at = new Date().toISOString()
     if (next === 'DONE') patch.completed_at = new Date().toISOString()
 
     const { data, error } = await supabase
@@ -116,7 +173,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
     await supabase.from('comments').insert({ task_id: task.id, user_id: currentUser.id, content: `Need clarification: ${clarificationNote.trim()}` })
     const { data } = await supabase
       .from('tasks')
-      .update({ needs_clarification: true, clarification_note: clarificationNote.trim(), status: task.status === 'ASSIGNED' ? 'NOTICED' : task.status, noticed_at: task.noticed_at || new Date().toISOString() })
+      .update({ needs_clarification: true, clarification_note: clarificationNote.trim(), noticed_at: task.noticed_at || new Date().toISOString() })
       .eq('id', task.id)
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
       .single()
@@ -141,10 +198,12 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   }
 
   const nextStatus = STATUS_FLOW[task.status]
+  const backStatus = STATUS_BACK[task.status]
+  const canStepBack = !!backStatus && !isViewer && (canManage || isAssignee || task.created_by === currentUser.id)
   const deadline = task.deadline_at || task.due_date || null
   const overdue = isOverdue(deadline) && task.status !== 'APPROVED'
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
-  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || (canManage && task.status === 'DONE') || (canManage && ['APPROVED', 'REJECTED'].includes(task.status))
+  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || canStepBack || (canManage && task.status === 'DONE') || (canManage && ['APPROVED', 'REJECTED'].includes(task.status))
 
   return (
     <Modal open={true} onClose={onClose} size="2xl">
@@ -157,7 +216,6 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
               {overdue && <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full px-2 text-[10px] font-extrabold uppercase tracking-[.055em]" style={{ color: 'var(--red)', background: 'var(--red-dim)', border: '1px solid rgba(255,98,98,.32)' }}><AlertTriangle size={10} /> Overdue</span>}
             </div>
             <h2 className="max-w-3xl text-[22px] font-extrabold leading-[1.35] tracking-[-.025em] sm:text-[25px]" style={{ color: 'var(--text)', textDecoration: task.status === 'APPROVED' ? 'line-through' : 'none', opacity: task.status === 'APPROVED' ? 0.6 : 1 }}>{task.title}</h2>
-            {!!task.labels?.length && <div className="mt-3 flex flex-wrap gap-1.5">{task.labels.map((label, index) => <span key={index} className="rounded-full border px-2.5 py-1 text-[10px] font-bold" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>{label}</span>)}</div>}
           </div>
           <button onClick={onClose} className="icon-button flex-none" aria-label="Close task details"><X size={17} /></button>
         </header>
@@ -178,11 +236,36 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
               <SectionHeading icon={<Link2 size={14} />} title="Files & delivery" />
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>References</p>
+                  <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>References & files</p>
                   <div className="space-y-2.5">
                     {(task.reference_url || task.google_drive_url) && <a href={task.reference_url || task.google_drive_url || '#'} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--accent)' }}><FolderOpen size={14} /> Open reference <ExternalLink className="ml-auto" size={12} /></a>}
-                    {(task.attachments || []).map((attachment) => <a key={attachment.id} href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold transition-colors hover:border-[var(--border-strong)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--blue)' }}><ExternalLink size={13} /><span className="truncate">{attachment.label || attachment.url}</span></a>)}
-                    {!task.reference_url && !task.google_drive_url && !(task.attachments || []).length && <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>No references or attachments.</p>}
+                    {attachments.map((attachment) => {
+                      const href = attachment.storage_path ? signedUrls[attachment.id] : attachment.url
+                      const canRemove = canManage || attachment.created_by === currentUser.id
+                      return (
+                        <div key={attachment.id} className="flex min-h-10 items-center gap-2.5 rounded-[9px] border px-3 text-xs font-semibold" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                          {href ? (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-2.5 transition-colors hover:opacity-80" style={{ color: 'var(--blue)' }}>
+                              {attachment.storage_path ? <Paperclip size={13} className="flex-none" /> : <ExternalLink size={13} className="flex-none" />}
+                              <span className="truncate">{attachment.label || attachment.url}</span>
+                            </a>
+                          ) : (
+                            <span className="flex min-w-0 flex-1 items-center gap-2.5" style={{ color: 'var(--muted)' }}><Paperclip size={13} className="flex-none" /><span className="truncate">{attachment.label}</span></span>
+                          )}
+                          {canRemove && <button onClick={() => removeAttachment(attachment)} className="flex-none opacity-60 transition-opacity hover:opacity-100" style={{ color: 'var(--red)' }} aria-label={`Remove ${attachment.label}`}><X size={12} /></button>}
+                        </div>
+                      )
+                    })}
+                    {!task.reference_url && !task.google_drive_url && !attachments.length && <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>No references or files.</p>}
+                    {canWrite && (
+                      <>
+                        <input ref={fileInputRef} type="file" multiple accept={TASK_FILE_ACCEPT} className="hidden" onChange={(e) => handleFilesChosen(e.target.files)} />
+                        <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex min-h-10 w-full items-center gap-2.5 rounded-[9px] border border-dashed px-3 text-left text-xs font-semibold transition-colors hover:border-[var(--border-strong)] disabled:opacity-50" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>
+                          <Plus size={13} /> {uploading ? 'Uploading…' : 'Upload file'}
+                        </button>
+                      </>
+                    )}
+                    {fileError && <p className="text-[11px] leading-4" style={{ color: 'var(--red)' }}>{fileError}</p>}
                   </div>
                 </div>
                 <div>
@@ -211,6 +294,26 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
               className="btn btn-primary min-h-12 w-full"
             >
               <ChevronRight size={15} /> Mark as {nextStatus.replace('_', ' ')}
+            </button>
+          )}
+          {canStepBack && backStatus && task.status !== 'DONE' && (
+            <button
+              onClick={() => updateStatus(backStatus)}
+              disabled={updating}
+              className="mt-2 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50"
+              style={{ color: 'var(--muted)' }}
+            >
+              <RotateCcw size={12} /> Back to {backStatus.replace('_', ' ')}
+            </button>
+          )}
+          {canStepBack && backStatus && task.status === 'DONE' && !canManage && (
+            <button
+              onClick={() => updateStatus(backStatus)}
+              disabled={updating}
+              className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50"
+              style={{ color: 'var(--muted)' }}
+            >
+              <RotateCcw size={12} /> Back to {backStatus.replace('_', ' ')}
             </button>
           )}
 

@@ -129,14 +129,6 @@ export default function TaskCard({ task, onClick, currentUser, onDelete, showAss
               <p className="mb-3 text-[12.5px] leading-6" style={{ color: 'var(--text-secondary)' }}>{task.description}</p>
             )}
 
-            {task.labels && task.labels.length > 0 && (
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {task.labels.map((label, i) => (
-                  <span key={i} className="rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: 'var(--surface2)', color: 'var(--muted)', border: '1px solid var(--border)' }}>{label}</span>
-                ))}
-              </div>
-            )}
-
             {subtaskCount > 0 && (
               <div className="mb-3">
                 <button

@@ -43,7 +43,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="h-full overflow-auto">
-      <ReportsView reports={withSigned} creators={creators || []} isAdmin={profile?.role === 'admin'} />
+      <ReportsView reports={withSigned} creators={creators || []} isAdmin={profile?.role === 'admin'} userId={user!.id} />
     </div>
   )
 }
