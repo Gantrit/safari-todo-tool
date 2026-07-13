@@ -5,6 +5,12 @@ export const metadata = {
   title: 'Submit Shift Report · Safari To-Dos',
 }
 
+// Always render at request time: this page lists the current models and members
+// from the DB. Since createAdminClient no longer reads cookies, the page has no
+// implicit dynamic dependency and would otherwise be prerendered once at build
+// time, freezing that list until the next deploy.
+export const dynamic = 'force-dynamic'
+
 // Public page (no login) — see middleware `isPublicRoute`. Internal and external
 // chatters submit their end-of-shift report here. Creators are read with the
 // service role so the table never needs anonymous access.
