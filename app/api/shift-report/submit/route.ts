@@ -29,7 +29,17 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (insertError || !report) {
-      return NextResponse.json({ error: 'Could not save the report. Please try again.' }, { status: 500 })
+      // Surface the real cause — this was silently swallowed before, which made a
+      // missing-column error (a prod migration not yet applied) undebuggable.
+      console.error('[shift-report/submit] insert failed:', insertError?.code, insertError?.message, insertError?.details)
+      // 42703 = undefined_column (Postgres), PGRST204 = column not in PostgREST
+      // schema cache — both mean a shift_reports migration hasn't been applied yet.
+      const schemaGap = insertError?.code === '42703' || insertError?.code === 'PGRST204' || /column/i.test(insertError?.message || '')
+      return NextResponse.json({
+        error: schemaGap
+          ? 'The report could not be saved because the database is missing a column. An admin needs to apply the latest migrations.'
+          : 'Could not save the report. Please try again.',
+      }, { status: 500 })
     }
 
     const fileRows = await uploadReportFiles(form, supabase, report.id)
@@ -48,7 +58,8 @@ export async function POST(req: NextRequest) {
       .maybeSingle()
 
     return NextResponse.json({ success: true, uploaded: fileRows.length, edit_token: tokenRow?.edit_token ?? null })
-  } catch {
+  } catch (err) {
+    console.error('[shift-report/submit] unexpected error:', err)
     return NextResponse.json({ error: 'Server error. Please try again.' }, { status: 500 })
   }
 }

@@ -119,7 +119,13 @@ export async function POST(req: NextRequest) {
       .eq('id', report.id)
 
     if (updateError) {
-      return NextResponse.json({ error: 'Could not save the changes. Please try again.' }, { status: 500 })
+      console.error('[shift-report/edit] update failed:', updateError.code, updateError.message, updateError.details)
+      const schemaGap = updateError.code === '42703' || updateError.code === 'PGRST204' || /column/i.test(updateError.message || '')
+      return NextResponse.json({
+        error: schemaGap
+          ? 'The changes could not be saved because the database is missing a column. An admin needs to apply the latest migrations.'
+          : 'Could not save the changes. Please try again.',
+      }, { status: 500 })
     }
 
     // ---- Notify every active admin/manager in-app ----
