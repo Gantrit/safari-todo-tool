@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Task, Profile, Priority } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import { Plus, Check, Trash2 } from 'lucide-react'
 import { playSound } from '@/lib/gamification'
 import PriorityBadge from '@/components/ui/PriorityBadge'
@@ -21,7 +20,6 @@ export default function PrivateTodos({ tasks: initial, profile }: PrivateTodosPr
   const [priority, setPriority] = useState<Priority>('MEDIUM')
   const [dueDate, setDueDate] = useState('')
   const supabase = createClient()
-  const router = useRouter()
 
   async function addTask() {
     if (!title.trim()) return

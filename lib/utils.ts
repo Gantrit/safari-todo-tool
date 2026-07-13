@@ -1,12 +1,6 @@
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
 import { format, formatDistanceToNow, isPast, differenceInCalendarDays, differenceInHours, endOfMonth, endOfWeek, setHours, setMinutes, setSeconds } from 'date-fns'
 import type { Task, TaskStatus, Priority } from './types'
 import { canManageTeam } from './types'
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
 
 export function formatDate(date: string | null) {
   if (!date) return null
@@ -47,11 +41,6 @@ export function berlinDefaultDeadline(section: string) {
   return atEndOfDay(now)
 }
 
-export function noticeSlaMissed(createdAt: string, status: string, noticedAt?: string | null) {
-  if (status !== 'ASSIGNED' || noticedAt) return false
-  return Date.now() - new Date(createdAt).getTime() > 12 * 60 * 60 * 1000
-}
-
 export function getInitials(name: string) {
   return name
     .split(' ')
@@ -59,10 +48,6 @@ export function getInitials(name: string) {
     .join('')
     .toUpperCase()
     .slice(0, 2)
-}
-
-export function generateId() {
-  return Math.random().toString(36).slice(2, 11)
 }
 
 /**
@@ -121,8 +106,8 @@ export function getUrgency(deadline: string | null, status?: TaskStatus): Urgenc
 }
 
 /**
- * Whether a task is within its near-deadline XP-bonus window (see
- * NEAR_DEADLINE_WINDOW_HOURS in lib/types.ts) — future deadline, not yet settled.
+ * Whether a task is within its near-deadline XP-bonus window (24h before the
+ * deadline) — future deadline, not yet settled.
  */
 export function isNearDeadline(deadline: string | null, status?: TaskStatus): boolean {
   if (!deadline || status === 'APPROVED' || status === 'REJECTED') return false

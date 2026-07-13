@@ -8,11 +8,10 @@ import { Plus, Check } from 'lucide-react'
 interface SubtaskListProps {
   taskId: string
   subtasks: Array<Subtask | ChecklistItem>
-  members: Profile[]
   currentUser: Profile
 }
 
-export default function SubtaskList({ taskId, subtasks: initial, members, currentUser }: SubtaskListProps) {
+export default function SubtaskList({ taskId, subtasks: initial, currentUser }: SubtaskListProps) {
   const [subtasks, setSubtasks] = useState<Array<Subtask | ChecklistItem>>(initial)
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')

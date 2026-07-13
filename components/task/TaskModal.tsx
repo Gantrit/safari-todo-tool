@@ -16,7 +16,6 @@ import SubtaskList from './SubtaskList'
 interface TaskModalProps {
   task: Task
   currentUser: Profile
-  members: Profile[]
   onClose: () => void
   onUpdate: (task: Task) => void
   onEdit?: (task: Task) => void
@@ -37,7 +36,7 @@ const STATUS_BACK: Partial<Record<TaskStatus, TaskStatus>> = {
   DONE: 'IN_EDIT',
 }
 
-export default function TaskModal({ task, currentUser, members, onClose, onUpdate, onEdit }: TaskModalProps) {
+export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit }: TaskModalProps) {
   const [updating, setUpdating] = useState(false)
   const [resultUrl, setResultUrl] = useState(task.result_url || '')
   const [showResultInput, setShowResultInput] = useState(false)
@@ -254,7 +253,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
 
             <section className="rounded-[12px] border p-5 sm:p-6" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
               <SectionHeading icon={<ListChecks size={14} />} title="Checklist" meta={`${(task.checklist_items || task.subtasks || []).filter((item) => item.done).length}/${(task.checklist_items || task.subtasks || []).length}`} />
-              <SubtaskList taskId={task.id} subtasks={task.checklist_items || task.subtasks || []} members={members} currentUser={currentUser} />
+              <SubtaskList taskId={task.id} subtasks={task.checklist_items || task.subtasks || []} currentUser={currentUser} />
             </section>
 
             <section className="rounded-[12px] border p-5 sm:p-6" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>

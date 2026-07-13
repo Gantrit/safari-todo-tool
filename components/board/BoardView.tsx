@@ -490,7 +490,6 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
           onClose={() => setSelectedTask(null)}
           onUpdate={handleTaskUpdate}
           onEdit={(t) => { setSelectedTask(null); setEditingTask(t) }}
-          members={members}
         />
       )}
 
