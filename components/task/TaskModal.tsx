@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Task, TaskStatus, Attachment, Profile, canManageTeam, isViewerRole, canWriteTasks } from '@/lib/types'
+import { Task, TaskStatus, Attachment, Profile, canManageTeam, isViewerRole, canWriteTasks, isAdminRole, normalizeRole } from '@/lib/types'
 import { TASK_FILE_ACCEPT, deleteAttachment, signAttachmentUrl, uploadTaskFiles } from '@/lib/taskFiles'
 import { celebrateApproval, celebrateTaskDone, feedbackReject, playSound } from '@/lib/gamification'
 import Modal from '../ui/Modal'
@@ -105,6 +105,25 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
     return canManage || isAssignee || task.created_by === currentUser.id
   }
 
+  // The status/clarification/result/approval queries below only re-select the
+  // task's own columns (+ profiles), NOT its relations. Without this, every such
+  // update would hand the board a task object with attachments/checklist/comments
+  // stripped off — so a freshly uploaded file would vanish from the card and the
+  // reopened modal until a full page refresh reloaded them. Carry the relations
+  // we already hold (attachments from local state, the rest from the current
+  // prop) across every update so nothing is dropped.
+  function withRelations(data: Task): Task {
+    return {
+      ...data,
+      attachments,
+      checklist_items: task.checklist_items ?? data.checklist_items,
+      subtasks: task.subtasks ?? data.subtasks,
+      comments: task.comments ?? data.comments,
+      assignee_ids: task.assignee_ids ?? data.assignee_ids,
+      assignee_profiles: task.assignee_profiles ?? data.assignee_profiles,
+    }
+  }
+
   async function updateStatus(next: TaskStatus) {
     if (!next) return
     setUpdating(true)
@@ -125,7 +144,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
     if (!error && data) {
       if (next === 'DONE') celebrateTaskDone()
       else playSound('click')
-      onUpdate(data as Task)
+      onUpdate(withRelations(data as Task))
     }
     setUpdating(false)
   }
@@ -163,7 +182,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
     }
 
     const fresh = await refetchTask()
-    if (fresh) onUpdate(fresh)
+    if (fresh) onUpdate(withRelations(fresh))
     setUpdating(false)
   }
 
@@ -177,7 +196,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
       .eq('id', task.id)
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
       .single()
-    if (data) onUpdate(data as Task)
+    if (data) onUpdate(withRelations(data as Task))
     setClarificationNote('')
     setUpdating(false)
   }
@@ -192,7 +211,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*)')
       .single()
 
-    if (data) onUpdate(data as Task)
+    if (data) onUpdate(withRelations(data as Task))
     setShowResultInput(false)
     setUpdating(false)
   }
@@ -203,7 +222,13 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
   const deadline = task.deadline_at || task.due_date || null
   const overdue = isOverdue(deadline) && task.status !== 'APPROVED'
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
-  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || canStepBack || (canManage && task.status === 'DONE') || (canManage && ['APPROVED', 'REJECTED'].includes(task.status))
+  // Admins may approve/reject/reopen anything. Managers only for tasks whose
+  // assignees are all members, and never their own — matches migration 035.
+  const canApproveThisTask = canManage && (
+    isAdminRole(currentUser.role) ||
+    (!isAssignee && assignees.every((a) => normalizeRole(a.role) === 'employee'))
+  )
+  const hasStatusAction = (canAdvanceStatus() && !!nextStatus) || canStepBack || (canApproveThisTask && task.status === 'DONE') || (canApproveThisTask && ['APPROVED', 'REJECTED'].includes(task.status))
 
   return (
     <Modal open={true} onClose={onClose} size="2xl">
@@ -306,7 +331,7 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
               <RotateCcw size={12} /> Back to {backStatus.replace('_', ' ')}
             </button>
           )}
-          {canStepBack && backStatus && task.status === 'DONE' && !canManage && (
+          {canStepBack && backStatus && task.status === 'DONE' && !canApproveThisTask && (
             <button
               onClick={() => updateStatus(backStatus)}
               disabled={updating}
@@ -317,15 +342,20 @@ export default function TaskModal({ task, currentUser, members, onClose, onUpdat
             </button>
           )}
 
-          {canManage && task.status === 'DONE' && (
+          {canApproveThisTask && task.status === 'DONE' && (
             <div className="space-y-2.5">
               <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>Approve task</button>
               <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}><XCircle size={14} /> Reject task</button>
               <button onClick={() => adminDecision('REJECTED', true)} disabled={updating} className="w-full px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ color: 'var(--red)' }}>Reject with -5 XP quality issue</button>
             </div>
           )}
+          {canManage && !canApproveThisTask && task.status === 'DONE' && (
+            <p className="rounded-[9px] border px-3.5 py-3 text-xs leading-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>
+              {isAssignee ? 'You cannot approve your own task — ask an admin.' : 'Only admins can approve tasks assigned to a manager or admin.'}
+            </p>
+          )}
 
-          {canManage && ['APPROVED', 'REJECTED'].includes(task.status) && (
+          {canApproveThisTask && ['APPROVED', 'REJECTED'].includes(task.status) && (
             <button onClick={() => adminDecision('IN_EDIT')} disabled={updating} className="btn btn-secondary min-h-11 w-full"><RotateCcw size={14} /> Reopen task</button>
           )}
           {!hasStatusAction && <div className="rounded-[9px] border px-3.5 py-3 text-xs leading-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>No status action is available for this task.</div>}

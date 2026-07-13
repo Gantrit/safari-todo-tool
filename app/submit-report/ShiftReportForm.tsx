@@ -53,6 +53,14 @@ interface ShiftReportFormProps {
 
 const EXTERNAL = '__external__'
 
+// Picking a shift auto-fills its usual time range — still just a default,
+// the chatter can change it afterward if their actual hours differ.
+const SHIFT_TIME_DEFAULTS: Record<string, string> = {
+  '1st shift': '6am-2pm',
+  '2nd shift': '2pm-10pm',
+  '3rd shift': '10pm-6am',
+}
+
 const MAX_FILES = 6
 const MAX_FILE_MB = 8
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'application/pdf']
@@ -94,6 +102,14 @@ export default function ShiftReportForm({
           : ''
   const [chatterChoice, setChatterChoice] = useState<string>(initialChatter)
   const isExternalChatter = chatterChoice === EXTERNAL
+
+  const [shiftLabel, setShiftLabel] = useState(prefill?.shift_label || '')
+  const [timeRange, setTimeRange] = useState(prefill?.time_range || '')
+  function handleShiftLabelChange(value: string) {
+    setShiftLabel(value)
+    const defaultRange = SHIFT_TIME_DEFAULTS[value]
+    if (defaultRange) setTimeRange(defaultRange)
+  }
 
   const isEdit = mode === 'edit'
   const keptExisting = existingFiles.filter((f) => !removedIds.includes(f.id))
@@ -325,7 +341,7 @@ export default function ShiftReportForm({
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="form-label">Shift</span>
-            <select name="shift_label" className="form-control" defaultValue={prefill?.shift_label || ''}>
+            <select name="shift_label" className="form-control" value={shiftLabel} onChange={(e) => handleShiftLabelChange(e.target.value)}>
               <option value="">Select…</option>
               <option value="1st shift">1st shift</option>
               <option value="2nd shift">2nd shift</option>
@@ -334,7 +350,7 @@ export default function ShiftReportForm({
           </label>
           <label className="block">
             <span className="form-label">Time</span>
-            <select name="time_range" className="form-control" defaultValue={prefill?.time_range || ''}>
+            <select name="time_range" className="form-control" value={timeRange} onChange={(e) => setTimeRange(e.target.value)}>
               <option value="">Select…</option>
               <option value="6am-2pm">6am-2pm</option>
               <option value="2pm-10pm">2pm-10pm</option>

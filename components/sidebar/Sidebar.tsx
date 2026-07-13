@@ -107,8 +107,18 @@ export default function Sidebar({ profile, workspaces, boards, notifications }: 
           {groupLabel('Tools')}
           {navItem('/templates', 'Templates', <ClipboardList size={16} />)}
           {/* Everyone can file a shift report — the form is the public /submit-report page,
-              not gated on board access. Admins/managers additionally get the review list below. */}
-          {navItem('/submit-report', 'Submit report', <FilePlus2 size={16} />)}
+              not gated on board access. Admins/managers additionally get the review list below.
+              Opens in a new tab so navigating there doesn't lose your place in the app. */}
+          <a
+            href="/submit-report"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMobileOpen(false)}
+            className="nav-item mb-0.5 flex min-h-9 items-center gap-2.5 rounded-[9px] border border-transparent px-3 py-1.5 text-[12.5px] font-semibold"
+          >
+            <span className="flex h-5 w-5 flex-none items-center justify-center" style={{ opacity: 0.7 }}><FilePlus2 size={16} /></span>
+            <span className="flex-1 truncate">Submit report</span>
+          </a>
           {canManageTeam(profile?.role) && navItem('/reports', 'Shift Reports', <FileBarChart2 size={16} />)}
           {navItem('/private', 'My private tasks', <Lock size={16} />)}
 
