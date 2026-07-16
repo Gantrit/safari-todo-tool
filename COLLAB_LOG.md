@@ -3,6 +3,30 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-16 — Claude (Sonnet 5) — Fix: template assignment ignored per-board access
+
+**Bug:** assigning a template to a member who only has `board_access` to one board (e.g. Chatting)
+while the "Assign to member" form's Board dropdown was left on its default (the first board,
+Managers) silently created the tasks on the WRONG board. The member never saw them (their board
+column only exists on boards they actually have access to), and the redirect after assigning
+landed the admin on that wrong board too, looking empty.
+
+**Root cause:** `app/(app)/templates/page.tsx` fetched `workspace_members` (every org member) and
+`TemplateLibrary.tsx`'s `availableMembers` filtered only by `workspace_id`, not by actual
+`board_access` per board. Since all boards share one workspace, every member showed up as a
+selectable assignee regardless of which board was selected — nothing enforced that the chosen
+board and chosen member were actually consistent.
+
+**Fix:** `page.tsx` now calls the existing `board_members(p_board_id)` RPC (migration 030 — the
+same SECURITY DEFINER function the board page already uses to build columns) once per board and
+passes a `{ [boardId]: profiles[] }` map into `TemplateLibrary`. The Member dropdown is now scoped
+to `boardMembers[selectedBoardId]`, so a member with no access to the selected board simply isn't
+selectable — the mismatch this bug required is now structurally impossible. Verified the RPC
+values directly (Managers → 4 members, Chatting → 8 members, no overlap in the reported case) and
+via `npm run build`; could not do a full click-through in the browser preview this session (the
+preview tooling itself was stuck/flaky), so a manual smoke test of Templates → Assign to member is
+still worth doing after deploy.
+
 ## 2026-07-16 — Claude (Sonnet 5) — Fix: dashboard KPIs leaked other users' private tasks
 
 **Bug:** admin dashboard showed "1 task is overdue" / "Open tasks: 1" even though both boards

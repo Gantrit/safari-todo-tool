@@ -29,10 +29,20 @@ export default async function TemplatesPage() {
     })) as any
   }
 
-  const [{ data: boards }, { data: workspaceMembers }] = await Promise.all([
-    supabase.from('boards').select('id, name, workspace_id, workspaces(name)').eq('type', 'kanban').order('created_at'),
-    supabase.from('workspace_members').select('workspace_id, profiles(id, full_name, email)').order('workspace_id'),
-  ])
+  const { data: boards } = await supabase.from('boards').select('id, name, workspace_id, workspaces(name)').eq('type', 'kanban').order('created_at')
 
-  return <div className="page-shell"><TemplateLibrary templates={(templates || []) as any} boards={(boards || []) as any} members={(workspaceMembers || []) as any} isAdmin={role === 'admin'} canManage={canManageTeam(role)} userId={user!.id} /></div>
+  // Assignee choices must be scoped to who actually has board_access to EACH board
+  // (board_members RPC, migration 030) — not every workspace member. Templates used
+  // to offer every workspace member regardless of the selected board, so it was easy
+  // to assign a task to someone who has no access to that board: the task would be
+  // created there but never show up as a column for them anywhere.
+  const boardMemberLists = await Promise.all(
+    (boards || []).map((board: any) => supabase.rpc('board_members', { p_board_id: board.id }))
+  )
+  const boardMembers: Record<string, { id: string; full_name: string; email: string }[]> = {}
+  ;(boards || []).forEach((board: any, i: number) => {
+    boardMembers[board.id] = (boardMemberLists[i].data as any[]) || []
+  })
+
+  return <div className="page-shell"><TemplateLibrary templates={(templates || []) as any} boards={(boards || []) as any} boardMembers={boardMembers} isAdmin={role === 'admin'} canManage={canManageTeam(role)} userId={user!.id} /></div>
 }

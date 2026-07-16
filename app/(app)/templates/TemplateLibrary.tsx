@@ -26,7 +26,7 @@ type Template = {
   items: TemplateItem[]
 }
 type BoardOption = { id: string; name: string; workspace_id: string; workspaces?: { name: string } | null }
-type MemberOption = { workspace_id: string; profiles: { id: string; full_name: string; email: string } | null }
+type BoardMemberProfile = { id: string; full_name: string; email: string }
 
 type DraftItem = { key: string; title: string; description: string; section: TaskSection; priority: Priority; checklist: string; referenceUrl: string; dueTime: string }
 
@@ -41,7 +41,7 @@ const emptyDraft = (section: TaskSection): DraftItem => ({ key: newKey(), title:
 
 // isAdmin gates create/edit/delete (RLS on task_templates is admin-only);
 // canManage (admin OR manager) gates assigning — matching the assign_template RPC.
-export default function TemplateLibrary({ templates, boards, members, isAdmin, canManage, userId }: { templates: Template[]; boards: BoardOption[]; members: MemberOption[]; isAdmin: boolean; canManage: boolean; userId: string }) {
+export default function TemplateLibrary({ templates, boards, boardMembers, isAdmin, canManage, userId }: { templates: Template[]; boards: BoardOption[]; boardMembers: Record<string, BoardMemberProfile[]>; isAdmin: boolean; canManage: boolean; userId: string }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Template | null>(null)
   const [name, setName] = useState('')
@@ -112,11 +112,10 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, c
     router.refresh()
   }
 
-  const availableMembers = members.filter((m) => m.workspace_id === boards.find((b) => b.id === assignForm.boardId)?.workspace_id && m.profiles)
+  const availableMembers = boardMembers[assignForm.boardId] || []
   const startAssign = (template: Template) => {
     const boardId = boards[0]?.id || ''
-    const workspaceId = boards.find((b) => b.id === boardId)?.workspace_id
-    setAssignForm({ boardId, assigneeId: members.find((m) => m.workspace_id === workspaceId)?.profiles?.id || '' })
+    setAssignForm({ boardId, assigneeId: boardMembers[boardId]?.[0]?.id || '' })
     setAssigning(template); setError(null)
   }
   async function assignTemplate(event: React.FormEvent) {
@@ -238,8 +237,8 @@ export default function TemplateLibrary({ templates, boards, members, isAdmin, c
                 <p className="text-sm font-bold">{assigning.title}</p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>{(assigning.items || []).length} recurring task{(assigning.items || []).length === 1 ? '' : 's'} will be created for the member.</p>
               </div>
-              <Field label="Board"><select required value={assignForm.boardId} onChange={(e) => { const boardId = e.target.value; const workspaceId = boards.find((b) => b.id === boardId)?.workspace_id; setAssignForm({ boardId, assigneeId: members.find((m) => m.workspace_id === workspaceId)?.profiles?.id || '' }) }} className="form-control"><option value="">Choose a board</option>{boards.map((board) => <option key={board.id} value={board.id}>{board.workspaces?.name ? `${board.workspaces.name} · ` : ''}{board.name === 'Team Board' ? 'Workspace Board' : board.name}</option>)}</select></Field>
-              <Field label="Member"><select required value={assignForm.assigneeId} onChange={(e) => setAssignForm({ ...assignForm, assigneeId: e.target.value })} className="form-control"><option value="">Choose a teammate</option>{availableMembers.map((m) => m.profiles && <option key={m.profiles.id} value={m.profiles.id}>{m.profiles.full_name || m.profiles.email}</option>)}</select></Field>
+              <Field label="Board"><select required value={assignForm.boardId} onChange={(e) => { const boardId = e.target.value; setAssignForm({ boardId, assigneeId: boardMembers[boardId]?.[0]?.id || '' }) }} className="form-control"><option value="">Choose a board</option>{boards.map((board) => <option key={board.id} value={board.id}>{board.workspaces?.name ? `${board.workspaces.name} · ` : ''}{board.name === 'Team Board' ? 'Workspace Board' : board.name}</option>)}</select></Field>
+              <Field label="Member"><select required value={assignForm.assigneeId} onChange={(e) => setAssignForm({ ...assignForm, assigneeId: e.target.value })} className="form-control"><option value="">Choose a teammate</option>{availableMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}</select>{assignForm.boardId && availableMembers.length === 0 && <p className="mt-1.5 text-xs" style={{ color: 'var(--muted)' }}>No one has access to this board yet.</p>}</Field>
               {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
             </div>
             <div className="modal-actions"><button type="button" onClick={() => setAssigning(null)} className="btn btn-secondary">Cancel</button><button disabled={saving || !assignForm.boardId || !assignForm.assigneeId} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}<UserPlus size={15} /> Assign tasks</button></div>
