@@ -13,7 +13,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
     supabase.from('profiles').select('id, full_name, email, xp, level').order('xp', { ascending: false }).limit(10),
     supabase.from('tasks').select('*').eq('assigned_to', user!.id).is('deleted_at', null).neq('status', 'APPROVED').order('deadline_at', { ascending: true, nullsFirst: false }).limit(8),
-    supabase.from('tasks').select('id, title, status, priority, section, deadline_at, due_date, assigned_to, board_id').is('deleted_at', null).neq('status', 'APPROVED').limit(100),
+    supabase.from('tasks').select('id, title, status, priority, section, deadline_at, due_date, assigned_to, board_id').is('deleted_at', null).not('board_id', 'is', null).neq('status', 'APPROVED').limit(100),
     supabase.from('boards').select('*').eq('type', 'kanban').order('created_at', { ascending: true }),
     supabase.from('workspaces').select('id, name').order('created_at', { ascending: true }),
     supabase.from('notifications').select('*').eq('user_id', user!.id).eq('read', false).order('created_at', { ascending: false }).limit(5),

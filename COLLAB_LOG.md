@@ -3,6 +3,56 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-16 — Claude (Sonnet 5) — Fix: dashboard KPIs leaked other users' private tasks
+
+**Bug:** admin dashboard showed "1 task is overdue" / "Open tasks: 1" even though both boards
+(Managers, Chatting) genuinely had 0 open tasks. Root cause: `app/(app)/dashboard/page.tsx`'s
+`allOpenTasks` query (used for the Open/Overdue/Awaiting-approval KPI tiles) selected from
+`tasks` with no `board_id` filter — so it picked up **private todos** (`board_id IS NULL`,
+see `/private`) belonging to *any* user, not just the viewing admin. Confirmed via REST query:
+the phantom overdue task was Cindy Ling's private "make 400 sales a day" (due 2026-07-14).
+
+**Fix:** added `.not('board_id', 'is', null)` to that query so team-wide dashboard counters only
+count real board tasks. Private tasks stay private and no longer leak into anyone else's KPI
+tiles. No migration needed (query-only change). Verified live in browser: banner and Overdue
+tile correctly clear once the filter is applied.
+
+**Note for next agent:** RLS currently lets an admin's session `SELECT` another user's private
+task via the REST API (used to debug this) — private tasks may not be as RLS-isolated as the
+`/private` page implies. Not fixed here (out of scope for this bug), but worth a look if privacy
+of `/private` tasks becomes a concern.
+
+## 2026-07-14 — Claude (Opus 4.8) — PLANNED (NOT built): shift-report screenshot retention
+
+⚠️ **This is a DECIDED design, deliberately NOT implemented yet** (Tan wants it recorded, not
+built). No code/migration/cron exists for this — it's a spec for whoever builds it next.
+
+**Goal:** stop Supabase Storage growing forever from chatter sales screenshots. Screenshots live in
+the private `shift-report-files` bucket (DB only holds tiny `shift_report_files` rows: path/name/type).
+Task files (`task-files`) and avatars (`avatars`) are separate buckets. There is currently **NO
+auto-wipe/retention anywhere** — files persist until an admin manually deletes a report
+(`/api/shift-report/delete` already removes the storage objects + rows, keeps nothing).
+
+**Agreed retention rule (Tan, 2026-07-14):**
+- Delete the **screenshots only** (storage objects + `shift_report_files` rows); **keep the
+  `shift_reports` row forever** (sales/subs/notes stay — history preserved). This is why option
+  "compress on upload" was rejected: sales figures must stay pixel-exact while they matter.
+- **APPROVED** reports: wipe screenshots **40 days after `reviewed_at`** (approval time).
+- **PENDING / REJECTED** reports: also wipe **40 days after `created_at`** (submission), so
+  forgotten/never-reviewed reports don't keep images forever. (Tan chose the broader scope.)
+- 40 days = deliberately ">1 month, so everything is safe" per Tan.
+
+**Suggested implementation (not built):**
+- Daily **Vercel Cron** → protected API route (guard with a `CRON_SECRET` header) → runs with the
+  now-true service-role `createAdminClient` → selects due reports, `storage.remove(paths)` from
+  `shift-report-files`, deletes `shift_report_files` rows, leaves `shift_reports` intact.
+- Add a `files_wiped_at TIMESTAMPTZ` column to `shift_reports` so the reports UI can show
+  "Screenshots removed after 40 days" instead of an empty gap vs. "no screenshots uploaded".
+- Alternative to Vercel Cron: Supabase `pg_cron` (pg_net is already used by migration 021).
+
+**Not decided:** exact cron mechanism (Vercel Cron vs pg_cron) — pick at build time. Check Tan's
+Supabase plan/storage headroom (Dashboard → Settings → Billing/Usage) when prioritising.
+
 ## 2026-07-12 — Claude (Fable 5) — Security hardening (migration 034)
 
 **NEW migration `034_security_hardening.sql`** — ⚠️ **NOT yet applied. Run it in Supabase.**
