@@ -1600,3 +1600,16 @@ textarea.create-task-control {
 @media (prefers-reduced-motion: reduce) {
   .member-lane-chevron { transition: none; }
 }
+
+/* Transient flash when a quest is opened via a deep-link (/quests?quest=<id>)
+   from the board's "Open Quests" section. Applied imperatively in QuestBoard. */
+@keyframes quest-deeplink-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; border-color: var(--border); }
+  25%, 70% { box-shadow: 0 0 0 2px var(--accent-dim); border-color: var(--accent); }
+}
+.quest-deeplink-flash {
+  animation: quest-deeplink-flash 2.4s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-deeplink-flash { animation: none; }
+}

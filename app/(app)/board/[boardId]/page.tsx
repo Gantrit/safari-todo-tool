@@ -22,7 +22,10 @@ export default async function BoardPage({ params }: Props) {
 
   if (!board) notFound()
 
-  const [{ data: profile }, boardMembersRes, { data: boards }, { data: richTasks, error: richTasksError }] = await Promise.all([
+  // One parallel batch for every independent read this page needs — including the
+  // current user's quest acceptances — so the board renders after a single round of
+  // DB round-trips instead of chaining them one after another.
+  const [{ data: profile }, boardMembersRes, { data: boards }, { data: richTasks, error: richTasksError }, { data: questRows }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
     // Columns are the members with access to THIS board (SECURITY DEFINER fn, migration 030).
     supabase.rpc('board_members', { p_board_id: boardId }),
@@ -36,6 +39,9 @@ export default async function BoardPage({ params }: Props) {
       comments(*, profile:profiles(*), reactions(*)),
       attachments(*)
     `).eq('board_id', boardId).is('deleted_at', null).order('position', { ascending: true }),
+    // RLS only exposes a user's own acceptances, so this is exactly the "my accepted
+    // quest shows up in my to-dos" case — quests keep their accept/submit/approve flow on /quests.
+    supabase.from('quest_acceptances').select('id, status, quest:quests(id, title, deadline_at, status, deleted_at)').eq('user_id', user!.id).in('status', ['ACCEPTED', 'DONE']),
   ])
 
   // Fallback keeps the board working if migration 030 hasn't run yet (RPC missing):
@@ -53,14 +59,7 @@ export default async function BoardPage({ params }: Props) {
   const orderedBoards = sortBoards(boards || [])
 
   // The current user's still-open quests, surfaced as read-only to-dos in their
-  // own board column. RLS only exposes a user's own acceptances, so this is
-  // exactly the "my accepted quest shows up in my to-dos" case — quests keep
-  // their own accept/submit/approve flow on /quests.
-  const { data: questRows } = await supabase
-    .from('quest_acceptances')
-    .select('id, status, quest:quests(id, title, deadline_at, status, deleted_at)')
-    .eq('user_id', user!.id)
-    .in('status', ['ACCEPTED', 'DONE'])
+  // own board column (fetched in the parallel batch above).
   const questTodos = (questRows || [])
     .map((row: any) => {
       const quest = Array.isArray(row.quest) ? row.quest[0] : row.quest

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, ListChecks, Loader2, Pencil, Plus, Trash2, UserPlus, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, ClipboardList, ListChecks, Loader2, Pencil, Plus, Trash2, UserPlus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Priority, TaskSection } from '@/lib/types'
 import Modal from '@/components/ui/Modal'
@@ -50,6 +50,7 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
   const [saving, setSaving] = useState(false)
   const [assigning, setAssigning] = useState<Template | null>(null)
   const [assignForm, setAssignForm] = useState({ boardId: boards[0]?.id || '', assigneeId: '' })
+  const [assignSuccess, setAssignSuccess] = useState<{ message: string; boardId: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -116,7 +117,7 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
   const startAssign = (template: Template) => {
     const boardId = boards[0]?.id || ''
     setAssignForm({ boardId, assigneeId: boardMembers[boardId]?.[0]?.id || '' })
-    setAssigning(template); setError(null)
+    setAssigning(template); setAssignSuccess(null); setError(null)
   }
   async function assignTemplate(event: React.FormEvent) {
     event.preventDefault()
@@ -124,8 +125,13 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
     setSaving(true); setError(null)
     const { error: rpcErr } = await supabase.rpc('assign_template', { p_template_id: assigning.id, p_board_id: assignForm.boardId, p_assignee: assignForm.assigneeId })
     if (rpcErr) { setError(rpcErr.message); setSaving(false); return }
-    setSaving(false); setAssigning(null)
-    router.push(`/board/${assignForm.boardId}`); router.refresh()
+    // Stay on the Templates page so several members can be assigned in a row.
+    const memberName = availableMembers.find((m) => m.id === assignForm.assigneeId)?.full_name || 'the member'
+    const boardName = boards.find((b) => b.id === assignForm.boardId)?.name || 'the board'
+    const count = (assigning.items || []).length
+    setSaving(false)
+    setAssignSuccess({ message: `Assigned ${count} task${count === 1 ? '' : 's'} to ${memberName} on ${boardName}.`, boardId: assignForm.boardId })
+    router.refresh() // refresh board data in the background; modal stays open
   }
 
   const countBySection = (t: Template, section: TaskSection) => (t.items || []).filter((i) => i.section === section).length
@@ -237,11 +243,17 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
                 <p className="text-sm font-bold">{assigning.title}</p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>{(assigning.items || []).length} recurring task{(assigning.items || []).length === 1 ? '' : 's'} will be created for the member.</p>
               </div>
-              <Field label="Board"><select required value={assignForm.boardId} onChange={(e) => { const boardId = e.target.value; setAssignForm({ boardId, assigneeId: boardMembers[boardId]?.[0]?.id || '' }) }} className="form-control"><option value="">Choose a board</option>{boards.map((board) => <option key={board.id} value={board.id}>{board.workspaces?.name ? `${board.workspaces.name} · ` : ''}{board.name === 'Team Board' ? 'Workspace Board' : board.name}</option>)}</select></Field>
-              <Field label="Member"><select required value={assignForm.assigneeId} onChange={(e) => setAssignForm({ ...assignForm, assigneeId: e.target.value })} className="form-control"><option value="">Choose a teammate</option>{availableMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}</select>{assignForm.boardId && availableMembers.length === 0 && <p className="mt-1.5 text-xs" style={{ color: 'var(--muted)' }}>No one has access to this board yet.</p>}</Field>
+              <Field label="Board"><select required value={assignForm.boardId} onChange={(e) => { const boardId = e.target.value; setAssignSuccess(null); setAssignForm({ boardId, assigneeId: boardMembers[boardId]?.[0]?.id || '' }) }} className="form-control"><option value="">Choose a board</option>{boards.map((board) => <option key={board.id} value={board.id}>{board.workspaces?.name ? `${board.workspaces.name} · ` : ''}{board.name === 'Team Board' ? 'Workspace Board' : board.name}</option>)}</select></Field>
+              <Field label="Member"><select required value={assignForm.assigneeId} onChange={(e) => { setAssignSuccess(null); setAssignForm({ ...assignForm, assigneeId: e.target.value }) }} className="form-control"><option value="">Choose a teammate</option>{availableMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}</select>{assignForm.boardId && availableMembers.length === 0 && <p className="mt-1.5 text-xs" style={{ color: 'var(--muted)' }}>No one has access to this board yet.</p>}</Field>
+              {assignSuccess && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[10px] border px-4 py-3 text-sm" style={{ background: 'var(--accent-dim)', borderColor: 'rgba(200,169,106,.35)' }}>
+                  <span className="flex items-center gap-2 font-semibold" style={{ color: 'var(--accent)' }}><CheckCircle2 size={15} /> {assignSuccess.message}</span>
+                  <button type="button" onClick={() => { const id = assignSuccess.boardId; setAssigning(null); router.push(`/board/${id}`) }} className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--accent)' }}>View board <ArrowRight size={12} /></button>
+                </div>
+              )}
               {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
             </div>
-            <div className="modal-actions"><button type="button" onClick={() => setAssigning(null)} className="btn btn-secondary">Cancel</button><button disabled={saving || !assignForm.boardId || !assignForm.assigneeId} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}<UserPlus size={15} /> Assign tasks</button></div>
+            <div className="modal-actions"><button type="button" onClick={() => setAssigning(null)} className="btn btn-secondary">{assignSuccess ? 'Done' : 'Cancel'}</button><button disabled={saving || !assignForm.boardId || !assignForm.assigneeId} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}<UserPlus size={15} /> {assignSuccess ? 'Assign again' : 'Assign tasks'}</button></div>
           </form>
         )}
       </Modal>

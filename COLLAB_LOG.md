@@ -3,6 +3,49 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-18 — Claude (Opus 4.8) — Approval notifications, quest visibility, template UX, board speed
+
+⚠️ **NEW migration `037_notify_on_submit_for_approval.sql` — run it in Supabase after 036.**
+(036 from the previous entry must be run too if it hasn't been yet.)
+
+Five things from Tan, launch-day polish:
+
+1. **Template assign no longer yanks you to the board.** `TemplateLibrary.tsx` used to
+   `router.push('/board/...')` on success. Now it shows an inline success banner (with a "View
+   board →" link) and stays in the Assign modal, so you can assign the same bundle to several
+   members in a row. Button flips to "Assign again"; "Cancel" → "Done".
+
+2. **Approval notifications were never sent (real bug).** The only "submitted for review" trigger
+   was `notify_on_result_submit` (003), which fires on `tasks.result_url` NULL→set. But marking a
+   task DONE only sets `status`+`completed_at` (see TaskModal.updateStatus) and never touches
+   `result_url`, so admins/managers got NOTHING when work needed approval — only shift-report
+   notifications worked. **Migration 037** adds `notify_on_submit_for_approval`: AFTER UPDATE OF
+   status, when a task enters DONE, notify active admins (any task) + active managers (only when
+   the assignee is a plain member, matching the 035 approval hierarchy), excluding the submitter.
+   Uses the existing `result_submitted` type; the email webhook (021) picks it up for free.
+
+3. **Quests — who accepted + board section.** QuestBoard now shows an "Accepted by" roster on each
+   quest card (name + status: In progress / Awaiting review / Approved / Not approved). Non-admins
+   only see their own acceptance (RLS), so it's mainly an admin/manager view — verified live
+   ("Cindy Ling · In progress"). The board's per-member quest section was already separate (it is
+   NOT stored under WEEKLY — quest acceptances are their own table surfaced read-only); renamed the
+   header "Quests" → **"Open Quests"** in `MemberColumn.tsx` and added a "View details →" affordance.
+
+4. **Deep-linking.** The board "Open Quests" card now links to `/quests?quest=<id>`; QuestBoard
+   reads that param on mount and scrolls to + briefly flashes the matching quest (imperative
+   `.classList` toggle + a `quest-deeplink-flash` keyframe in globals.css — done on the DOM node,
+   not via React state, so a background refresh can't wipe the flash). Effect confirmed running
+   with the right id via console; couldn't fully eyeball the flash this session (preview tooling
+   was stuck — screenshots timing out).
+
+5. **Board load speed.** Folded the quest-acceptances query into the board page's main
+   `Promise.all` so it's one parallel batch instead of a chained round-trip. Modest win — the
+   bigger cost is the tasks query's nested joins (comments+profiles+reactions, attachments,
+   subtasks per task); lazy-loading comments/attachments into the modal is the real optimization
+   but it's a riskier refactor (TaskCard shows comment/attachment counts) — left as a follow-up.
+
+`APP_VERSION` → **v0.37**. Build green. Migrations 036 + 037 still need running in Supabase.
+
 ## 2026-07-18 — Claude (Opus 4.8) — Orphan tasks: surface them + block at the source (migration 036)
 
 ⚠️ **NEW migration `036_assign_template_board_access.sql` — run it in Supabase after 035.**

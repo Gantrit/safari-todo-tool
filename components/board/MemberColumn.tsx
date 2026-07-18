@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Task, TaskSection, Profile, QuestTodo } from '@/lib/types'
 import { getInitials, getUrgency } from '@/lib/utils'
 import TaskSectionComp from './TaskSection'
-import { GripVertical, Plus, Sparkles } from 'lucide-react'
+import { ArrowRight, GripVertical, Plus, Sparkles } from 'lucide-react'
 
 const SECTIONS: TaskSection[] = ['DAILY', 'WEEKLY', 'MONTHLY']
 
@@ -82,7 +82,7 @@ export default function MemberColumn({ member, tasks, questTodos = [], onTaskCli
           <div className="mb-4">
             <div className="mb-2 flex items-center gap-1.5 px-0.5">
               <Sparkles size={12} style={{ color: 'var(--accent)' }} />
-              <span className="text-[10px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Quests</span>
+              <span className="text-[10px] font-bold uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Open Quests</span>
               <span className="text-[10px] font-bold" style={{ color: 'var(--muted)' }}>· {questTodos.length}</span>
             </div>
             <div className="space-y-2">
@@ -91,8 +91,8 @@ export default function MemberColumn({ member, tasks, questTodos = [], onTaskCli
                 return (
                   <Link
                     key={q.acceptance_id}
-                    href="/quests"
-                    className="block rounded-[9px] border px-3 py-2.5 transition-colors hover:border-[var(--border-strong)]"
+                    href={`/quests?quest=${q.quest_id}`}
+                    className="group block rounded-[9px] border px-3 py-2.5 transition-colors hover:border-[var(--border-strong)]"
                     style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}
                   >
                     <div className="flex items-start gap-2">
@@ -101,11 +101,14 @@ export default function MemberColumn({ member, tasks, questTodos = [], onTaskCli
                       </span>
                       <p className="min-w-0 flex-1 text-[12.5px] font-semibold leading-snug" style={{ color: 'var(--text)' }}>{q.title}</p>
                     </div>
-                    {q.deadline_at && (
-                      <p className="mt-1.5 text-[11px] font-semibold" style={{ color: urgency.color }}>
-                        Due {urgency.label}
-                      </p>
-                    )}
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      {q.deadline_at ? (
+                        <span className="text-[11px] font-semibold" style={{ color: urgency.color }}>Due {urgency.label}</span>
+                      ) : <span />}
+                      <span className="inline-flex items-center gap-0.5 text-[10.5px] font-bold" style={{ color: 'var(--accent)' }}>
+                        View details <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    </div>
                   </Link>
                 )
               })}

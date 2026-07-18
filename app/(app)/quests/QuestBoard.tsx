@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarDays, CheckCircle2, Clock3, Loader2, Pencil, Plus, Send, Tag, ThumbsDown, ThumbsUp, Trash2, Trophy, Users, XCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -32,6 +32,13 @@ type Acceptance = {
 
 const EMPTY_FORM = { title: '', description: '', bonusXp: '10', deadline: '', multiple: false, categoryId: '' }
 
+const QUEST_STATUS_META: Record<Acceptance['status'], { label: string; color: string }> = {
+  ACCEPTED: { label: 'In progress', color: 'var(--muted)' },
+  DONE: { label: 'Awaiting review', color: 'var(--amber)' },
+  APPROVED: { label: 'Approved', color: 'var(--green)' },
+  REJECTED: { label: 'Not approved', color: 'var(--red)' },
+}
+
 function toLocalInput(iso: string | null) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -49,6 +56,24 @@ export default function QuestBoard({ quests, acceptances, categories, isAdmin, u
   const [filter, setFilter] = useState<string>('all')
   const router = useRouter()
   const supabase = createClient()
+
+  // Deep-link from the board's "Open Quests" section (/quests?quest=<id>):
+  // scroll the matching quest into view and briefly flash it. Done imperatively
+  // on the DOM node (not via React state) so a background router.refresh() or
+  // realtime re-render can't wipe the transient highlight mid-animation.
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get('quest')
+    if (!target) return
+    let timer: ReturnType<typeof setTimeout>
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(`quest-${target}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('quest-deeplink-flash')
+      timer = setTimeout(() => el.classList.remove('quest-deeplink-flash'), 2600)
+    })
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+  }, [])
 
   const visibleQuests = useMemo(
     () => (filter === 'all' ? quests : quests.filter((q) => (filter === 'none' ? !q.department_id : q.department_id === filter))),
@@ -153,7 +178,11 @@ export default function QuestBoard({ quests, acceptances, categories, isAdmin, u
             const canAccept = !mine && !questClosed && (quest.allow_multiple_accepts || questAcceptances.length === 0)
 
             return (
-              <article key={quest.id} className="app-card flex flex-col p-6 sm:p-7">
+              <article
+                key={quest.id}
+                id={`quest-${quest.id}`}
+                className="app-card flex flex-col p-6 sm:p-7"
+              >
                 <div className="mb-6 flex items-start gap-4">
                   <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[10px]" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}><Trophy size={21} /></span>
                   <div className="min-w-0 flex-1">
@@ -184,6 +213,28 @@ export default function QuestBoard({ quests, acceptances, categories, isAdmin, u
                     <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold"><CalendarDays size={12} />{deadlineLabel(quest.deadline_at)}</span>
                   </div>
                 </div>
+
+                {/* Who accepted this quest + their status. Non-admins only see
+                    their own acceptance (RLS), so this roster is mainly for
+                    admins/managers reviewing who's on it. */}
+                {questAcceptances.length > 0 && (
+                  <div className="mb-5 rounded-[10px] border p-4" style={{ borderColor: 'var(--border)', background: 'var(--surface2)' }}>
+                    <p className="mb-2.5 text-[10px] font-extrabold uppercase tracking-[.1em]" style={{ color: 'var(--muted)' }}>Accepted by</p>
+                    <div className="space-y-2">
+                      {questAcceptances.map((a) => {
+                        const name = a.profile?.full_name || a.profile?.email || 'Teammate'
+                        const meta = QUEST_STATUS_META[a.status]
+                        return (
+                          <div key={a.id} className="flex items-center gap-2.5">
+                            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[9px] font-extrabold" style={{ background: 'var(--surface3)', color: 'var(--text)' }}>{getInitials(name)}</span>
+                            <span className="min-w-0 flex-1 truncate text-xs font-semibold">{name}{a.user_id === userId ? ' · you' : ''}</span>
+                            <span className="meta-pill !text-[9px]" style={{ color: meta.color }}>{meta.label}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Admin review queue */}
                 {isAdmin && pendingReview.length > 0 && (
