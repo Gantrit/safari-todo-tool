@@ -91,7 +91,26 @@ export default async function BoardPage({ params }: Props) {
         .order('position', { ascending: true })
     : { data: null }
 
-  const tasks = (richTasks || legacyTasks || []).map((task: any) => {
+  // Safety net against "orphan" tasks: a task can be assigned to someone who is
+  // NOT a board_access member of THIS board (e.g. a template assigned to the wrong
+  // board before the per-board scoping fix). Such a task is counted but renders in
+  // no column — invisible and impossible to find or delete. Add a column for any
+  // assignee that actually has a task here, so every task always has a visible home.
+  // New assignments are access-guarded server-side (migration 036), so in normal
+  // operation this only ever surfaces pre-existing orphans for cleanup.
+  const rawTaskRows = (richTasks || legacyTasks || []) as any[]
+  const memberIdSet = new Set(memberProfiles.map((m: any) => m.id))
+  const orphanIds = [...new Set(
+    rawTaskRows
+      .flatMap((t: any) => (t.assignee_ids?.length ? t.assignee_ids : [t.assigned_to]))
+      .filter((id: string) => id && !memberIdSet.has(id))
+  )]
+  if (orphanIds.length > 0) {
+    const { data: orphanProfiles } = await supabase.from('profiles').select('*').in('id', orphanIds)
+    memberProfiles = [...memberProfiles, ...((orphanProfiles as any[]) || [])]
+  }
+
+  const tasks = rawTaskRows.map((task: any) => {
     const assigneeIds = task.assignee_ids || [task.assigned_to].filter(Boolean)
     return {
       ...task,

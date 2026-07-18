@@ -3,6 +3,39 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-18 — Claude (Opus 4.8) — Orphan tasks: surface them + block at the source (migration 036)
+
+⚠️ **NEW migration `036_assign_template_board_access.sql` — run it in Supabase after 035.**
+
+**Symptom (Tan):** dashboard showed "6 open / 4 overdue" but the tasks were nowhere on the board —
+clicking through landed on the Managers board with all columns empty. The Managers header even
+said "4 members · 6 open tasks" while every visible column showed 0.
+
+**Root cause:** leftover from the pre-fix template mis-assignment (see 2026-07-16 entry). 6 tasks
+had been created on the **Managers** board assigned to **Aj**, who only has board_access to
+**Chatting**. The board renders one column per `board_access` member (`board_members` RPC), so Aj
+had no column on Managers → the 6 tasks were counted (header + dashboard) but rendered in NO
+column: invisible and impossible to find/delete. 4 of them were past deadline → the overdue alert.
+
+**Two-part fix:**
+1. **Surface orphans (`app/(app)/board/[boardId]/page.tsx`):** the board member list is now
+   `board_access members ∪ {anyone who actually has a task on this board}`. Any assignee with a
+   task here gets a visible column even without a board_access row, so a task can never again be
+   counted-but-invisible. After the guard below, this only ever surfaces legacy orphans for
+   cleanup. Verified live: Managers now shows "5 members · 6 open tasks" with an Aj column holding
+   the 6 (findable + deletable).
+2. **Block at the source (migration 036):** `assign_template` now raises unless the assignee has a
+   `board_access` row for the target board (admins exempt — implicit access everywhere). Combined
+   with the 2026-07-16 UI dropdown scoping, a wrong board/member pair can no longer create orphans,
+   whatever calls the RPC. Body otherwise identical to 029 (due_time logic preserved).
+
+`APP_VERSION` bumped to **v0.36**.
+
+**NOTE — leftover prod data:** the 6 Aj/Managers tasks (2 LOGIN, 2 LOGOUT+SHIFT REPORT, 2 Feedback
+Call — two accidental assigns at 14:07 + 14:08) are pure duplicates; Aj already has the correct
+copies on Chatting. They are now visible in Aj's Managers column and can be soft-deleted in-UI (or
+were cleaned — check with Tan). Deleting them clears the dashboard overdue alert.
+
 ## 2026-07-16 — Claude (Sonnet 5) — Fix: template assignment ignored per-board access
 
 **Bug:** assigning a template to a member who only has `board_access` to one board (e.g. Chatting)
