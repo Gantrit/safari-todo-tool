@@ -52,6 +52,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   const { data: shiftCreators } = await supabase.from('shift_report_creators').select('*').order('name', { ascending: true })
 
+  // Shifts (migration 042). Missing table (pre-migration) just yields no options.
+  const { data: shifts } = await supabase.from('shifts').select('id, name, start_local, end_local, timezone, position').order('position', { ascending: true })
+
   return (
     <div className="page-shell !max-w-[1180px]">
       <header className="page-header"><div><p className="page-eyebrow">Administration</p><h1 className="page-title">{newWorkspace === '1' || !workspace ? 'Create workspace' : 'Settings'}</h1><p className="page-description">Your team, its boards, access and XP rules — all in one place.</p></div></header>
@@ -80,6 +83,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         boards={newWorkspace === '1' ? [] : sortBoards(boards || [])}
         boardAccess={newWorkspace === '1' ? [] : boardAccess || []}
         categories={newWorkspace === '1' ? [] : categories || []}
+        shifts={newWorkspace === '1' ? [] : shifts || []}
         currentUser={profile!}
       />
       {newWorkspace !== '1' && workspace && (

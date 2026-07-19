@@ -4,8 +4,18 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Profile, NotificationPreferences } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Check, ImagePlus, KeyRound, Loader2, Mail, Trash2 } from 'lucide-react'
+import { Bell, Check, Clock, ImagePlus, KeyRound, Loader2, Mail, Trash2 } from 'lucide-react'
 import Avatar from '@/components/ui/Avatar'
+
+// Full IANA list where the browser supports it (all modern engines do); a small
+// curated fallback covers the team's actual zones if not.
+const TIMEZONES: string[] = (() => {
+  try {
+    const list = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone')
+    if (list && list.length) return list
+  } catch { /* fall through */ }
+  return ['Asia/Manila', 'Europe/Berlin', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'UTC']
+})()
 
 interface AccountFormProps {
   profile: Profile
@@ -26,6 +36,10 @@ export default function AccountForm({ profile, preferences, currentEmail }: Acco
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url)
   const [avatarBusy, setAvatarBusy] = useState(false)
+
+  const [timezone, setTimezone] = useState(profile.timezone || 'Asia/Manila')
+  const [savingTz, setSavingTz] = useState(false)
+  const [tzSaved, setTzSaved] = useState(false)
 
   const [newEmail, setNewEmail] = useState('')
   const [savingEmail, setSavingEmail] = useState(false)
@@ -105,6 +119,27 @@ export default function AccountForm({ profile, preferences, currentEmail }: Acco
     setTimeout(() => setNameSaved(false), 2000)
     router.refresh()
   }
+
+  async function saveTimezone(next: string) {
+    setTimezone(next)
+    setSavingTz(true)
+    setError(null)
+    // timezone is a personal display choice — not a protected column, so the
+    // client may write it directly (migration 042).
+    const { error: updateError } = await supabase.from('profiles').update({ timezone: next }).eq('id', profile.id)
+    setSavingTz(false)
+    if (updateError) { setError(updateError.message); return }
+    setTzSaved(true)
+    setTimeout(() => setTzSaved(false), 2000)
+    router.refresh()
+  }
+
+  // Live preview of "now" in the chosen zone so the user sees the effect.
+  const nowInTz = (() => {
+    try {
+      return new Intl.DateTimeFormat(undefined, { timeZone: timezone, weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date())
+    } catch { return null }
+  })()
 
   async function toggleAndSave(next: { inApp?: boolean; email?: boolean }) {
     const nextInApp = next.inApp ?? inAppEnabled
@@ -216,6 +251,27 @@ export default function AccountForm({ profile, preferences, currentEmail }: Acco
         <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>At least 8 characters. You stay signed in on this device.</p>
         {passwordNotice && <p className="mt-2 text-xs" style={{ color: 'var(--green)' }}>{passwordNotice}</p>}
       </form>
+
+      <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+        <div className="mb-4 flex items-center gap-2 text-xs font-bold"><Clock size={14} style={{ color: 'var(--accent)' }} /> Timezone</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={timezone}
+            onChange={(e) => saveTimezone(e.target.value)}
+            disabled={savingTz}
+            className="create-task-control max-w-xs flex-1 text-[14px] font-semibold"
+            style={fieldStyle}
+            aria-label="Your timezone"
+          >
+            {!TIMEZONES.includes(timezone) && <option value={timezone}>{timezone}</option>}
+            {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>)}
+          </select>
+          <span className="text-xs" style={{ color: savingTz ? 'var(--muted)' : tzSaved ? 'var(--green)' : 'var(--text-secondary)' }}>
+            {savingTz ? 'Saving…' : tzSaved ? 'Saved' : nowInTz ? `Now: ${nowInTz}` : ''}
+          </span>
+        </div>
+        <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>All deadlines and times are shown in this timezone. Pick where you actually work.</p>
+      </div>
 
       <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
         <div className="mb-4 flex items-center gap-2 text-xs font-bold"><Bell size={14} style={{ color: 'var(--accent)' }} /> Notifications</div>

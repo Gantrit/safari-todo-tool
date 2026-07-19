@@ -7,7 +7,7 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
-import { Profile, Role } from '@/lib/types'
+import { Profile, Role, Shift } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -20,7 +20,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 interface MemberRow {
   user_id: string
   role?: string
-  profiles?: { id?: string; full_name?: string | null; email?: string | null; role?: string; deactivated_at?: string | null } | null
+  profiles?: { id?: string; full_name?: string | null; email?: string | null; role?: string; deactivated_at?: string | null; shift_id?: string | null } | null
 }
 
 interface Category { id: string; name: string; slug: string; position: number }
@@ -33,6 +33,7 @@ interface SettingsFormProps {
   boards: BoardRow[]
   boardAccess: { board_id: string; user_id: string }[]
   categories: Category[]
+  shifts: Shift[]
   currentUser: Profile
 }
 
@@ -41,7 +42,7 @@ function slugify(name: string) {
   return `${base || 'category'}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-export default function SettingsForm({ workspace, members, boards, boardAccess, categories, currentUser }: SettingsFormProps) {
+export default function SettingsForm({ workspace, members, boards, boardAccess, categories, shifts, currentUser }: SettingsFormProps) {
   const [wsName, setWsName] = useState(workspace?.name || '')
   const [inviteEmail, setInviteEmail] = useState('')
   const [newBoardName, setNewBoardName] = useState('')
@@ -133,6 +134,13 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     if (error) setMessage({ text: error.message, type: 'error' })
     setBusy(null); router.refresh()
   }
+  async function changeShift(userId: string, shiftId: string) {
+    setBusy(`shift-${userId}`); setMessage(null)
+    const { error } = await supabase.rpc('set_member_shift', { p_user_id: userId, p_shift_id: shiftId || null })
+    if (error) setMessage({ text: error.message, type: 'error' }); else router.refresh()
+    setBusy(null)
+  }
+
   async function changeRole(userId: string, role: Role) {
     setBusy(`role-${userId}`); setMessage(null)
     const { error } = await supabase.rpc('set_member_role', { p_user_id: userId, p_role: role })
@@ -206,7 +214,7 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
     <section className="app-card"><SectionHead icon={<UserPlus size={18} />} title="Invite user" description="Add a teammate to this workspace by email." /><div className="p-5 sm:p-6"><label><span className="form-label">Email address</span><div className="flex flex-col gap-3 sm:flex-row"><input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="form-control" placeholder="teammate@safarixstudios.com" /><button onClick={invite} disabled={busy === 'invite' || !inviteEmail.trim()} className="btn btn-secondary flex-none">{busy === 'invite' && <Loader2 className="animate-spin" size={15} />}Send invite</button></div></label></div></section>
 
     <section className="app-card">
-      <SectionHead icon={<Users size={18} />} title="Members & roles" description={`${members.length} ${members.length === 1 ? 'person' : 'people'} · set each member's role, deactivate, or remove.`} />
+      <SectionHead icon={<Users size={18} />} title="Members & roles" description={`${members.length} ${members.length === 1 ? 'person' : 'people'} · set each member's role${shifts.length > 0 ? ', shift' : ''}, deactivate, or remove.`} />
       <div>
         {members.map((member) => {
           const name = member.profiles?.full_name || member.profiles?.email || 'Unknown member'
@@ -261,6 +269,19 @@ export default function SettingsForm({ workspace, members, boards, boardAccess, 
               >
                 {ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              {shifts.length > 0 && (
+                <select
+                  value={member.profiles?.shift_id || ''}
+                  disabled={busy === `shift-${uid}`}
+                  onChange={(e) => changeShift(uid, e.target.value)}
+                  className="form-control !min-h-9 !w-auto !py-0 !text-[12.5px] disabled:opacity-50"
+                  aria-label={`Shift for ${name}`}
+                  title="Shift — drives LOGIN/LOGOUT deadlines"
+                >
+                  <option value="">No shift</option>
+                  {shifts.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.start_local.slice(0, 5)}–{s.end_local.slice(0, 5)})</option>)}
+                </select>
+              )}
               {!isSelf && (
                 <>
                   <button onClick={() => toggleDeactivate(uid, name, deactivated)} disabled={busy === `deact-${uid}`} className="icon-button !h-8 !w-8" title={deactivated ? 'Reactivate' : 'Deactivate'} aria-label={deactivated ? `Reactivate ${name}` : `Deactivate ${name}`}>

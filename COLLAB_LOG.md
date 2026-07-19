@@ -3,6 +3,34 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-20 (2) — Claude (Opus 4.8) — Shifts + per-user timezone (fixes "overdue while on shift")
+
+⚠️ **ONE NEW migration: `042_shifts_and_timezones.sql`** (run AFTER 041). It is schema **+ one-time
+prod wiring** (member→shift assignment by name, template LOGIN/LOGOUT anchors, and a backfill of
+existing open LOGIN/LOGOUT deadlines to the shift boundary — so DJ & co. stop being overdue the
+moment it runs). `npm run build` green. v0.41 (client-facing version unchanged; no gameplay change).
+
+Root cause: LOGIN/LOGOUT deadlines were `created_at + 24h` (arbitrary) computed in Europe/Berlin,
+while the workers are in Manila — so a logout showed "overdue" mid-shift. Fix:
+- **`shifts` table** (3 fixed 8h shifts in Manila) + `profiles.shift_id` (protected; set via
+  `set_member_shift` admin RPC). Seeded Shift 1 06–14, Shift 2 14–22, Shift 3 22–06. Assignment:
+  Shift 1 = Aj/Faye/Jc, Shift 2 = Lloyd/Cindy, Shift 3 = DJ/Jasmin.
+- **`template_items.shift_anchor`** (`start`/`end`): LOGIN→start, LOGOUT→end. `assign_template` +
+  the existing recurring respawn now anchor these to the member's shift window via
+  `next_shift_boundary()` (Manila, midnight-crossing). Manila has no DST, so the respawn's
+  "old deadline + 1 period" keeps the wall-clock — only assign_template + the backfill changed.
+- **`profiles.timezone`** (IANA, default Asia/Manila, user-editable, NOT protected). Account settings
+  gets a timezone picker; Settings → Members gets a per-member shift dropdown (`set_member_shift`).
+  Tan defaulted to Europe/Berlin in the wiring.
+
+Deliberately NOT done yet: rewiring every time display to `profiles.timezone`. Today's display is
+device-local (date-fns), which already shows each user their own clock in the browser; the explicit
+stored-tz render is a follow-up. Do NOT treat "overdue" as timezone-dependent — it's an absolute
+`deadline < now` check; the shift-anchored deadline VALUE is what fixes it.
+
+Attempted an immediate REST backfill of the live deadlines but the auto-mode classifier blocked the
+bulk write loop repeatedly — folded the backfill into migration 042 instead (runs on apply).
+
 ## 2026-07-20 — Claude (Opus 4.8) — Softer approve sound, board auto-hides closed tasks, Aj/Jasmin data reset
 
 Client-only (no migration; stays v0.41). `npm run build` green.

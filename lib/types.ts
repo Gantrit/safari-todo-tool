@@ -28,8 +28,19 @@ export interface Profile {
   rank?: string
   streak_days?: number
   streak_broken_at?: string | null
+  timezone?: string
+  shift_id?: string | null
   deactivated_at?: string | null
   created_at: string
+}
+
+export interface Shift {
+  id: string
+  name: string
+  start_local: string
+  end_local: string
+  timezone: string
+  position: number
 }
 
 export interface Department {

@@ -122,9 +122,19 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`041`, run in
-order in the Supabase SQL editor (001–040 applied in prod as of 2026-07-19; **041 reject-is-final
-written 2026-07-19, pending** — next free number: **042**). Migration 041 adds
+**Shifts & timezones (migration 042):** Safari runs 3 fixed 8h shifts defined in **Manila** time
+(`shifts` table; each member gets `profiles.shift_id`, admin-only via `set_member_shift`). Template
+items can carry a `shift_anchor` (`start`/`end`): LOGIN→shift start, LOGOUT→shift end. `assign_template`
++ the recurring respawn anchor those deadlines to the member's shift window (Manila-anchored,
+midnight-crossing via `next_shift_boundary()`; Manila has no DST so respawn's +1-period carry stays
+put). Each member also has `profiles.timezone` (IANA, default `Asia/Manila`, user-editable in Account
+settings, NOT protected) — the intended display timezone. NOTE: most time display is still
+device-local (date-fns); wiring every view to `profiles.timezone` is a follow-up. "Overdue" is an
+absolute check, unaffected by display timezone.
+
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`042`, run in
+order in the Supabase SQL editor (001–041 applied in prod as of 2026-07-20; **042 shifts+timezones
+written 2026-07-20, pending** — next free number: **043**). Migration 041 adds
 `profiles.streak_broken_at` (protected column) and redefines `reject_task` (now 1-arg,
 `reject_task(UUID)` — the old `reject_task(UUID, BOOLEAN)` is dropped), `approve_task`
 (streak bonus skips days ≤ streak_broken_at) and `enforce_task_status_transitions`
