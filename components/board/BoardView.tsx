@@ -135,7 +135,20 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
   }, [hydrated, board.id, view, selectedMemberIds, filters])
 
   const liveTasks = useMemo(() => tasks.filter((t) => !t.deleted_at), [tasks])
-  const filteredTasks = useMemo(() => filterTasks(liveTasks, filters), [liveTasks, filters])
+  // Once a task is APPROVED or REJECTED it's a closed decision — hide it from the
+  // board columns so finished recurring work doesn't pile up (Tan, 2026-07-20).
+  // Approved tasks live on in /archive; both stay reachable here by explicitly
+  // selecting the APPROVED / REJECTED status filter (so an admin can still reopen).
+  const boardTasks = useMemo(() => {
+    const showApproved = filters.statuses.includes('APPROVED')
+    const showRejected = filters.statuses.includes('REJECTED')
+    return liveTasks.filter((t) => {
+      if (t.status === 'APPROVED' && !showApproved) return false
+      if (t.status === 'REJECTED' && !showRejected) return false
+      return true
+    })
+  }, [liveTasks, filters.statuses])
+  const filteredTasks = useMemo(() => filterTasks(boardTasks, filters), [boardTasks, filters])
   // Build the "Created by" filter from the actual task creators, not just board
   // members — a task created by someone who isn't a column on this board (e.g. an
   // admin) must still be filterable. Resolve names via members first, then the
@@ -406,7 +419,7 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
           <div className="board-toolbar">
             <BoardViewSwitcher view={view} onChange={setView} />
             <div className="flex items-center gap-3">
-              <span className="hidden text-[11px] font-semibold sm:inline" style={{ color: 'var(--muted)' }}>{(() => { const n = liveTasks.filter((t) => t.status !== 'APPROVED').length; return `${members.length} ${members.length === 1 ? 'member' : 'members'} · ${n} open ${n === 1 ? 'task' : 'tasks'}` })()}</span>
+              <span className="hidden text-[11px] font-semibold sm:inline" style={{ color: 'var(--muted)' }}>{(() => { const n = liveTasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'REJECTED').length; return `${members.length} ${members.length === 1 ? 'member' : 'members'} · ${n} open ${n === 1 ? 'task' : 'tasks'}` })()}</span>
               {canWriteTasks(currentUser.role) && <button onClick={() => defaultMember && setAddingFor({ memberId: defaultMember.id, section: 'DAILY' })} disabled={!defaultMember} className="btn btn-primary"><Plus size={16} /> Create task</button>}
             </div>
           </div>

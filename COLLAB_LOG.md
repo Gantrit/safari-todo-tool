@@ -3,6 +3,32 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-20 — Claude (Opus 4.8) — Softer approve sound, board auto-hides closed tasks, Aj/Jasmin data reset
+
+Client-only (no migration; stays v0.41). `npm run build` green.
+
+- **Approve/XP sounds detoxed** ([lib/gamification.ts](lib/gamification.ts)): the `approve` cue was a
+  4-note triangle arpeggio climbing to 1046 Hz (shrill) — replaced with a soft low two-note sine
+  "bu-bub" (233→175 Hz). The `xp` cue was a square-wave coin sparkle at 987/1318 Hz — now a warm
+  low sine blip (392/523). Tan's request ("fast Ohrenkrebs").
+- **Board hides APPROVED + REJECTED tasks** ([BoardView.tsx](components/board/BoardView.tsx)): a new
+  `boardTasks` memo drops closed tasks from the columns so recurring work stops piling up. They stay
+  reachable by explicitly selecting the APPROVED/REJECTED **status filter** (so an admin can still
+  find + reopen a rejected task), and approved ones remain in /archive. The header "open tasks"
+  count now also excludes REJECTED. NOTE: there is still no midnight job — recurring respawn happens
+  on approval, and this hide is purely a view filter (data is untouched).
+- **Prod data reset (Aj + Jasmin)** via authenticated admin REST, to give them a clean tomorrow:
+  Aj's REJECTED LOGIN (`35a5df27…`) and Jasmin's DONE-overdue LOGOUT (`e5b2269b…`, yesterday's
+  mis-submit) were each repurposed to ASSIGNED / LOW / deadline 2026-07-20, checklists reset. Their
+  leftover APPROVED "today" tasks are left in place (auto-hidden by the board change above). Root
+  cause was the two-generation overlap: original 2026-07-18 assignment (HIGH, due today) vs. the
+  recurring respawns (LOW, due tomorrow) — a rejected/not-yet-approved gen-1 task never respawned,
+  so it hung around overdue.
+
+Context for the XP question: `xp_settings` = daily 5, HIGH +10, near-deadline +10. The "25 XP" Tan
+saw was `5 + 10 (HIGH) + 10 (near-deadline)` on an OLD gen-1 HIGH task. Template T:5402 items are
+ALREADY LOW for LOGIN/LOGOUT (Feedback Call still HIGH), so going-forward tasks give 15, not 25.
+
 ## 2026-07-19 (3) — Claude (Fable 5) — Reject is final: full XP penalty + streak break + no member reopen
 
 ⚠️ **ONE NEW migration: `041_reject_is_final.sql`** (run AFTER 040). It: adds protected column

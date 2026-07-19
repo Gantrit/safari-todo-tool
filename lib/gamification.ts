@@ -53,15 +53,13 @@ export function playSound(name: SoundName) {
       tone(ac, { freq: 520, duration: 0.1, type: 'sine', glideTo: 780 })
       tone(ac, { freq: 1040, start: 0.08, duration: 0.12, type: 'sine', gain: 0.1 })
       break
-    case 'xp': // coin sparkle
-      tone(ac, { freq: 987, duration: 0.09, type: 'square', gain: 0.06 })
-      tone(ac, { freq: 1318, start: 0.07, duration: 0.14, type: 'square', gain: 0.06 })
+    case 'xp': // soft warm blip (was a shrill square-wave coin sparkle — Tan, 2026-07-20)
+      tone(ac, { freq: 392, duration: 0.09, type: 'sine', gain: 0.08 })
+      tone(ac, { freq: 523, start: 0.08, duration: 0.13, type: 'sine', gain: 0.07 })
       break
-    case 'approve': // golden chime arpeggio (C-E-G-C)
-      tone(ac, { freq: 523, duration: 0.22, type: 'triangle' })
-      tone(ac, { freq: 659, start: 0.09, duration: 0.22, type: 'triangle' })
-      tone(ac, { freq: 784, start: 0.18, duration: 0.24, type: 'triangle' })
-      tone(ac, { freq: 1046, start: 0.27, duration: 0.4, type: 'triangle', gain: 0.18 })
+    case 'approve': // soft low "bu-bub" — two warm notes, no shrill highs (Tan, 2026-07-20)
+      tone(ac, { freq: 233, duration: 0.12, type: 'sine', gain: 0.13 })
+      tone(ac, { freq: 175, start: 0.12, duration: 0.17, type: 'sine', gain: 0.13 })
       break
     case 'levelUp': // full fanfare
       tone(ac, { freq: 392, duration: 0.16, type: 'sawtooth', gain: 0.08 })
