@@ -1001,6 +1001,49 @@ textarea.create-task-control {
   100% { opacity: 0; transform: translate(-50%, -78px) scale(0.92); }
 }
 
+/* Action toasts (lib/toast.ts) — confirm/deny feedback for button actions.
+   Bottom-centered so they never cover the modal header actions. */
+.fx-toast-stack {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 140;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.fx-toast {
+  max-width: min(92vw, 460px);
+  padding: 11px 18px;
+  border-radius: 11px;
+  border: 1px solid var(--border-strong);
+  background: rgba(17, 23, 22, 0.96);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.65);
+  animation: fx-toast-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fx-toast.is-success { border-color: rgba(34, 197, 94, 0.45); color: var(--green); }
+.fx-toast.is-error { border-color: rgba(239, 68, 68, 0.5); color: var(--red); }
+.fx-toast.is-leaving { animation: fx-toast-out 0.26s ease forwards; }
+
+@keyframes fx-toast-in {
+  0% { opacity: 0; transform: translateY(14px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fx-toast-out {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(10px) scale(0.96); }
+}
+
 .fx-levelup {
   position: fixed;
   inset: 0;

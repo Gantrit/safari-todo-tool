@@ -26,6 +26,7 @@ import {
 import { arrayMove, SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
+import { toastError } from '@/lib/toast'
 import { berlinDefaultDeadline, getInitials } from '@/lib/utils'
 import {
   BoardViewMode,
@@ -226,11 +227,16 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
       const alreadyMember = currentAssignees.includes(newMemberId)
       const nextAssignees = alreadyMember ? currentAssignees : [newMemberId]
       const nextAssignedTo = alreadyMember ? activeTask.assigned_to : newMemberId
+      const snapshot = tasks
       const updatedTasks = tasks.map((t) =>
         t.id === active.id ? { ...t, assigned_to: nextAssignedTo, assignee_ids: nextAssignees, section: newSection } : t
       )
       setTasks(updatedTasks)
-      await supabase.from('tasks').update({ assigned_to: nextAssignedTo, assignee_ids: nextAssignees, section: newSection }).eq('id', active.id)
+      const { error: moveError } = await supabase.from('tasks').update({ assigned_to: nextAssignedTo, assignee_ids: nextAssignees, section: newSection }).eq('id', active.id)
+      if (moveError) {
+        setTasks(snapshot)
+        toastError(moveError.message || 'Move failed — task snapped back.')
+      }
       return
     }
 
@@ -357,6 +363,7 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
 
     if (error || !data) {
       setTasks((prev) => prev.filter((t) => t.id !== tempId))
+      toastError(error?.message || 'Task could not be created.')
       return
     }
     setTasks((prev) => prev.map((t) => (t.id === tempId ? (data as Task) : t)))

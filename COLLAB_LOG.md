@@ -3,6 +3,48 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-19 — Claude (Fable 5) — CRITICAL reject fix, action feedback, template sync, optimistic UI
+
+⚠️ **TWO NEW migrations — run in the Supabase SQL editor: `039_fix_notification_types.sql` FIRST
+(urgent bug fix, independent), then `038_template_sync.sql`.** `npm run build` green. v0.39.
+
+1. **CRITICAL: "Reject task" has been silently broken since migration 024 (2026-07-05).**
+   024 redefined `notifications_type_check` from the 001 list (+`shift_report`) instead of the
+   012 list, dropping `rejected`/`comment`/`overdue`/`need_clarification`/`notice_sla_missed`/
+   `xp_adjusted`. Because the RPCs insert their notification in the same transaction, the CHECK
+   violation rolled back the WHOLE action: task reject (both variants), quest reject, and Guild
+   Hall manual XP adjustments all no-opped while the client swallowed the error. **039 restores
+   the full type union.** Found by clicking Reject with the new error toasts (see 2) — the DB
+   answered `violates check constraint "notifications_type_check"`.
+
+2. **Every task action now visibly reacts** (Tan: "buttons feel clunky / reject does nothing").
+   NEW `lib/toast.ts` (DOM-based toast stack, same idiom as gamification fx helpers; styles in
+   `globals.css`). `TaskModal`: `adminDecision`/`updateStatus` are now optimistic (status flips
+   immediately, reverts on error), every outcome toasts (success AND the verbatim DB error — do
+   not go back to swallowing RPC errors), per-button spinners via `pendingAction`. The Reopen
+   button (APPROVED/REJECTED) got a hint line explaining it undoes the decision. `SubtaskList`
+   toggle is optimistic now; `TaskCard.toggleItem` reverts + toasts on failure; BoardView drag
+   moves/quick-add revert + toast on failure.
+
+3. **Template edits can now propagate to already-assigned tasks** (migration 038 + UI):
+   - `tasks.template_id` / `tasks.template_item_id` provenance columns; `assign_template` stamps
+     them; `approve_task` carries them onto the recurring respawn (otherwise the link dies after
+     one recurrence). Backfill links existing open recurring tasks by unambiguous (title, section).
+   - NEW RPC `sync_template_tasks(template_id)` (admin-only): updates title/description/priority/
+     section/reference + replaces checklists (ticked items stay ticked when title unchanged) on
+     OPEN tasks only (ASSIGNED/IN_EDIT/REJECTED — never DONE/APPROVED). Deadlines untouched.
+   - `TemplateLibrary` edit modal: **"Save + update assigned tasks"** button + explainer. Saving
+     an edit now UPSERTS `template_items` (update kept ids / insert new / delete removed) instead
+     of delete+reinsert — **stable item ids are load-bearing for the sync links, do not revert**.
+   - The plain "Save changes" button keeps the old behaviour (no retro-apply).
+
+4. Board hygiene (prod, via UI): deleted Jasmin's duplicate "LOGIN (Tomorrow)" task — it was the
+   recurring respawn of a prematurely-approved LOGIN; tonight's real approval will respawn it.
+
+Verified locally against prod Supabase: optimistic flip + revert + error toast on reject
+(constraint error reproduced exactly), delete flow, quick-add. Reject can only fully succeed
+after 039 runs.
+
 ## 2026-07-18 — Claude (Opus 4.8) — Approval notifications, quest visibility, template UX, board speed
 
 ⚠️ **NEW migration `037_notify_on_submit_for_approval.sql` — run it in Supabase after 036.**

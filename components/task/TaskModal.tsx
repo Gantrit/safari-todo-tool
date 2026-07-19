@@ -9,7 +9,8 @@ import StatusBadge from '../ui/StatusBadge'
 import PriorityBadge from '../ui/PriorityBadge'
 import { deadlineLabel, formatDate, formatRelative, getInitials, isOverdue } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle, Bell, CalendarDays, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, MessageSquare, Paperclip, Pencil, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
+import { showToast, toastError, toastSuccess } from '@/lib/toast'
+import { AlertTriangle, Bell, CalendarDays, CheckCircle2, ChevronRight, ExternalLink, FolderOpen, Layers3, Link2, ListChecks, Loader2, MessageSquare, Paperclip, Pencil, Plus, RotateCcw, UserRound, X, XCircle } from 'lucide-react'
 import CommentSection from './CommentSection'
 import SubtaskList from './SubtaskList'
 
@@ -36,8 +37,14 @@ const STATUS_BACK: Partial<Record<TaskStatus, TaskStatus>> = {
   DONE: 'IN_EDIT',
 }
 
+// Which action button is currently waiting on the server — drives the per-button
+// spinner so the clicked button visibly reacts instead of the whole panel just
+// silently disabling.
+type PendingAction = 'advance' | 'back' | 'approve' | 'reject' | 'reject-penalty' | 'reopen' | null
+
 export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit }: TaskModalProps) {
   const [updating, setUpdating] = useState(false)
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [resultUrl, setResultUrl] = useState(task.result_url || '')
   const [showResultInput, setShowResultInput] = useState(false)
   const [clarificationNote, setClarificationNote] = useState('')
@@ -123,15 +130,21 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
     }
   }
 
-  async function updateStatus(next: TaskStatus) {
-    if (!next) return
+  async function updateStatus(next: TaskStatus, action: PendingAction = 'advance') {
+    if (!next || updating) return
     setUpdating(true)
+    setPendingAction(action)
 
     const patch: Record<string, unknown> = { status: next }
     // First move into IN_EDIT counts as "noticed" for the 12h SLA (the DB
     // trigger stamps it too — this keeps the optimistic UI consistent).
     if (next === 'IN_EDIT' && task.status === 'ASSIGNED' && !task.noticed_at) patch.noticed_at = new Date().toISOString()
     if (next === 'DONE') patch.completed_at = new Date().toISOString()
+
+    // Optimistic: flip the status immediately so the click visibly lands,
+    // then reconcile with (or revert to) the server row.
+    const previous = task
+    onUpdate(withRelations({ ...task, ...patch } as Task))
 
     const { data, error } = await supabase
       .from('tasks')
@@ -144,13 +157,18 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
       if (next === 'DONE') celebrateTaskDone()
       else playSound('click')
       onUpdate(withRelations(data as Task))
+      showToast(next === 'DONE' ? 'Submitted for approval' : `Status: ${next.replace('_', ' ')}`, 'success')
+    } else {
+      onUpdate(withRelations(previous))
+      toastError(error?.message || 'Status change failed — please try again.')
     }
     setUpdating(false)
+    setPendingAction(null)
   }
 
   async function advanceStatus() {
     const next = STATUS_FLOW[task.status]
-    if (next) await updateStatus(next)
+    if (next) await updateStatus(next, 'advance')
   }
 
   async function refetchTask(): Promise<Task | null> {
@@ -164,38 +182,69 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
 
   // Approval, rejection, and reopening run through SECURITY DEFINER RPCs so the
   // XP math, archive entries, and notifications happen atomically server-side.
+  // The status flips optimistically, every outcome shows a toast, and RPC errors
+  // are surfaced verbatim instead of being silently swallowed (pre-2026-07-19
+  // behaviour: a failed reject looked exactly like a successful one).
   async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT', qualityPenalty = false) {
+    if (updating) return
     setUpdating(true)
+    setPendingAction(next === 'APPROVED' ? 'approve' : next === 'REJECTED' ? (qualityPenalty ? 'reject-penalty' : 'reject') : 'reopen')
 
+    const previous = task
+    onUpdate(withRelations({ ...task, status: next }))
+
+    let rpcError: { message: string } | null = null
     if (next === 'APPROVED') {
       const { data: result, error } = await supabase.rpc('approve_task', { p_task_id: task.id })
+      rpcError = error
       if (!error) {
         const xp = typeof result?.xp_per_assignee === 'number' ? result.xp_per_assignee : undefined
         celebrateApproval(xp)
+        toastSuccess('Task approved ✓')
       }
     } else if (next === 'REJECTED') {
       const { error } = await supabase.rpc('reject_task', { p_task_id: task.id, p_quality_penalty: qualityPenalty })
-      if (!error) feedbackReject()
+      rpcError = error
+      if (!error) {
+        feedbackReject()
+        toastSuccess(qualityPenalty ? 'Task rejected (-5 XP) — sent back to the assignee' : 'Task rejected — sent back to the assignee')
+      }
     } else {
-      await supabase.rpc('reopen_task', { p_task_id: task.id })
+      const { error } = await supabase.rpc('reopen_task', { p_task_id: task.id })
+      rpcError = error
+      if (!error) {
+        playSound('click')
+        toastSuccess('Task reopened — back to IN EDIT')
+      }
     }
 
-    const fresh = await refetchTask()
-    if (fresh) onUpdate(withRelations(fresh))
+    if (rpcError) {
+      onUpdate(withRelations(previous))
+      toastError(rpcError.message || 'Action failed — please try again.')
+    } else {
+      const fresh = await refetchTask()
+      if (fresh) onUpdate(withRelations(fresh))
+    }
     setUpdating(false)
+    setPendingAction(null)
   }
 
   async function requestClarification() {
     if (!clarificationNote.trim()) return
     setUpdating(true)
     await supabase.from('comments').insert({ task_id: task.id, user_id: currentUser.id, content: `Need clarification: ${clarificationNote.trim()}` })
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .update({ needs_clarification: true, clarification_note: clarificationNote.trim(), noticed_at: task.noticed_at || new Date().toISOString() })
       .eq('id', task.id)
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*), creator_profile:profiles!tasks_created_by_fkey(*)')
       .single()
-    if (data) onUpdate(withRelations(data as Task))
+    if (data) {
+      onUpdate(withRelations(data as Task))
+      toastSuccess('Clarification requested')
+    } else if (error) {
+      toastError(error.message)
+    }
     setClarificationNote('')
     setUpdating(false)
   }
@@ -203,14 +252,19 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
   async function submitResult() {
     if (!resultUrl.trim()) return
     setUpdating(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .update({ result_url: resultUrl.trim() })
       .eq('id', task.id)
       .select('*, assigned_profile:profiles!tasks_assigned_to_fkey(*)')
       .single()
 
-    if (data) onUpdate(withRelations(data as Task))
+    if (data) {
+      onUpdate(withRelations(data as Task))
+      toastSuccess('Result link saved')
+    } else if (error) {
+      toastError(error.message)
+    }
     setShowResultInput(false)
     setUpdating(false)
   }
@@ -317,35 +371,35 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
               disabled={updating}
               className="btn btn-primary min-h-12 w-full"
             >
-              <ChevronRight size={15} /> Mark as {nextStatus.replace('_', ' ')}
+              {pendingAction === 'advance' ? <Loader2 className="animate-spin" size={15} /> : <ChevronRight size={15} />} Mark as {nextStatus.replace('_', ' ')}
             </button>
           )}
           {canStepBack && backStatus && task.status !== 'DONE' && (
             <button
-              onClick={() => updateStatus(backStatus)}
+              onClick={() => updateStatus(backStatus, 'back')}
               disabled={updating}
               className="mt-2 flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50"
               style={{ color: 'var(--muted)' }}
             >
-              <RotateCcw size={12} /> Back to {backStatus.replace('_', ' ')}
+              {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to {backStatus.replace('_', ' ')}
             </button>
           )}
           {canStepBack && backStatus && task.status === 'DONE' && !canApproveThisTask && (
             <button
-              onClick={() => updateStatus(backStatus)}
+              onClick={() => updateStatus(backStatus, 'back')}
               disabled={updating}
               className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50"
               style={{ color: 'var(--muted)' }}
             >
-              <RotateCcw size={12} /> Back to {backStatus.replace('_', ' ')}
+              {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to {backStatus.replace('_', ' ')}
             </button>
           )}
 
           {canApproveThisTask && task.status === 'DONE' && (
             <div className="space-y-2.5">
-              <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>Approve task</button>
-              <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}><XCircle size={14} /> Reject task</button>
-              <button onClick={() => adminDecision('REJECTED', true)} disabled={updating} className="w-full px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ color: 'var(--red)' }}>Reject with -5 XP quality issue</button>
+              <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>{pendingAction === 'approve' ? <><Loader2 className="animate-spin" size={14} /> Approving…</> : <><CheckCircle2 size={14} /> Approve task</>}</button>
+              <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}>{pendingAction === 'reject' ? <><Loader2 className="animate-spin" size={14} /> Rejecting…</> : <><XCircle size={14} /> Reject task</>}</button>
+              <button onClick={() => adminDecision('REJECTED', true)} disabled={updating} className="flex w-full items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ color: 'var(--red)' }}>{pendingAction === 'reject-penalty' && <Loader2 className="animate-spin" size={11} />} Reject with -5 XP quality issue</button>
             </div>
           )}
           {canManage && !canApproveThisTask && task.status === 'DONE' && (
@@ -355,7 +409,10 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
           )}
 
           {canApproveThisTask && ['APPROVED', 'REJECTED'].includes(task.status) && (
-            <button onClick={() => adminDecision('IN_EDIT')} disabled={updating} className="btn btn-secondary min-h-11 w-full"><RotateCcw size={14} /> Reopen task</button>
+            <div className="space-y-2">
+              <button onClick={() => adminDecision('IN_EDIT')} disabled={updating} className="btn btn-secondary min-h-11 w-full">{pendingAction === 'reopen' ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />} Reopen task</button>
+              <p className="text-center text-[10.5px] leading-4" style={{ color: 'var(--muted)' }}>Undoes the {task.status === 'APPROVED' ? 'approval' : 'rejection'} and puts the task back to IN EDIT.</p>
+            </div>
           )}
           {!hasStatusAction && <div className="rounded-[9px] border px-3.5 py-3 text-xs leading-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>No status action is available for this task.</div>}
               </section>

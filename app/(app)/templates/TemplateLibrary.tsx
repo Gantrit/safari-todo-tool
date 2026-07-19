@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, CheckCircle2, ClipboardList, ListChecks, Loader2, Pencil, Plus, Trash2, UserPlus, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, ClipboardList, ListChecks, Loader2, Pencil, Plus, RefreshCw, Trash2, UserPlus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { toastError, toastSuccess } from '@/lib/toast'
 import { Priority, TaskSection } from '@/lib/types'
 import Modal from '@/components/ui/Modal'
 
@@ -73,36 +74,65 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
   const updateItem = (key: string, patch: Partial<DraftItem>) => setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)))
   const removeItem = (key: string) => setItems((prev) => prev.filter((it) => it.key !== key))
 
-  async function save(event: React.FormEvent) {
-    event.preventDefault()
+  // Saving an EDIT upserts items in place (update kept ids, insert new, delete
+  // removed) instead of the old delete+reinsert. Stable item ids are what let
+  // tasks stay linked to their template item (migration 038) — do not revert
+  // to wholesale delete+reinsert or "apply to assigned tasks" silently breaks.
+  async function save(alsoSync: boolean) {
     const cleanItems = items.filter((it) => it.title.trim())
     if (!name.trim() || cleanItems.length === 0) { setError('Give the template a name and at least one task.'); return }
     setSaving(true); setError(null)
 
     let templateId = editing?.id
+    const existingIds = new Set((editing?.items || []).map((item) => item.id))
     if (editing) {
       const { error: updErr } = await supabase.from('task_templates').update({ title: name.trim(), description: description.trim() || null, updated_at: new Date().toISOString() }).eq('id', editing.id)
       if (updErr) { setError(updErr.message); setSaving(false); return }
-      await supabase.from('template_items').delete().eq('template_id', editing.id)
     } else {
       const { data, error: insErr } = await supabase.from('task_templates').insert({ title: name.trim(), description: description.trim() || null, created_by: userId }).select('id').single()
       if (insErr || !data) { setError(insErr?.message || 'Template could not be created.'); setSaving(false); return }
       templateId = data.id
     }
 
-    const rows = cleanItems.map((it, index) => ({
-      template_id: templateId,
-      title: it.title.trim(),
-      description: it.description.trim() || null,
-      section: it.section,
-      priority: it.priority,
-      checklist: it.checklist.split('\n').map((l) => l.trim()).filter(Boolean),
-      reference_url: it.referenceUrl.trim() || null,
-      due_time: it.dueTime || null,
-      position: index,
-    }))
-    const { error: itemsErr } = await supabase.from('template_items').insert(rows)
+    const keptIds: string[] = []
+    const rows = cleanItems.map((it, index) => {
+      const base = {
+        template_id: templateId,
+        title: it.title.trim(),
+        description: it.description.trim() || null,
+        section: it.section,
+        priority: it.priority,
+        checklist: it.checklist.split('\n').map((l) => l.trim()).filter(Boolean),
+        reference_url: it.referenceUrl.trim() || null,
+        due_time: it.dueTime || null,
+        position: index,
+      }
+      // Existing item → keep its id so linked tasks stay linked.
+      if (existingIds.has(it.key)) { keptIds.push(it.key); return { id: it.key, ...base } }
+      return base
+    })
+    const { error: itemsErr } = await supabase.from('template_items').upsert(rows)
     if (itemsErr) { setError(itemsErr.message); setSaving(false); return }
+
+    const removedIds = [...existingIds].filter((id) => !keptIds.includes(id))
+    if (removedIds.length > 0) {
+      const { error: delErr } = await supabase.from('template_items').delete().in('id', removedIds)
+      if (delErr) { setError(delErr.message); setSaving(false); return }
+    }
+
+    if (alsoSync && templateId) {
+      const { data: syncResult, error: syncErr } = await supabase.rpc('sync_template_tasks', { p_template_id: templateId })
+      if (syncErr) {
+        setSaving(false)
+        setError(`Template saved, but updating assigned tasks failed: ${syncErr.message}`)
+        toastError(syncErr.message)
+        return
+      }
+      const n = typeof syncResult?.updated === 'number' ? syncResult.updated : 0
+      toastSuccess(n === 0 ? 'Template saved — no open assigned tasks to update.' : `Template saved — ${n} assigned task${n === 1 ? '' : 's'} updated.`)
+    } else {
+      toastSuccess(editing ? 'Template saved' : 'Template created')
+    }
 
     setSaving(false); setOpen(false); router.refresh()
   }
@@ -187,7 +217,7 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
 
       {/* Create / edit template */}
       <Modal open={open} onClose={() => !saving && setOpen(false)} title={editing ? 'Edit template' : 'Create template'} size="2xl">
-        <form onSubmit={save}>
+        <form onSubmit={(event) => { event.preventDefault(); save(false) }}>
           <div className="space-y-6 p-6">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Template name" className="sm:col-span-2"><input autoFocus required value={name} onChange={(e) => setName(e.target.value)} className="form-control" placeholder="e.g. Chatter, Traffic, Manager" /></Field>
@@ -229,8 +259,21 @@ export default function TemplateLibrary({ templates, boards, boardMembers, isAdm
             })}
 
             {error && <p className="text-sm" style={{ color: 'var(--red)' }}>{error}</p>}
+            {editing && (
+              <p className="rounded-[10px] border px-4 py-3 text-xs leading-5" style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--muted)' }}>
+                <span className="font-bold" style={{ color: 'var(--text)' }}>Save + update assigned tasks</span> also applies these changes to every OPEN task created from this template (title, description, priority, checklist — ticked items stay ticked if unchanged). Tasks waiting for approval, approved tasks and deadlines are never touched.
+              </p>
+            )}
           </div>
-          <div className="modal-actions"><button type="button" onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button><button disabled={saving || !name.trim()} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}{editing ? 'Save changes' : 'Create template'}</button></div>
+          <div className="modal-actions">
+            <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary">Cancel</button>
+            <button disabled={saving || !name.trim()} className="btn btn-primary">{saving && <Loader2 className="animate-spin" size={15} />}{editing ? 'Save changes' : 'Create template'}</button>
+            {editing && (
+              <button type="button" onClick={() => save(true)} disabled={saving || !name.trim()} className="btn btn-primary" title="Save and apply the changes to all open tasks already assigned from this template">
+                {saving && <Loader2 className="animate-spin" size={15} />}<RefreshCw size={14} /> Save + update assigned tasks
+              </button>
+            )}
+          </div>
         </form>
       </Modal>
 

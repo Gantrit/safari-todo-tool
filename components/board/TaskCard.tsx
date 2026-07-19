@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Task, Profile, Subtask, ChecklistItem } from '@/lib/types'
 import { getInitials, getUrgency, isNearDeadline, taskAccentColor, canDeleteTask } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { toastError } from '@/lib/toast'
 import PriorityBadge from '../ui/PriorityBadge'
 import StatusBadge from '../ui/StatusBadge'
 import { useSortable } from '@dnd-kit/sortable'
@@ -34,7 +35,14 @@ export default function TaskCard({ task, onClick, currentUser, onDelete, showAss
     if (!id) return
     setItems((prev) => prev.map((s) => (s.id === id ? { ...s, done: !done } : s)))
     const { error } = await supabase.from('checklist_items').update({ done: !done }).eq('id', id)
-    if (error) await supabase.from('subtasks').update({ done: !done }).eq('id', id)
+    if (error) {
+      const fallback = await supabase.from('subtasks').update({ done: !done }).eq('id', id)
+      if (fallback.error) {
+        // Revert the optimistic flip and say why — otherwise the checkbox lies.
+        setItems((prev) => prev.map((s) => (s.id === id ? { ...s, done } : s)))
+        toastError(fallback.error.message || 'Checklist update failed.')
+      }
+    }
   }
 
   const style = {

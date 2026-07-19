@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChecklistItem, Subtask, Profile } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { toastError } from '@/lib/toast'
 import { Plus, Check } from 'lucide-react'
 
 interface SubtaskListProps {
@@ -48,9 +49,17 @@ export default function SubtaskList({ taskId, subtasks: initial, currentUser }: 
     // Guard: without a real id we can't target a single row (and `.eq('id', undefined)`
     // would match nothing while `s.id === id` would flip every item). Skip safely.
     if (!id) return
-    const { error } = await supabase.from('checklist_items').update({ done: !done }).eq('id', id)
-    if (error) await supabase.from('subtasks').update({ done: !done }).eq('id', id)
+    // Optimistic: flip immediately so the checkbox reacts to the click, then
+    // revert (with a visible error) if neither table accepted the write.
     setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, done: !done } : s)))
+    const { error } = await supabase.from('checklist_items').update({ done: !done }).eq('id', id)
+    if (error) {
+      const fallback = await supabase.from('subtasks').update({ done: !done }).eq('id', id)
+      if (fallback.error) {
+        setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, done } : s)))
+        toastError(fallback.error.message || 'Checklist update failed.')
+      }
+    }
   }
 
   const total = subtasks.length
