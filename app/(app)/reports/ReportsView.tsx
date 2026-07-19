@@ -3,7 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ShiftReport, ShiftReportCreator, ShiftReportReviewStatus } from '@/lib/types'
+import { ShiftReport, ShiftReportReviewStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { blobToJpegDataUrl, downloadShiftReportsPdf, type PdfReportData } from '@/lib/shiftReportPdf'
 import { Copy, Check, Link2, FileText, ExternalLink, Settings, FileDown, Trash2, Loader2, X } from 'lucide-react'
@@ -11,11 +11,13 @@ import { Copy, Check, Link2, FileText, ExternalLink, Settings, FileDown, Trash2,
 type RangeKey = 'all' | '7' | '30' | '90'
 type ReviewFilter = 'all' | ShiftReportReviewStatus
 
+// Pending first and as the default — reviewed reports are the ones you no
+// longer care about, so "All" moved to the end (Tan, 2026-07-19).
 const REVIEW_FILTERS: { key: ReviewFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
   { key: 'PENDING', label: 'Pending' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'REJECTED', label: 'Rejected' },
+  { key: 'all', label: 'All' },
 ]
 
 // window.location.origin never changes during a page's life — nothing to subscribe to.
@@ -70,21 +72,21 @@ async function toPdfData(r: ShiftReport): Promise<PdfReportData> {
 
 export default function ReportsView({
   reports,
-  creators,
   isAdmin,
   userId,
 }: {
   reports: ShiftReport[]
-  creators: ShiftReportCreator[]
   isAdmin: boolean
   userId: string
 }) {
   const router = useRouter()
   const [supabase] = useState(() => createClient())
-  const [creatorFilter, setCreatorFilter] = useState<string>('all')
-  const [chatterQuery, setChatterQuery] = useState('')
+  // Filters swapped 2026-07-19 (Tan): the dropdown now holds the chatters
+  // (member names) and the free-text search matches the creator/model instead.
+  const [chatterFilter, setChatterFilter] = useState<string>('all')
+  const [creatorQuery, setCreatorQuery] = useState('')
   const [range, setRange] = useState<RangeKey>('all')
-  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all')
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('PENDING')
   // Optimistic review states, so approving doesn't need a full page refresh.
   const [reviewOverrides, setReviewOverrides] = useState<Record<string, ShiftReportReviewStatus>>({})
   const [reviewBusy, setReviewBusy] = useState<string | null>(null)
@@ -123,6 +125,13 @@ export default function ReportsView({
   const origin = useSyncExternalStore(subscribeNoop, () => window.location.origin, () => '')
   const submitUrl = `${origin}/submit-report`
 
+  // Chatter dropdown options: the distinct chatter names that actually
+  // submitted reports (chatter_name is free text — there is no member FK).
+  const chatterNames = useMemo(
+    () => Array.from(new Set(reports.map((r) => r.chatter_name.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [reports]
+  )
+
   const filtered = useMemo(() => {
     let cutoff = 0
     if (range !== 'all') {
@@ -130,15 +139,15 @@ export default function ReportsView({
       d.setDate(d.getDate() - Number(range))
       cutoff = d.getTime()
     }
-    const q = chatterQuery.trim().toLowerCase()
+    const q = creatorQuery.trim().toLowerCase()
     return reports.filter((r) => {
-      if (creatorFilter !== 'all' && r.creator_id !== creatorFilter) return false
-      if (q && !r.chatter_name.toLowerCase().includes(q)) return false
+      if (chatterFilter !== 'all' && r.chatter_name.trim() !== chatterFilter) return false
+      if (q && !(r.creator_name || r.creator?.name || '').toLowerCase().includes(q)) return false
       if (cutoff && new Date(r.shift_date).getTime() < cutoff) return false
       if (reviewFilter !== 'all' && (reviewOverrides[r.id] ?? r.review_status ?? 'PENDING') !== reviewFilter) return false
       return true
     })
-  }, [reports, creatorFilter, chatterQuery, range, reviewFilter, reviewOverrides])
+  }, [reports, chatterFilter, creatorQuery, range, reviewFilter, reviewOverrides])
 
   async function copyLink() {
     try {
@@ -234,14 +243,14 @@ export default function ReportsView({
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <select value={creatorFilter} onChange={(e) => setCreatorFilter(e.target.value)} className="form-control !h-9 !w-auto text-[12.5px]">
-          <option value="all">All models</option>
-          {creators.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <select value={chatterFilter} onChange={(e) => setChatterFilter(e.target.value)} className="form-control !h-9 !w-auto text-[12.5px]">
+          <option value="all">All members</option>
+          {chatterNames.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <input
-          value={chatterQuery}
-          onChange={(e) => setChatterQuery(e.target.value)}
-          placeholder="Search chatter…"
+          value={creatorQuery}
+          onChange={(e) => setCreatorQuery(e.target.value)}
+          placeholder="Search creator…"
           className="form-control !h-9 !w-[180px] text-[12.5px]"
         />
         <div className="flex items-center gap-1">
@@ -303,8 +312,8 @@ export default function ReportsView({
       {filtered.length === 0 ? (
         <div className="app-card p-10 text-center">
           <FileText className="mx-auto mb-3" size={26} style={{ color: 'var(--muted)' }} />
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>No reports yet</p>
-          <p className="mt-1 text-[12.5px]" style={{ color: 'var(--muted)' }}>Reports submitted through the form will show up here.</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{reports.length === 0 ? 'No reports yet' : 'Nothing matches these filters'}</p>
+          <p className="mt-1 text-[12.5px]" style={{ color: 'var(--muted)' }}>{reports.length === 0 ? 'Reports submitted through the form will show up here.' : reviewFilter === 'PENDING' ? 'No pending reports — everything is reviewed. Switch to “All” to see the rest.' : 'Try different filters or switch to “All”.'}</p>
         </div>
       ) : (
         <div className="space-y-3">

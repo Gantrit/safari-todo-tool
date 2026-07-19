@@ -74,7 +74,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <p className="attention-title">{overdueTasks.length} {overdueTasks.length === 1 ? 'task is' : 'tasks are'} overdue</p>
             <p className="attention-sub">These have passed their deadline and need attention before anything else.</p>
           </div>
-          {board && <Link href={`/board/${board.id}`} className="btn btn-primary flex-none">Review now <ArrowRight size={15} /></Link>}
+          {(firstOverdue?.board_id || board) && <Link href={firstOverdue?.board_id ? `/board/${firstOverdue.board_id}?urgency=overdue` : `/board/${board.id}?urgency=overdue`} className="btn btn-primary flex-none">Review now <ArrowRight size={15} /></Link>}
         </section>
       ) : pendingApproval.length > 0 && role === 'admin' ? (
         <section className="attention-banner is-review">
@@ -83,7 +83,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <p className="attention-title">{pendingApproval.length} {pendingApproval.length === 1 ? 'submission is' : 'submissions are'} awaiting approval</p>
             <p className="attention-sub">Completed work is ready for your review and XP award.</p>
           </div>
-          {board && <Link href={`/board/${board.id}`} className="btn btn-primary flex-none">Review <ArrowRight size={15} /></Link>}
+          {/* Deep-link to the board that actually holds the nearest DONE submission —
+              linking the workspace's first board sent admins to an empty Managers board. */}
+          {(nextApproval?.board_id || board) && <Link href={nextApproval?.board_id ? `/board/${nextApproval.board_id}?status=DONE` : `/board/${board.id}?status=DONE`} className="btn btn-primary flex-none">Review <ArrowRight size={15} /></Link>}
         </section>
       ) : null}
 

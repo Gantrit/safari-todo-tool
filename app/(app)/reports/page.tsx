@@ -15,15 +15,12 @@ export default async function ReportsPage() {
 
   // Service role: read every report + its files, and mint signed URLs for display.
   const supabase = await createAdminClient()
-  const [{ data: reports }, { data: creators }] = await Promise.all([
-    supabase
-      .from('shift_reports')
-      .select('*, creator:shift_report_creators(id, name, active, created_at), files:shift_report_files(*)')
-      .order('shift_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(500),
-    supabase.from('shift_report_creators').select('*').order('name', { ascending: true }),
-  ])
+  const { data: reports } = await supabase
+    .from('shift_reports')
+    .select('*, creator:shift_report_creators(id, name, active, created_at), files:shift_report_files(*)')
+    .order('shift_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(500)
 
   const withSigned: ShiftReport[] = await Promise.all(
     (reports || []).map(async (r: ShiftReport & { edit_token?: string }) => {
@@ -43,7 +40,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="h-full overflow-auto">
-      <ReportsView reports={withSigned} creators={creators || []} isAdmin={profile?.role === 'admin'} userId={user!.id} />
+      <ReportsView reports={withSigned} isAdmin={profile?.role === 'admin'} userId={user!.id} />
     </div>
   )
 }

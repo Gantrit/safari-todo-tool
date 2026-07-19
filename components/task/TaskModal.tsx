@@ -400,6 +400,11 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
               <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>{pendingAction === 'approve' ? <><Loader2 className="animate-spin" size={14} /> Approving…</> : <><CheckCircle2 size={14} /> Approve task</>}</button>
               <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}>{pendingAction === 'reject' ? <><Loader2 className="animate-spin" size={14} /> Rejecting…</> : <><XCircle size={14} /> Reject task</>}</button>
               <button onClick={() => adminDecision('REJECTED', true)} disabled={updating} className="flex w-full items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ color: 'var(--red)' }}>{pendingAction === 'reject-penalty' && <Loader2 className="animate-spin" size={11} />} Reject with -5 XP quality issue</button>
+              {/* Neutral reset for accidental submissions: back to IN EDIT with no
+                  rejection, no XP effect — mirrors the assignee's own step-back. */}
+              <button onClick={() => updateStatus('IN_EDIT', 'back')} disabled={updating} className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50" style={{ color: 'var(--muted)' }}>
+                {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to IN EDIT (no rejection)
+              </button>
             </div>
           )}
           {canManage && !canApproveThisTask && task.status === 'DONE' && (

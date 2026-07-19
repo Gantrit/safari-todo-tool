@@ -51,7 +51,7 @@ export default async function NotificationsPage() {
           <h1 className="page-title">Notifications</h1>
           <p className="page-description">{unread ? `${unread} unread update${unread === 1 ? '' : 's'} waiting for you.` : 'You are all caught up.'}</p>
         </div>
-        {unread > 0 && <MarkAllRead userId={user!.id} />}
+        {items.length > 0 && <MarkAllRead userId={user!.id} unread={unread} total={items.length} />}
       </header>
 
       <section className="app-card">

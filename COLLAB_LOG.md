@@ -3,6 +3,35 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-19 (2) — Claude (Fable 5) — Dashboard deep-link fix, admin reset-to-IN_EDIT, notification delete, reports filter swap
+
+⚠️ **ONE NEW migration: `040_notification_delete.sql`** (DELETE policy on `notifications`, own
+rows only) — without it the new delete buttons show a "Migration 040 required" toast (the client
+detects the silent 0-row RLS delete via `.select('id')`). `npm run build` green. v0.40. Migrations
+038 + 039 were confirmed applied in prod today; next free number: **041**.
+
+- **Dashboard banners linked to the wrong board** ([app/(app)/dashboard/page.tsx](app/(app)/dashboard/page.tsx)):
+  the "Review"/"Review now" attention banners linked the workspace's FIRST board (Managers), so
+  admins landed on a board with zero DONE tasks. Both banners now deep-link the board of the
+  nearest relevant task (`?status=DONE` / `?urgency=overdue` — BoardView already understood these
+  params, the banner just never sent them).
+- **TaskModal: neutral admin reset for DONE tasks** — approvers now get "Back to IN EDIT (no
+  rejection)" under Approve/Reject: plain status update, no XP, no rejection notification. Mirrors
+  the assignee's own step-back (Tan's request after Jasmin's accidental submit).
+- **Notifications are deletable** — per-row trash button (optimistic, [NotificationList.tsx](app/(app)/notifications/NotificationList.tsx))
+  + "Clear all" with confirm ([MarkAllRead.tsx](app/(app)/notifications/MarkAllRead.tsx)). Both
+  surface a policy-missing state instead of failing silently.
+- **/reports filters swapped** (Tan): dropdown now lists distinct **chatter names** (free-text
+  field — no member FK, so options derive from the reports themselves), the search field matches
+  the **creator/model** name. Review pills reordered Pending/Approved/Rejected/**All** and default
+  to **PENDING**; `creators` prop + its fetch removed from [reports/page.tsx](app/(app)/reports/page.tsx).
+  Empty state explains the active filter instead of claiming "no reports yet".
+- **Do not "fix" the Browser-pane ghost bug:** the embedded preview browser reports
+  `document.visibilityState === 'hidden'`, so Next 16 parks page content in a hidden
+  `<template>`/Activity — pages look empty and clicks/state changes appear to do nothing THERE.
+  Real browsers are unaffected. Verify UI in a real browser; don't chase this as an app bug
+  (it explains the 2026-07-18 "Reject click did nothing in preview" mystery).
+
 ## 2026-07-19 — Claude (Fable 5) — CRITICAL reject fix, action feedback, template sync, optimistic UI
 
 ⚠️ **TWO NEW migrations — run in the Supabase SQL editor: `039_fix_notification_types.sql` FIRST
