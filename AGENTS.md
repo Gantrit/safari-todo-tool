@@ -31,7 +31,11 @@ Calendar, Archive, per-user Private todos.
 Assignees may also step BACK one status (`IN_EDIT → ASSIGNED`, `DONE → IN_EDIT`) to undo an
 accidental click. The first move into `IN_EDIT` stamps `noticed_at` (12h notice SLA unchanged).
 Assignee drives up to `DONE`; only admin/manager can `APPROVE`/`REJECT`/reopen. On approval
-the task is archived and XP awarded.
+the task is archived and XP awarded. **Rejection is final for the member (migration 041):** it
+ALWAYS deducts the task's full base XP (clamped ≥0) and stamps `profiles.streak_broken_at` to
+break the streak; the member can no longer pull a REJECTED task back to IN_EDIT — only an
+admin/manager `reopen_task` can. For an accidental submit, reviewers use the neutral "Back to
+IN EDIT (no penalty)" reset instead (plain status update, no XP/streak effect).
 
 **Roles:** `admin` (full control), `manager` (task approval + most admin task rights), `employee`
 (= "Member", normal user), `guest` (= "Viewer", read-only). Legacy `user` maps to `employee`.
@@ -118,9 +122,13 @@ components/ui/      Modal, badges, XPBar, EmptyState, ErrorState, LevelUpWatcher
 lib/                types.ts, gamification.ts (sounds/confetti), boardViews.ts, supabase/, utils.ts
 ```
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`040`, run in
-order in the Supabase SQL editor (001–039 applied in prod as of 2026-07-19; **040 notification
-DELETE policy written 2026-07-19, pending** — next free number: **041**).
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`041`, run in
+order in the Supabase SQL editor (001–040 applied in prod as of 2026-07-19; **041 reject-is-final
+written 2026-07-19, pending** — next free number: **042**). Migration 041 adds
+`profiles.streak_broken_at` (protected column) and redefines `reject_task` (now 1-arg,
+`reject_task(UUID)` — the old `reject_task(UUID, BOOLEAN)` is dropped), `approve_task`
+(streak bonus skips days ≤ streak_broken_at) and `enforce_task_status_transitions`
+(no member REJECTED→IN_EDIT).
 Migration 034 locks down `profiles` (role/xp/level/streak/deactivation are frozen against direct
 client writes via the `protect_profile_columns` trigger — only the SECURITY DEFINER admin RPCs may
 change them), scopes `subtasks` writes to task access (was `USING (true)`), and restricts

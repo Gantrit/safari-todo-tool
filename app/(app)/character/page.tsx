@@ -39,8 +39,17 @@ export default async function CharacterPage() {
   const info = getLevelInfo(xp)
   const entries = xpLog || []
 
-  // Streak: consecutive Berlin days ending today/yesterday with positive XP
-  const gainDays = new Set(entries.filter((entry) => entry.amount > 0).map((entry) => berlinDay(entry.created_at)))
+  // Streak: consecutive Berlin days ending today/yesterday with positive XP.
+  // A rejection stamps profiles.streak_broken_at (migration 041); every gain-day
+  // on/before that day is excluded, so the streak restarts after a rejection —
+  // matching the streak bonus in approve_task.
+  const brokenDay = profile?.streak_broken_at ? berlinDay(profile.streak_broken_at) : null
+  const gainDays = new Set(
+    entries
+      .filter((entry) => entry.amount > 0)
+      .map((entry) => berlinDay(entry.created_at))
+      .filter((day) => !brokenDay || day > brokenDay)
+  )
   let streak = 0
   const cursor = new Date()
   if (!gainDays.has(berlinDay(cursor))) cursor.setDate(cursor.getDate() - 1)

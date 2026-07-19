@@ -27,7 +27,9 @@ const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
   IN_EDIT: 'DONE',
   DONE: null,
   APPROVED: null,
-  REJECTED: 'IN_EDIT',
+  // A rejection is final for the member (migration 041) — only an admin/manager
+  // reopen can revive it, so there is no member-facing advance from REJECTED.
+  REJECTED: null,
 }
 
 // One step back, for accidental clicks. The DB trigger (migration 031) allows
@@ -40,7 +42,7 @@ const STATUS_BACK: Partial<Record<TaskStatus, TaskStatus>> = {
 // Which action button is currently waiting on the server — drives the per-button
 // spinner so the clicked button visibly reacts instead of the whole panel just
 // silently disabling.
-type PendingAction = 'advance' | 'back' | 'approve' | 'reject' | 'reject-penalty' | 'reopen' | null
+type PendingAction = 'advance' | 'back' | 'approve' | 'reject' | 'reopen' | null
 
 export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit }: TaskModalProps) {
   const [updating, setUpdating] = useState(false)
@@ -185,10 +187,10 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
   // The status flips optimistically, every outcome shows a toast, and RPC errors
   // are surfaced verbatim instead of being silently swallowed (pre-2026-07-19
   // behaviour: a failed reject looked exactly like a successful one).
-  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT', qualityPenalty = false) {
+  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT') {
     if (updating) return
     setUpdating(true)
-    setPendingAction(next === 'APPROVED' ? 'approve' : next === 'REJECTED' ? (qualityPenalty ? 'reject-penalty' : 'reject') : 'reopen')
+    setPendingAction(next === 'APPROVED' ? 'approve' : next === 'REJECTED' ? 'reject' : 'reopen')
 
     const previous = task
     onUpdate(withRelations({ ...task, status: next }))
@@ -203,11 +205,14 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
         toastSuccess('Task approved ✓')
       }
     } else if (next === 'REJECTED') {
-      const { error } = await supabase.rpc('reject_task', { p_task_id: task.id, p_quality_penalty: qualityPenalty })
+      // reject_task now always deducts the task's full base XP and breaks the
+      // member's streak — a rejection is final until an admin reopens it.
+      const { data: result, error } = await supabase.rpc('reject_task', { p_task_id: task.id })
       rpcError = error
       if (!error) {
         feedbackReject()
-        toastSuccess(qualityPenalty ? 'Task rejected (-5 XP) — sent back to the assignee' : 'Task rejected — sent back to the assignee')
+        const penalty = typeof result?.penalty === 'number' ? result.penalty : null
+        toastSuccess(penalty ? `Task rejected — −${penalty} XP, streak reset` : 'Task rejected')
       }
     } else {
       const { error } = await supabase.rpc('reopen_task', { p_task_id: task.id })
@@ -399,11 +404,11 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
             <div className="space-y-2.5">
               <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>{pendingAction === 'approve' ? <><Loader2 className="animate-spin" size={14} /> Approving…</> : <><CheckCircle2 size={14} /> Approve task</>}</button>
               <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}>{pendingAction === 'reject' ? <><Loader2 className="animate-spin" size={14} /> Rejecting…</> : <><XCircle size={14} /> Reject task</>}</button>
-              <button onClick={() => adminDecision('REJECTED', true)} disabled={updating} className="flex w-full items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold disabled:opacity-50" style={{ color: 'var(--red)' }}>{pendingAction === 'reject-penalty' && <Loader2 className="animate-spin" size={11} />} Reject with -5 XP quality issue</button>
+              <p className="px-1 text-center text-[10.5px] leading-4" style={{ color: 'var(--muted)' }}>Rejecting deducts the task&apos;s full XP and resets the streak. It&apos;s final until you reopen it.</p>
               {/* Neutral reset for accidental submissions: back to IN EDIT with no
                   rejection, no XP effect — mirrors the assignee's own step-back. */}
               <button onClick={() => updateStatus('IN_EDIT', 'back')} disabled={updating} className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50" style={{ color: 'var(--muted)' }}>
-                {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to IN EDIT (no rejection)
+                {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to IN EDIT (no penalty)
               </button>
             </div>
           )}

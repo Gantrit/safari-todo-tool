@@ -27,6 +27,7 @@ export interface Profile {
   level: number
   rank?: string
   streak_days?: number
+  streak_broken_at?: string | null
   deactivated_at?: string | null
   created_at: string
 }

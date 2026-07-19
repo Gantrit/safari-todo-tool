@@ -3,6 +3,30 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-19 (3) — Claude (Fable 5) — Reject is final: full XP penalty + streak break + no member reopen
+
+⚠️ **ONE NEW migration: `041_reject_is_final.sql`** (run AFTER 040). It: adds protected column
+`profiles.streak_broken_at`; **drops `reject_task(UUID, BOOLEAN)` and replaces it with 1-arg
+`reject_task(UUID)`**; redefines `approve_task` (streak bonus ignores gain-days ≤ streak_broken_at)
+and `enforce_task_status_transitions` (removes the member's REJECTED→IN_EDIT self-reopen).
+`npm run build` green. v0.41.
+
+Behaviour change (Tan): a rejection is now a real final decision, not a soft nudge —
+- **Always deducts the task's full base XP** (category value + priority surcharge, same figure as
+  the overdue penalty), clamped so XP never goes below 0. The old opt-in "-5 quality issue" second
+  button is gone; there is a single "Reject task" action.
+- **Breaks the streak** via `streak_broken_at`. The streak is derived from days with positive XP
+  (no stored counter), so both consumers now filter it: `approve_task`'s streak bonus AND the
+  character page ([character/page.tsx](app/(app)/character/page.tsx)) skip every gain-day on/before
+  the stamp. So the streak restarts from 0 after a rejection.
+- **Final for the member:** they can no longer drag/advance a REJECTED task back to IN_EDIT
+  (`STATUS_FLOW['REJECTED']` is now null client-side, and the DB trigger raises). Only admin/manager
+  `reopen_task` revives it.
+- The neutral **"Back to IN EDIT (no penalty)"** reset (added earlier today) stays — that's the
+  path for an accidental submit: plain status update, no XP/streak effect. Reject = intentional.
+
+Do NOT reintroduce the two-button reject or the `p_quality_penalty` arg. `reject_task` is 1-arg now.
+
 ## 2026-07-19 (2) — Claude (Fable 5) — Dashboard deep-link fix, admin reset-to-IN_EDIT, notification delete, reports filter swap
 
 ⚠️ **ONE NEW migration: `040_notification_delete.sql`** (DELETE policy on `notifications`, own
