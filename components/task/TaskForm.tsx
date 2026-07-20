@@ -193,7 +193,28 @@ export default function TaskForm({ boardId, memberId, section, members, currentU
           </div>
           <div className="create-task-paired">
             <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Priority</label><select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className={fieldClass} style={fieldStyle}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select></div>
-            <div className={groupClass}><label className={labelClass} style={{ color: 'var(--text-secondary)' }}>Deadline · Berlin</label><input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={fieldClass} style={fieldStyle} /></div>
+            <div className={groupClass}>
+              <label className={`${labelClass} flex items-center justify-between gap-2`} style={{ color: 'var(--text-secondary)' }}>
+                <span>Deadline · Berlin</span>
+                <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-medium normal-case tracking-normal" style={{ color: 'var(--muted)' }}>
+                  <input
+                    type="checkbox"
+                    checked={!deadline}
+                    onChange={(e) => setDeadline(e.target.checked ? '' : berlinDefaultDeadline(category).toISOString().slice(0, 16))}
+                    className="h-3.5 w-3.5 accent-[var(--accent)]"
+                  />
+                  No deadline
+                </label>
+              </label>
+              <input
+                type="datetime-local"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                disabled={!deadline}
+                className={fieldClass}
+                style={{ ...fieldStyle, opacity: deadline ? 1 : 0.45 }}
+              />
+            </div>
           </div>
           {!isEditing && (
             <div className={groupClass}>

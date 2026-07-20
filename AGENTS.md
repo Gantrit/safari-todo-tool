@@ -133,8 +133,12 @@ device-local (date-fns); wiring every view to `profiles.timezone` is a follow-up
 absolute check, unaffected by display timezone.
 
 Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`042`, run in
-order in the Supabase SQL editor (001–041 applied in prod as of 2026-07-20; **042 shifts+timezones
-written 2026-07-20, pending** — next free number: **043**). Migration 041 adds
+order in the Supabase SQL editor (001–042 applied in prod as of 2026-07-20 — 042 shifts+timezones
+is LIVE, verified via the `shifts` table + populated `profiles.shift_id`; **043 reject-respawn +
+private-task approval-notify fix written 2026-07-20, pending** — next free number: **044**).
+Migration 043 makes `reject_task` respawn the next recurring instance (was approve-only, leaving
+rejected LOGIN/LOGOUT with no successor), stops board-less/private DONE tasks from notifying
+reviewers, and names the submitter in the approval notification; it also backfills stuck slots. Migration 041 adds
 `profiles.streak_broken_at` (protected column) and redefines `reject_task` (now 1-arg,
 `reject_task(UUID)` — the old `reject_task(UUID, BOOLEAN)` is dropped), `approve_task`
 (streak bonus skips days ≤ streak_broken_at) and `enforce_task_status_transitions`

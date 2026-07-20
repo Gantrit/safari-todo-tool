@@ -3,6 +3,48 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-20 (3) — Claude (Opus 4.8) — Reject respawns recurring · private tasks stop pinging reviewers · no-deadline option · overdue pauses on submit
+
+⚠️ **ONE NEW migration: `043_reject_respawn_and_approval_notify.sql`** (run AFTER 042). Schema-free
+(function replacements) + a one-time backfill. `npm run build` green. **v0.43.** Diagnosed against
+the live prod DB (read-only, anon+admin JWT), not guessed.
+
+Tan's 2026-07-20 batch. Note: **042 is already LIVE in prod** (shifts table populated) — the prior
+"pending" note was stale; AGENTS.md corrected.
+
+- **Recurring gap on REJECT (issue 3).** Root cause found in data: two members had a `REJECTED`
+  LOGIN and NO open successor — because only `approve_task` respawned the next period, never
+  `reject_task`. Fix: `reject_task` now respawns the next recurring instance (same rule as approve:
+  old deadline + 1 period, clamped forward), and a one-time DO-block backfill spawns successors for
+  every recurring slot currently stuck in APPROVED/REJECTED with no open sibling (matched by
+  template_item_id-or-title + assignee, one per slot). This is what makes "the next task is already
+  there for tomorrow" true after a reject too.
+- **"Ready for review → nix" (issue 2a).** Root cause: `notify_on_submit_for_approval` (037) fired
+  on ANY task entering DONE — including board-less **private** to-dos (the /private checkbox toggles
+  ASSIGNED↔DONE). Those notifications link to `/dashboard` (no board). Fix: the trigger now requires
+  `NEW.board_id IS NOT NULL`, so private tasks never notify reviewers.
+- **Name the submitter (issue 2b).** Approval notification message is now `"<Name> submitted: <title>"`
+  (was `"Ready for review: <title>"`), so the reviewer sees whose work is waiting. Type row still
+  shows `RESULT SUBMITTED · <relative time>`.
+- **No-deadline option (issue 1).** `TaskForm` gets a "No deadline" checkbox next to the deadline
+  field; when on it clears the datetime (saves due_date/deadline_at = null). Board/urgency already
+  render null as a neutral "No deadline" chip.
+- **Overdue pauses on submit.** Once a task is `DONE` (submitted for review) it no longer shows as
+  overdue — `getUrgency` returns a neutral "Awaiting review", and TaskModal + dashboard Overdue KPI
+  exclude DONE. The XP overdue penalty is unaffected (still judged on `completed_at`), so on-time
+  work stays unpenalised even if approval lands late.
+
+- **Approved tasks linger struck-through for 24h, then self-remove (Tan follow-up).** The board no
+  longer hides APPROVED instantly — `BoardView.boardTasks` keeps an approved task visible
+  (struck-through via the existing `.is-done` rule) while `now - approved_at < 24h`, then drops it.
+  REJECTED still hides immediately (its recurring replacement already took the slot). Section badge
+  counts (`TaskSection`) and column "open tasks" count exclude APPROVED/REJECTED so the linger
+  doesn't inflate them. Note: the 24h cutoff is evaluated at render — a task vanishes on the next
+  load/re-render after 24h, not via a live timer (fine for this use).
+
+Do NOT re-add approval notifications for board-less tasks, and do NOT make `reject_task` approve-only
+again. Do NOT go back to hiding APPROVED immediately — the 24h struck-through linger is intentional.
+
 ## 2026-07-20 (2) — Claude (Opus 4.8) — Shifts + per-user timezone (fixes "overdue while on shift")
 
 ⚠️ **ONE NEW migration: `042_shifts_and_timezones.sql`** (run AFTER 041). It is schema **+ one-time

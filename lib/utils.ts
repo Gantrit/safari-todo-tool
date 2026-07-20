@@ -83,6 +83,13 @@ export function getUrgency(deadline: string | null, status?: TaskStatus): Urgenc
   if (status === 'APPROVED' || status === 'REJECTED') {
     return { level: 'none', label: deadlineLabel(deadline) || 'No deadline', color: 'var(--muted)', bg: 'transparent' }
   }
+  // Once submitted for review the member has done their part — pause the deadline
+  // clock so a task waiting on the reviewer never shows as overdue (Tan, 2026-07-20).
+  // The XP overdue penalty is judged separately on completed_at, so on-time work
+  // stays unpenalised even if approval lands late.
+  if (status === 'DONE') {
+    return { level: 'none', label: 'Awaiting review', color: 'var(--muted)', bg: 'transparent' }
+  }
   if (!deadline) {
     return { level: 'none', label: 'No deadline', color: 'var(--muted)', bg: 'transparent' }
   }

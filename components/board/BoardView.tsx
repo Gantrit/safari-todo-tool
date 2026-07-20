@@ -135,18 +135,26 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
   }, [hydrated, board.id, view, selectedMemberIds, filters])
 
   const liveTasks = useMemo(() => tasks.filter((t) => !t.deleted_at), [tasks])
-  // Once a task is APPROVED or REJECTED it's a closed decision — hide it from the
-  // board columns so finished recurring work doesn't pile up (Tan, 2026-07-20).
-  // Approved tasks live on in /archive; both stay reachable here by explicitly
-  // selecting the APPROVED / REJECTED status filter (so an admin can still reopen).
+  // Closed decisions don't pile up on the board. An APPROVED task stays visible
+  // (struck-through) for 24h after approval as a "just done" receipt, then drops
+  // off on its own (Tan, 2026-07-20). REJECTED is hidden right away — its
+  // replacement recurring task already took its place. Both live on in /archive
+  // and stay reachable here via the APPROVED / REJECTED status filter (so an admin
+  // can still reopen an older one).
+  const APPROVED_LINGER_MS = 24 * 60 * 60 * 1000
   const boardTasks = useMemo(() => {
     const showApproved = filters.statuses.includes('APPROVED')
     const showRejected = filters.statuses.includes('REJECTED')
+    const now = Date.now()
     return liveTasks.filter((t) => {
-      if (t.status === 'APPROVED' && !showApproved) return false
+      if (t.status === 'APPROVED' && !showApproved) {
+        const approvedAt = t.approved_at ? new Date(t.approved_at).getTime() : 0
+        return approvedAt > 0 && now - approvedAt < APPROVED_LINGER_MS
+      }
       if (t.status === 'REJECTED' && !showRejected) return false
       return true
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveTasks, filters.statuses])
   const filteredTasks = useMemo(() => filterTasks(boardTasks, filters), [boardTasks, filters])
   // Build the "Created by" filter from the actual task creators, not just board

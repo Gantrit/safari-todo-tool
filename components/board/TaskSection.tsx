@@ -53,15 +53,22 @@ export default function TaskSection({ section, tasks, onTaskClick, onAddTask, on
           <span className="text-[10.5px] font-extrabold uppercase tracking-[.11em]" style={{ color }}>
             {label}
           </span>
-          <span
-            className="ml-auto min-w-6 rounded-full px-2 py-0.5 text-center text-[11px] font-extrabold"
-            style={tasks.length > 0
-              ? { background: 'var(--accent)', color: '#0b0d09' }
-              : { background: 'var(--surface2)', color: 'var(--muted)' }}
-            aria-label={`${tasks.length} tasks`}
-          >
-            {tasks.length}
-          </span>
+          {/* Count reflects OPEN work only — a just-approved task lingers here
+              struck-through for 24h but shouldn't inflate the badge. */}
+          {(() => {
+            const openCount = tasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'REJECTED').length
+            return (
+              <span
+                className="ml-auto min-w-6 rounded-full px-2 py-0.5 text-center text-[11px] font-extrabold"
+                style={openCount > 0
+                  ? { background: 'var(--accent)', color: '#0b0d09' }
+                  : { background: 'var(--surface2)', color: 'var(--muted)' }}
+                aria-label={`${openCount} tasks`}
+              >
+                {openCount}
+              </span>
+            )
+          })()}
         </button>
         {canWrite && <button onClick={onAddTask} className="flex h-7 w-7 flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-white/5 hover:text-[var(--text)]" style={{ color: 'var(--muted)' }} aria-label={`Open full form for ${label}`} title="Create task with full form"><Plus size={14} /></button>}
       </div>

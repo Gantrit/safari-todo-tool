@@ -22,7 +22,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const levelInfo = getLevelInfo(profile?.xp || 0)
   const role = normalizeRole(profile?.role)
   const openTasks = allOpenTasks || []
-  const overdueTasks = openTasks.filter((task: any) => isOverdue(task.deadline_at || task.due_date))
+  // A submitted (DONE) task is waiting on the reviewer, not overdue on the member.
+  const overdueTasks = openTasks.filter((task: any) => task.status !== 'DONE' && isOverdue(task.deadline_at || task.due_date))
   const pendingApproval = openTasks.filter((task: any) => task.status === 'DONE')
   const selectedWorkspace = workspaces?.find((workspace) => workspace.id === requestedWorkspaceId) || workspaces?.[0]
   const orderedBoards = sortBoards(boards || [])
@@ -160,7 +161,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           {myTasks?.length ? (
             <div>
               {myTasks.map((task) => {
-                const overdue = isOverdue(task.deadline_at || task.due_date)
+                const overdue = task.status !== 'DONE' && isOverdue(task.deadline_at || task.due_date)
                 return (
                   <div
                     key={task.id}

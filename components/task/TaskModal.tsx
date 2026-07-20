@@ -278,7 +278,9 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
   const backStatus = STATUS_BACK[task.status]
   const canStepBack = !!backStatus && !isViewer && (canManage || isAssignee || task.created_by === currentUser.id)
   const deadline = task.deadline_at || task.due_date || null
-  const overdue = isOverdue(deadline) && task.status !== 'APPROVED'
+  // Overdue stops once the task is submitted (DONE) or settled — the clock is
+  // only against the member while the work is still theirs to finish.
+  const overdue = isOverdue(deadline) && !['DONE', 'APPROVED', 'REJECTED'].includes(task.status)
   const assignees = task.assignee_profiles || (task.assigned_profile ? [task.assigned_profile] : [])
   // Admins may approve/reject/reopen anything. Managers only for tasks whose
   // assignees are all members, and never their own — matches migration 035.
