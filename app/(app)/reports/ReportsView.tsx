@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ShiftReport, ShiftReportReviewStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { blobToJpegDataUrl, downloadShiftReportsPdf, type PdfReportData } from '@/lib/shiftReportPdf'
-import { Copy, Check, Link2, FileText, ExternalLink, Settings, FileDown, Trash2, Loader2, X } from 'lucide-react'
+import { Copy, Check, CheckCheck, Link2, FileText, ExternalLink, Settings, FileDown, Trash2, Loader2, X } from 'lucide-react'
 
 type RangeKey = 'all' | '7' | '30' | '90'
 type ReviewFilter = 'all' | ShiftReportReviewStatus
@@ -90,6 +90,7 @@ export default function ReportsView({
   // Optimistic review states, so approving doesn't need a full page refresh.
   const [reviewOverrides, setReviewOverrides] = useState<Record<string, ShiftReportReviewStatus>>({})
   const [reviewBusy, setReviewBusy] = useState<string | null>(null)
+  const [bulkApproving, setBulkApproving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [pdfBusy, setPdfBusy] = useState<string | null>(null) // report id or 'bulk'
@@ -117,6 +118,29 @@ export default function ReportsView({
       setReviewOverrides((prev) => ({ ...prev, [r.id]: target }))
     }
     setReviewBusy(null)
+  }
+
+  // Approve a batch of reports in one write. Only the ones still PENDING are
+  // touched — already-decided reports are left as they are.
+  async function bulkApprove(items: ShiftReport[]) {
+    const ids = items.filter((r) => reviewOf(r) === 'PENDING').map((r) => r.id)
+    if (ids.length === 0) return
+    setBulkApproving(true)
+    setError(null)
+    const { error: updErr } = await supabase
+      .from('shift_reports')
+      .update({ review_status: 'APPROVED', reviewed_by: userId, reviewed_at: new Date().toISOString() })
+      .in('id', ids)
+    if (updErr) {
+      setError(updErr.message.includes('review_status') ? 'Migration 033 is required for report reviews — run it in the Supabase SQL editor.' : updErr.message)
+    } else {
+      setReviewOverrides((prev) => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = 'APPROVED'
+        return next
+      })
+    }
+    setBulkApproving(false)
   }
 
   // Hydration-safe origin: server snapshot renders '', the client value fills in
@@ -209,6 +233,9 @@ export default function ReportsView({
   }
 
   const selectedReports = filtered.filter((r) => selected.has(r.id))
+  // Pending reports in the current view — what "Approve all" and the count target.
+  const pendingReports = filtered.filter((r) => reviewOf(r) === 'PENDING')
+  const selectedPendingCount = selectedReports.filter((r) => reviewOf(r) === 'PENDING').length
 
   return (
     <div className="page-shell !max-w-[1080px]">
@@ -292,6 +319,17 @@ export default function ReportsView({
       {selected.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[10px] border px-3.5 py-2.5" style={{ borderColor: 'var(--border-strong)', background: 'var(--surface)' }}>
           <span className="text-[12.5px] font-bold" style={{ color: 'var(--text-secondary)' }}>{selected.size} selected</span>
+          {selectedPendingCount > 0 && (
+            <button
+              onClick={() => bulkApprove(selectedReports)}
+              disabled={bulkApproving}
+              className="btn !min-h-9 !px-3 !text-[12.5px]"
+              style={{ background: 'var(--green)', color: '#071007' }}
+            >
+              {bulkApproving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+              Approve selected ({selectedPendingCount})
+            </button>
+          )}
           <button
             onClick={() => downloadPdf(selectedReports, 'bulk')}
             disabled={pdfBusy !== null}
@@ -301,6 +339,24 @@ export default function ReportsView({
             Download PDF ({selected.size})
           </button>
           <button onClick={() => setSelected(new Set())} className="btn btn-secondary !min-h-9 !px-3 !text-[12.5px]">Clear selection</button>
+        </div>
+      )}
+
+      {/* Approve everything pending in the current view, without ticking each one */}
+      {selected.size === 0 && pendingReports.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[10px] border px-3.5 py-2.5" style={{ borderColor: 'var(--border-strong)', background: 'var(--surface)' }}>
+          <span className="text-[12.5px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+            {pendingReports.length} pending {pendingReports.length === 1 ? 'report is' : 'reports are'} waiting for review
+          </span>
+          <button
+            onClick={() => bulkApprove(pendingReports)}
+            disabled={bulkApproving}
+            className="btn !min-h-9 !px-3 !text-[12.5px]"
+            style={{ background: 'var(--green)', color: '#071007' }}
+          >
+            {bulkApproving ? <Loader2 className="animate-spin" size={14} /> : <CheckCheck size={14} />}
+            Approve all pending ({pendingReports.length})
+          </button>
         </div>
       )}
 

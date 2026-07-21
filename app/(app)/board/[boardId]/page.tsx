@@ -14,6 +14,13 @@ export default async function BoardPage({ params }: Props) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Materialize any recurring occurrences that are due but haven't been reviewed
+  // yet, so today's recurring tasks appear on schedule regardless of whether the
+  // previous one was approved/rejected. Idempotent SECURITY DEFINER catch-up
+  // (migration 044); must run before the tasks read below so new rows show up in
+  // this same render. Ignored silently if 044 hasn't been applied yet.
+  await supabase.rpc('ensure_recurring_occurrences')
+
   const { data: board } = await supabase
     .from('boards')
     .select('*, workspaces(id, name)')
