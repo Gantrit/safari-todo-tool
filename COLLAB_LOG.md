@@ -3,6 +3,40 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-21 — Claude (Opus 4.8) — Chatter self-service "My reports" on the public submit page (fix lost edit link)
+
+**No migration** — reuses existing `shift_reports` columns. `npm.cmd run build` green.
+
+Problem (Marian, WhatsApp): after submitting, a chatter's ONLY path back to a report was the secret
+edit link. Lose it → can't fix a rejected report → commission gone. The `/reports` page is
+admin/manager-only, so chatters had nowhere to self-serve.
+
+Built on the PUBLIC `/submit-report` page (no login), decisions confirmed with Tan:
+- The page is now a 2-tab shell (`SubmitReportClient.tsx`): **New report** (unchanged form) and
+  **My reports** (`MyReportsPanel.tsx`).
+- **`POST /api/shift-report/mine`** (service role, public): chatter self-identifies by picking their
+  name — member → `chatter_id`, external → exact `chatter_name` (scoped to `chatter_id IS NULL`).
+  Returns their reports. **Never returns `edit_token`** (that stays the submitter's private
+  credential, same rule as `/reports`).
+- **`POST /api/shift-report/resubmit`** (service role, public): corrects a report. Hard gates
+  enforced server-side: **only `review_status = 'REJECTED'`** is editable this way (APPROVED/PENDING
+  are untouchable — a paid-out report can't be reopened by a chatter), and the **chatter identity is
+  frozen** to the original submitter (can't reassign). On save it overwrites the row, resets to
+  **PENDING**, clears `reviewed_by/at`, bumps `edit_count`, and notifies admins/managers in-app.
+  Deliberately **NOT bound by the 2-edits/8h window** (`/api/shift-report/edit` still is) — a
+  rejection often lands after 8h, which was the whole point.
+- `ShiftReportForm` gained a `mode='resubmit'` (+ `reportId`/`onSuccess` props): posts to
+  `/resubmit`, locks the chatter field, red "correcting a rejected report" banner, tailored success
+  screen. `create`/`edit` modes unchanged.
+
+**Do not undo:** the `edit_token` must never be exposed by `/mine` or shipped to the client. The
+REJECTED-only + identity-frozen gates in `/resubmit` are the safety guarantees — don't loosen them to
+allow editing APPROVED reports (Tan explicitly chose to keep approved locked).
+
+Note: couldn't exercise the happy path locally — this machine's `.env.local` has no valid Supabase
+**service-role** key ("Invalid API key"), which also leaves the existing form's model/member
+dropdowns empty here. Verify `/mine` + resubmit against the real Supabase env.
+
 ## 2026-07-20 (3) — Claude (Opus 4.8) — Reject respawns recurring · private tasks stop pinging reviewers · no-deadline option · overdue pauses on submit
 
 ⚠️ **ONE NEW migration: `043_reject_respawn_and_approval_notify.sql`** (run AFTER 042). Schema-free

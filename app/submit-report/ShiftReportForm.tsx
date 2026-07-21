@@ -44,11 +44,15 @@ export interface ExistingFile {
 interface ShiftReportFormProps {
   creators: CreatorOption[]
   members?: MemberOption[]
-  mode?: 'create' | 'edit'
+  mode?: 'create' | 'edit' | 'resubmit'
   prefill?: ReportPrefill
   existingFiles?: ExistingFile[]
   editToken?: string
   editsLeft?: number
+  /** resubmit mode only: the id of the rejected report being corrected. */
+  reportId?: string
+  /** resubmit mode only: called after a successful resubmit (e.g. to return to the list). */
+  onSuccess?: () => void
 }
 
 const EXTERNAL = '__external__'
@@ -81,6 +85,8 @@ export default function ShiftReportForm({
   existingFiles = [],
   editToken,
   editsLeft = 2,
+  reportId,
+  onSuccess,
 }: ShiftReportFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState<Submitted | null>(null)
@@ -112,8 +118,11 @@ export default function ShiftReportForm({
   }
 
   const isEdit = mode === 'edit'
+  const isResubmit = mode === 'resubmit'
+  // Both edit and resubmit start from an existing report with existing uploads.
+  const hasExisting = isEdit || isResubmit
   const keptExisting = existingFiles.filter((f) => !removedIds.includes(f.id))
-  const maxNewFiles = MAX_FILES - (isEdit ? keptExisting.length : 0)
+  const maxNewFiles = MAX_FILES - (hasExisting ? keptExisting.length : 0)
 
   function addFiles(list: FileList | null) {
     if (!list) return
@@ -178,9 +187,17 @@ export default function ShiftReportForm({
       form.append('edit_token', editToken)
       form.append('removed_file_ids', JSON.stringify(removedIds))
     }
+    if (isResubmit && reportId) {
+      form.append('report_id', reportId)
+      form.append('removed_file_ids', JSON.stringify(removedIds))
+    }
 
     try {
-      const endpoint = isEdit ? '/api/shift-report/edit' : '/api/shift-report/submit'
+      const endpoint = isResubmit
+        ? '/api/shift-report/resubmit'
+        : isEdit
+          ? '/api/shift-report/edit'
+          : '/api/shift-report/submit'
       const res = await fetch(endpoint, { method: 'POST', body: form })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -204,7 +221,7 @@ export default function ShiftReportForm({
     setPdfBusy(true)
     try {
       const images: { name: string; dataUrl: string }[] = []
-      let skipped = isEdit ? keptExisting.length : 0 // existing uploads aren't re-downloadable here
+      let skipped = hasExisting ? keptExisting.length : 0 // existing uploads aren't re-downloadable here
       for (const f of sub.files) {
         const dataUrl = await blobToJpegDataUrl(f)
         if (dataUrl) images.push({ name: f.name, dataUrl })
@@ -232,14 +249,16 @@ export default function ShiftReportForm({
       <div className="app-card p-8 text-center">
         <CheckCircle2 className="mx-auto mb-4" size={34} style={{ color: 'var(--green)' }} />
         <h2 className="text-lg font-bold" style={{ color: 'var(--text)' }}>
-          {isEdit ? 'Changes saved — thank you!' : 'Report submitted — thank you!'}
+          {isResubmit ? 'Corrected & resubmitted — thank you!' : isEdit ? 'Changes saved — thank you!' : 'Report submitted — thank you!'}
         </h2>
         <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-          {isEdit
-            ? done.editsLeft > 0
-              ? `You can edit this report ${done.editsLeft} more time${done.editsLeft === 1 ? '' : 's'} within 8 hours of submission.`
-              : 'This report can no longer be edited.'
-            : 'Your shift report was received. You can download a PDF copy for yourself below.'}
+          {isResubmit
+            ? 'Your corrected report is back with your manager for review. You can download a PDF copy for yourself below.'
+            : isEdit
+              ? done.editsLeft > 0
+                ? `You can edit this report ${done.editsLeft} more time${done.editsLeft === 1 ? '' : 's'} within 8 hours of submission.`
+                : 'This report can no longer be edited.'
+              : 'Your shift report was received. You can download a PDF copy for yourself below.'}
         </p>
 
         <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
@@ -247,12 +266,12 @@ export default function ShiftReportForm({
             {pdfBusy ? <Loader2 className="animate-spin" size={15} /> : <FileDown size={15} />}
             Download as PDF
           </button>
-          {!isEdit && done.editToken && (
+          {!isEdit && !isResubmit && done.editToken && (
             <a href={`/submit-report/edit/${done.editToken}`} className="btn btn-secondary min-h-11 w-full sm:w-auto">
               <Pencil size={14} /> Edit report
             </a>
           )}
-          {!isEdit && (
+          {!isEdit && !isResubmit && (
             <button
               onClick={() => { setDone(null); setFiles([]); setError(null); setSubmitting(false) }}
               className="btn btn-secondary min-h-11 w-full sm:w-auto"
@@ -260,9 +279,14 @@ export default function ShiftReportForm({
               Submit another report
             </button>
           )}
+          {isResubmit && onSuccess && (
+            <button onClick={onSuccess} className="btn btn-secondary min-h-11 w-full sm:w-auto">
+              Back to my reports
+            </button>
+          )}
         </div>
 
-        {!isEdit && done.editToken && (
+        {!isEdit && !isResubmit && done.editToken && (
           <div className="mt-5 rounded-[10px] border p-3 text-left" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
             <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Your private edit link</p>
             <p className="mt-1 text-[12px] leading-5" style={{ color: 'var(--text-secondary)' }}>
@@ -286,6 +310,12 @@ export default function ShiftReportForm({
         </p>
       )}
 
+      {isResubmit && (
+        <p className="rounded-[9px] border px-3.5 py-2.5 text-[12.5px]" style={{ borderColor: 'rgba(239,68,68,.3)', background: 'var(--red-dim)', color: 'var(--text-secondary)' }}>
+          You are correcting a <strong>rejected</strong> report. Fix what was wrong and save — it goes straight back to your manager for review.
+        </p>
+      )}
+
       {/* Who / when */}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
@@ -303,7 +333,17 @@ export default function ShiftReportForm({
         </label>
         <label className="block">
           <span className="form-label">Your name (chatter) *</span>
-          {members.length > 0 ? (
+          {isResubmit ? (
+            // Identity is frozen when correcting a rejected report — the server
+            // rejects any attempt to reassign it to a different chatter anyway.
+            <>
+              <div className="form-control flex items-center" style={{ color: 'var(--muted)', background: 'var(--surface)' }}>
+                {prefill?.chatter_name || 'You'}
+              </div>
+              <input type="hidden" name="chatter_id" value={prefill?.chatter_id || ''} />
+              <input type="hidden" name="chatter_name" value={prefill?.chatter_name || ''} />
+            </>
+          ) : members.length > 0 ? (
             <>
               <select
                 className="form-control"

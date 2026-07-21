@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
-import ShiftReportForm from './ShiftReportForm'
+import SubmitReportClient from './SubmitReportClient'
 
 export const metadata = {
   title: 'Submit Shift Report · Safari To-Dos',
@@ -40,13 +40,13 @@ export default async function SubmitReportPage() {
       <div className="mx-auto w-full max-w-[640px]">
         <div className="mb-8 text-center">
           <span className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-[13px] text-lg font-extrabold" style={{ background: 'var(--accent)', color: '#0b0d09' }}>S</span>
-          <h1 className="text-[26px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--text)' }}>Submit your shift report</h1>
+          <h1 className="text-[26px] font-extrabold tracking-[-.03em]" style={{ color: 'var(--text)' }}>Your shift reports</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-            Fill this in at the end of your shift and attach your sales screenshots.
+            File a new report at the end of your shift, or pull up the ones you already sent.
           </p>
         </div>
 
-        <ShiftReportForm
+        <SubmitReportClient
           creators={creators || []}
           members={(members || []).filter((m) => (m.full_name || '').trim()).map((m) => ({ id: m.id, name: m.full_name as string }))}
         />
