@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'manager' | 'employee' | 'guest'
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH'
-export type TaskStatus = 'ASSIGNED' | 'IN_EDIT' | 'DONE' | 'APPROVED' | 'REJECTED'
+export type TaskStatus = 'ASSIGNED' | 'DONE' | 'APPROVED' | 'REJECTED'
 export type TaskSection = 'DAILY' | 'WEEKLY' | 'MONTHLY'
 export type BoardType = 'kanban' | 'calendar'
 export type NotificationType =

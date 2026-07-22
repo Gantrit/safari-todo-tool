@@ -9,6 +9,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { workspace: requestedWorkspaceId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Schedule-driven recurring catch-up (migration 046) — materialize today's
+  // recurring tasks before reading them, so the dashboard's "my tasks" reflects
+  // them even if the user hasn't opened a board yet. Ignored if 046 isn't applied.
+  await supabase.rpc('ensure_recurring_occurrences')
+
   const [{ data: profile }, { data: leaderboard }, { data: myTasks }, { data: allOpenTasks }, { data: boards }, { data: workspaces }, { data: notifications }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user!.id).single(),
     supabase.from('profiles').select('id, full_name, email, xp, level').order('xp', { ascending: false }).limit(10),

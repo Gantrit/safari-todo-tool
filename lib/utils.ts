@@ -126,7 +126,6 @@ export function isNearDeadline(deadline: string | null, status?: TaskStatus): bo
 export function taskAccentColor(status: TaskStatus, priority: Priority): string {
   if (status === 'APPROVED') return 'var(--green)'
   if (status === 'REJECTED') return 'var(--red)'
-  if (status === 'IN_EDIT') return 'var(--blue)'
   if (status === 'DONE') return 'var(--accent)'
   const byPriority: Record<Priority, string> = { HIGH: 'var(--red)', MEDIUM: 'var(--amber)', LOW: 'var(--green)' }
   return byPriority[priority]

@@ -3,6 +3,42 @@
 Shared changelog for the two AI agents working on this repo (Codex/ChatGPT and Claude). See
 `AGENTS.md` for the full project briefing and handoff protocol. Newest entries on top.
 
+## 2026-07-22 — Claude (Opus 4.8) — Recurring rewrite (single source) · drop IN_EDIT · bulk-approve shift reports
+
+**Migrations 044, 045, 046** (all run by Tan the same day). `npm.cmd run build` green. Couldn't
+exercise live — this machine's `.env.local` still has a placeholder service-role key ("Invalid API
+key"), so diagnosis was from a board screenshot + code.
+
+Three-part session, driven by Tan wanting the app to feel smooth (frustrated it was over-engineered).
+XP/RPG stays — Tan wants it. Kept scope tight to the actual pain.
+
+- **044 (recurring on schedule + bulk-approve, PUSHED & applied first):** added
+  `ensure_recurring_occurrences()` catch-up on board load + a "Approve all pending"/"Approve selected"
+  bulk action on `/reports`. **This introduced a bug** (see 046).
+- **045 (drop IN_EDIT):** status flow is now `ASSIGNED → DONE → APPROVED`. Removed IN_EDIT from the
+  type, StatusBadge, BoardFilterBar, boardViews rank, utils colour, TaskModal (flow/back maps, admin
+  reopen now → ASSIGNED). New migration redefines the transition trigger + `reopen_task` (lands on
+  ASSIGNED). The IN_EDIT-based 12h notice SLA is retired (was never scheduled). Existing IN_EDIT rows
+  migrated → ASSIGNED. **Frontend depends on 045** — before it runs, `ASSIGNED → DONE` is rejected by
+  the old trigger.
+- **046 (recurring SINGLE SOURCE — the fix for 044's mess):** 044 caused duplicate LOGINs and logins
+  dated "tomorrow" on today's board. Root causes: (1) THREE spawners (approve/reject/catch-up) raced;
+  (2) slot key `COALESCE(template_item_id, title)` fractured a series when only some rows had a
+  template_item_id; (3) approve_task pre-spawned the next period on approval. Fix = ONE source of
+  truth: the SCHEDULE. `approve_task`/`reject_task` NO LONGER spawn successors. `ensure_recurring_
+  occurrences()` rewritten to be period-based (today/this-week/this-month, Europe/Berlin) with a
+  stable `lower(trim(title)) + assigned_to` key — exactly one occurrence per slot for the CURRENT
+  period, never future. Also called on dashboard load now. **One-time cleanup in 046** (soft-delete
+  only, reversible, ASSIGNED-only): drops future-dated DAILY occurrences (pre-spawn clutter) and
+  collapses duplicate open occurrences per slot. BoardView: settled recurring tasks hide immediately
+  (no 24h APPROVED linger — that's one-off tasks only), killing the struck-through-LOGIN clutter.
+
+**Do not undo / re-add:** do NOT put recurring respawn back into `approve_task`/`reject_task` — the
+schedule owns it now, re-adding it recreates the duplicate/future-dated bug. Keep the slot key as
+title+assignee (not template_item_id). Product decisions Tan explicitly rejected this session:
+auto-approve of login/logout, and mandatory-screenshot-to-DONE (both offered, both declined — manual
+approval stays; Nana joins 2026-07-23 to help review).
+
 ## 2026-07-21 — Claude (Opus 4.8) — Chatter self-service "My reports" on the public submit page (fix lost edit link)
 
 **No migration** — reuses existing `shift_reports` columns. `npm.cmd run build` green.

@@ -135,19 +135,22 @@ export default function BoardView({ board, members, tasks: initialTasks, questTo
   }, [hydrated, board.id, view, selectedMemberIds, filters])
 
   const liveTasks = useMemo(() => tasks.filter((t) => !t.deleted_at), [tasks])
-  // Closed decisions don't pile up on the board. An APPROVED task stays visible
-  // (struck-through) for 24h after approval as a "just done" receipt, then drops
-  // off on its own (Tan, 2026-07-20). REJECTED is hidden right away — its
-  // replacement recurring task already took its place. Both live on in /archive
-  // and stay reachable here via the APPROVED / REJECTED status filter (so an admin
-  // can still reopen an older one).
+  // Closed decisions don't pile up on the board. A one-off APPROVED task stays
+  // visible (struck-through) for 24h after approval as a "just done" receipt,
+  // then drops off on its own (Tan, 2026-07-20). Recurring tasks (LOGIN/LOGOUT)
+  // hide the instant they're settled — otherwise every approved daily login
+  // clutters the board next to today's fresh one (Tan, 2026-07-22). REJECTED is
+  // hidden right away. Everything lives on in /archive and stays reachable via
+  // the APPROVED / REJECTED status filter (so an admin can still reopen an older one).
   const APPROVED_LINGER_MS = 24 * 60 * 60 * 1000
   const boardTasks = useMemo(() => {
     const showApproved = filters.statuses.includes('APPROVED')
     const showRejected = filters.statuses.includes('REJECTED')
     const now = Date.now()
     return liveTasks.filter((t) => {
+      const isRecurring = !!(t.recurring_enabled || t.recurring_frequency)
       if (t.status === 'APPROVED' && !showApproved) {
+        if (isRecurring) return false
         const approvedAt = t.approved_at ? new Date(t.approved_at).getTime() : 0
         return approvedAt > 0 && now - approvedAt < APPROVED_LINGER_MS
       }

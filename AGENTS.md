@@ -26,16 +26,17 @@ stay lean — not a heavy PM/KPI tool.
 (member rows, table, selection, columns — the Focus view was removed 2026-07-07). Plus
 Calendar, Archive, per-user Private todos.
 
-**Status flow** (enforced by DB trigger; simplified in migration 031 — NOTICED was removed):
-`ASSIGNED → IN_EDIT → DONE → APPROVED`, plus `REJECTED` and a `NEED_CLARIFICATION` flag.
-Assignees may also step BACK one status (`IN_EDIT → ASSIGNED`, `DONE → IN_EDIT`) to undo an
-accidental click. The first move into `IN_EDIT` stamps `noticed_at` (12h notice SLA unchanged).
-Assignee drives up to `DONE`; only admin/manager can `APPROVE`/`REJECT`/reopen. On approval
-the task is archived and XP awarded. **Rejection is final for the member (migration 041):** it
-ALWAYS deducts the task's full base XP (clamped ≥0) and stamps `profiles.streak_broken_at` to
-break the streak; the member can no longer pull a REJECTED task back to IN_EDIT — only an
-admin/manager `reopen_task` can. For an accidental submit, reviewers use the neutral "Back to
-IN EDIT (no penalty)" reset instead (plain status update, no XP/streak effect).
+**Status flow** (enforced by DB trigger; `IN_EDIT` removed in migration 045, `NOTICED` earlier in 031):
+`ASSIGNED → DONE → APPROVED`, plus `REJECTED` and a `NEED_CLARIFICATION` flag. The member picks up
+an assigned task and submits it straight to `DONE`; they may step BACK one status (`DONE → ASSIGNED`)
+to undo an accidental submit. The old 12h `noticed_at` SLA hung on `IN_EDIT` and is retired (it was
+never wired to a scheduler; `noticed_at` simply stops being stamped). Assignee drives up to `DONE`;
+only admin/manager can `APPROVE`/`REJECT`/reopen. On approval the task is archived and XP awarded.
+**Rejection is final for the member (migration 041):** it ALWAYS deducts the task's full base XP
+(clamped ≥0) and stamps `profiles.streak_broken_at` to break the streak; the member can no longer
+pull a REJECTED task back — only an admin/manager `reopen_task` can (reopen lands on `ASSIGNED`).
+For an accidental submit, reviewers use the neutral "Back to ASSIGNED (no penalty)" reset instead
+(plain status update, no XP/streak effect).
 
 **Roles:** `admin` (full control), `manager` (task approval + most admin task rights), `employee`
 (= "Member", normal user), `guest` (= "Viewer", read-only). Legacy `user` maps to `employee`.
@@ -86,9 +87,16 @@ Monthly (`task_templates` = bundle, `template_items` = its tasks). `assign_templ
 instantiates every item as a real recurring task for one member. Editing a template is NOT
 retro-applied to already-assigned tasks.
 
-**Recurring tasks (migration 020):** `recurring_enabled` tasks auto-reset — on approval,
-`approve_task` spawns a fresh copy for the next period (DAILY +1d / WEEKLY +7d / MONTHLY +1mo)
-with an unchecked checklist copy. CUSTOM frequency does not recur.
+**Recurring tasks — schedule-driven single source (migration 046):** the SCHEDULE creates
+occurrences, nothing else. `ensure_recurring_occurrences()` (SECURITY DEFINER, called on board +
+dashboard load, advisory-locked) guarantees each recurring slot has exactly ONE occurrence for the
+CURRENT period — today for DAILY, this week for WEEKLY, this month for MONTHLY (Europe/Berlin
+boundaries) — and never a future-dated one. So today's LOGIN appears on its own day regardless of
+whether yesterday's was approved. Slot identity is `lower(trim(title)) + assigned_to` (stable,
+immune to `template_item_id` being set on only some rows). `approve_task`/`reject_task` NO LONGER
+spawn successors (they used to in 020/043/044, which caused duplicate + future-dated logins — see
+COLLAB_LOG 2026-07-22); they only settle the task. CUSTOM frequency does not recur. On the board,
+settled recurring tasks hide immediately (no 24h APPROVED linger — that's one-off tasks only).
 
 ## Structure
 
@@ -132,10 +140,10 @@ settings, NOT protected) — the intended display timezone. NOTE: most time disp
 device-local (date-fns); wiring every view to `profiles.timezone` is a follow-up. "Overdue" is an
 absolute check, unaffected by display timezone.
 
-Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`042`, run in
-order in the Supabase SQL editor (001–042 applied in prod as of 2026-07-20 — 042 shifts+timezones
-is LIVE, verified via the `shifts` table + populated `profiles.shift_id`; **043 reject-respawn +
-private-task approval-notify fix written 2026-07-20, pending** — next free number: **044**).
+Full DB schema: [`supabase/migrations/`](supabase/migrations/) — numbered `001`…`046`, run in
+order in the Supabase SQL editor. 001–044 applied in prod (044 recurring-catch-up was live but
+buggy — superseded by 046). **045 (drop IN_EDIT) + 046 (recurring single-source rewrite + cleanup)
+written 2026-07-22 — user applies immediately.** Next free number: **047**.
 Migration 043 makes `reject_task` respawn the next recurring instance (was approve-only, leaving
 rejected LOGIN/LOGOUT with no successor), stops board-less/private DONE tasks from notifying
 reviewers, and names the submitter in the approval notification; it also backfills stuck slots. Migration 041 adds

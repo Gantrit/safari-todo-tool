@@ -47,7 +47,7 @@ export type TableSortKey = 'deadline' | 'priority' | 'status' | 'member' | 'titl
 export type SortDir = 'asc' | 'desc'
 
 const PRIORITY_RANK: Record<Priority, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
-const STATUS_RANK: Record<TaskStatus, number> = { ASSIGNED: 0, IN_EDIT: 1, DONE: 2, REJECTED: 3, APPROVED: 4 }
+const STATUS_RANK: Record<TaskStatus, number> = { ASSIGNED: 0, DONE: 1, REJECTED: 2, APPROVED: 3 }
 
 export function sortTasks(tasks: Task[], key: TableSortKey, dir: SortDir, memberName: (id: string | undefined) => string): Task[] {
   const factor = dir === 'asc' ? 1 : -1

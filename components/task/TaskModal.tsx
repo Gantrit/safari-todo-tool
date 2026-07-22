@@ -23,8 +23,9 @@ interface TaskModalProps {
 }
 
 const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
-  ASSIGNED: 'IN_EDIT',
-  IN_EDIT: 'DONE',
+  // No IN_EDIT step (migration 045): an assigned task goes straight to DONE when
+  // the member submits it for approval.
+  ASSIGNED: 'DONE',
   DONE: null,
   APPROVED: null,
   // A rejection is final for the member (migration 041) — only an admin/manager
@@ -32,11 +33,10 @@ const STATUS_FLOW: Record<TaskStatus, TaskStatus | null> = {
   REJECTED: null,
 }
 
-// One step back, for accidental clicks. The DB trigger (migration 031) allows
-// exactly these two for assignees/creators.
+// One step back, for accidental clicks. The DB trigger (migration 045) allows
+// exactly this one for assignees/creators.
 const STATUS_BACK: Partial<Record<TaskStatus, TaskStatus>> = {
-  IN_EDIT: 'ASSIGNED',
-  DONE: 'IN_EDIT',
+  DONE: 'ASSIGNED',
 }
 
 // Which action button is currently waiting on the server — drives the per-button
@@ -138,9 +138,6 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
     setPendingAction(action)
 
     const patch: Record<string, unknown> = { status: next }
-    // First move into IN_EDIT counts as "noticed" for the 12h SLA (the DB
-    // trigger stamps it too — this keeps the optimistic UI consistent).
-    if (next === 'IN_EDIT' && task.status === 'ASSIGNED' && !task.noticed_at) patch.noticed_at = new Date().toISOString()
     if (next === 'DONE') patch.completed_at = new Date().toISOString()
 
     // Optimistic: flip the status immediately so the click visibly lands,
@@ -187,7 +184,7 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
   // The status flips optimistically, every outcome shows a toast, and RPC errors
   // are surfaced verbatim instead of being silently swallowed (pre-2026-07-19
   // behaviour: a failed reject looked exactly like a successful one).
-  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'IN_EDIT') {
+  async function adminDecision(next: 'APPROVED' | 'REJECTED' | 'ASSIGNED') {
     if (updating) return
     setUpdating(true)
     setPendingAction(next === 'APPROVED' ? 'approve' : next === 'REJECTED' ? 'reject' : 'reopen')
@@ -219,7 +216,7 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
       rpcError = error
       if (!error) {
         playSound('click')
-        toastSuccess('Task reopened — back to IN EDIT')
+        toastSuccess('Task reopened — back to ASSIGNED')
       }
     }
 
@@ -407,10 +404,10 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
               <button onClick={() => adminDecision('APPROVED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] text-sm font-bold disabled:opacity-50" style={{ background: 'var(--green)', color: '#071007' }}>{pendingAction === 'approve' ? <><Loader2 className="animate-spin" size={14} /> Approving…</> : <><CheckCircle2 size={14} /> Approve task</>}</button>
               <button onClick={() => adminDecision('REJECTED')} disabled={updating} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[9px] border text-sm font-bold disabled:opacity-50" style={{ background: 'var(--red-dim)', color: 'var(--red)', borderColor: 'rgba(255,98,98,.35)' }}>{pendingAction === 'reject' ? <><Loader2 className="animate-spin" size={14} /> Rejecting…</> : <><XCircle size={14} /> Reject task</>}</button>
               <p className="px-1 text-center text-[10.5px] leading-4" style={{ color: 'var(--muted)' }}>Rejecting deducts the task&apos;s full XP and resets the streak. It&apos;s final until you reopen it.</p>
-              {/* Neutral reset for accidental submissions: back to IN EDIT with no
+              {/* Neutral reset for accidental submissions: back to ASSIGNED with no
                   rejection, no XP effect — mirrors the assignee's own step-back. */}
-              <button onClick={() => updateStatus('IN_EDIT', 'back')} disabled={updating} className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50" style={{ color: 'var(--muted)' }}>
-                {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to IN EDIT (no penalty)
+              <button onClick={() => updateStatus('ASSIGNED', 'back')} disabled={updating} className="flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[9px] text-[11.5px] font-semibold disabled:opacity-50" style={{ color: 'var(--muted)' }}>
+                {pendingAction === 'back' ? <Loader2 className="animate-spin" size={12} /> : <RotateCcw size={12} />} Back to ASSIGNED (no penalty)
               </button>
             </div>
           )}
@@ -422,8 +419,8 @@ export default function TaskModal({ task, currentUser, onClose, onUpdate, onEdit
 
           {canApproveThisTask && ['APPROVED', 'REJECTED'].includes(task.status) && (
             <div className="space-y-2">
-              <button onClick={() => adminDecision('IN_EDIT')} disabled={updating} className="btn btn-secondary min-h-11 w-full">{pendingAction === 'reopen' ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />} Reopen task</button>
-              <p className="text-center text-[10.5px] leading-4" style={{ color: 'var(--muted)' }}>Undoes the {task.status === 'APPROVED' ? 'approval' : 'rejection'} and puts the task back to IN EDIT.</p>
+              <button onClick={() => adminDecision('ASSIGNED')} disabled={updating} className="btn btn-secondary min-h-11 w-full">{pendingAction === 'reopen' ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />} Reopen task</button>
+              <p className="text-center text-[10.5px] leading-4" style={{ color: 'var(--muted)' }}>Undoes the {task.status === 'APPROVED' ? 'approval' : 'rejection'} and puts the task back to ASSIGNED.</p>
             </div>
           )}
           {!hasStatusAction && <div className="rounded-[9px] border px-3.5 py-3 text-xs leading-5" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--muted)' }}>No status action is available for this task.</div>}
